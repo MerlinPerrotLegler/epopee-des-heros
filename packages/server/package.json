@@ -1,0 +1,23 @@
+{
+  "name": "@epopee/server",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@colyseus/monitor": "^0.15.0",
+    "@colyseus/schema": "^2.0.0",
+    "colyseus": "^0.15.0",
+    "express": "^4.21.0",
+    "@epopee/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "tsx": "^4.19.0"
+  }
+}

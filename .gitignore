@@ -1,0 +1,25 @@
+node_modules/
+dist/
+.turbo/
+*.tsbuildinfo
+
+# Capacitor native projects (generated)
+packages/client-tablet/ios/
+packages/client-tablet/android/
+packages/client-phone/ios/
+packages/client-phone/android/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+.env.*.local

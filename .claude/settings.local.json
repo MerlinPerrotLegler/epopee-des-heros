@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git ls-tree -r main --name-only)",
+      "Bash(node --version)",
+      "Bash(pnpm --version)",
+      "Bash(source \"$HOME/.nvm/nvm.sh\")",
+      "Bash(nvm ls)",
+      "Bash(git add .nvmrc package.json pnpm-workspace.yaml tsconfig.base.json turbo.json packages/)",
+      "Bash(git commit:*)",
+      "Bash(git remote add origin https://github.com/MerlinPerrotLegler/epopee-des-heros.git)",
+      "Bash(git remote set-url origin https://github.com/MerlinPerrotLegler/epopee-des-heros.git)",
+      "Bash(git add -A)"
+    ]
+  }
+}
