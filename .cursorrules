@@ -1,0 +1,70 @@
+# Card Designer — Contexte Projet
+
+## Ce que c'est
+Outil de design de cartes pour un jeu de société (type heroic fantasy avec guildes, quêtes, classes, équipements). L'app permet de créer des templates visuels de cartes (layouts), les hydrater avec des données via data binding, et exporter en PDF pour impression.
+
+## Stack
+- **Frontend** : Vue 3 (Composition API + `<script setup>`), Pinia, Vue Router, Vite
+- **Backend** : Express (ESM), better-sqlite3, multer
+- **Auth** : HTTP Basic Auth
+- **Pas de TypeScript** (JS pur, ESM partout)
+- **Pas de Tailwind** (CSS custom avec variables CSS)
+
+## Architecture Atomic Design
+- **Atomes** (`frontend/src/atoms/index.js`) : éléments de base définis en code (titre, texte, dé, pastille, ressource, image, etc.)
+- **Molécules** (DB) : groupes d'atomes réutilisables
+- **Composants** (DB) : assemblages de molécules/atomes avec placeholders
+- **Layouts** (DB) : templates complets d'une carte avec calques, éléments positionnés en mm, et data binding
+
+## Conventions
+- Toutes les mesures visuelles sont en **millimètres** (mm). La conversion mm→px utilise `useMmScale.js` (1mm = 3.7795px × zoom).
+- Les éléments sont positionnés par `x_mm`, `y_mm`, `width_mm`, `height_mm` relatifs à l'origine du layout.
+- Le data binding utilise le pattern `{{nameInLayout.paramName}}`. Les données des instances de cartes sont un flat object `{ "path.to.param": "value" }`.
+- Les composants Vue utilisent `<script setup>` systématiquement.
+- Les imports utilisent l'alias `@/` pour `frontend/src/`.
+- Le backend est full ESM (`"type": "module"` dans package.json).
+- Les routes API sont sous `/api/`. Chaque entité a son fichier dans `backend/routes/`.
+- La DB est SQLite avec le schema dans `backend/db/schema.sql`.
+
+## Structure des fichiers clés
+- `frontend/src/stores/editor.js` — Store Pinia central de l'éditeur (state, layers, elements, save)
+- `frontend/src/atoms/index.js` — Registre de tous les types d'atomes avec leurs params par défaut
+- `frontend/src/components/editor/AtomRenderer.vue` — Rendu visuel de chaque type d'atome
+- `frontend/src/components/editor/EditorCanvas.vue` — Canvas principal avec grille mm et drag/drop
+- `frontend/src/utils/binding.js` — Résolution du data binding
+- `frontend/src/utils/api.js` — Wrapper fetch pour toutes les routes backend
+- `backend/db/schema.sql` — Schema complet de la DB
+
+## Quand tu modifies un atome
+1. Ajouter/modifier le type dans `atoms/index.js` (defaultParams + defaultSize)
+2. Ajouter le rendu dans `AtomRenderer.vue`
+3. Si besoin, ajouter les options enum dans `PropertiesPanel.vue` (ENUM_MAPS)
+
+## Quand tu ajoutes une route API
+1. Créer/modifier le fichier dans `backend/routes/`
+2. L'enregistrer dans `backend/server.js`
+3. Ajouter la méthode correspondante dans `frontend/src/utils/api.js`
+
+## Quand tu modifies le schema DB
+1. Modifier `backend/db/schema.sql`
+2. Supprimer `backend/data/card-designer.db` pour recréer
+3. Penser à ajouter la nouvelle table dans la liste de `createSnapshot()` dans `database.js`
+
+## Points d'attention
+- Le canvas travaille en mm, pas en px. Toujours utiliser `mmToPx()` / `pxToMm()`.
+- Le snap grid est configurable (par défaut 1mm). Utiliser `store.snap(value)` pour tout positionnement.
+- Les layers (calques) ont un flag `locked` et `visible` — respecter ces flags dans les interactions.
+- L'export PDF n'est pas encore implémenté côté rendu (l'API `/export/prepare` fournit les données, le rendu HTML→PDF reste à faire).
+- Les composants et molécules ont un éditeur CRUD basique (JSON) — un éditeur visuel dédié est prévu.
+```
+
+## 3. Structure des dossiers dans Cursor
+
+Ouvre le projet dans Cursor et organise ta vue fichiers. Les dossiers importants à pin/garder visibles :
+```
+frontend/src/atoms/          ← définition des atomes
+frontend/src/components/editor/ ← cœur de l'éditeur
+frontend/src/stores/         ← state management
+frontend/src/utils/          ← api + binding
+backend/routes/              ← API
+backend/db/                  ← schema

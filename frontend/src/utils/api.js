@@ -1,9 +1,13 @@
 const BASE = '/api'
 
+const AUTH_HEADER = 'Basic ' + btoa(
+  `${import.meta.env.VITE_AUTH_USER || 'admin'}:${import.meta.env.VITE_AUTH_PASS || 'changeme'}`
+)
+
 async function request(path, options = {}) {
   const url = `${BASE}${path}`
   const config = {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'Authorization': AUTH_HEADER },
     ...options
   }
   if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
@@ -62,7 +66,7 @@ export const api = {
   updateFolder: (id, data) => request(`/media/folders/${id}`, { method: 'PATCH', body: data }),
   deleteFolder: (id) => request(`/media/folders/${id}`, { method: 'DELETE' }),
   uploadMedia: (formData) => {
-    return fetch(`${BASE}/media/upload`, { method: 'POST', body: formData }).then(r => r.json())
+    return fetch(`${BASE}/media/upload`, { method: 'POST', body: formData, headers: { 'Authorization': AUTH_HEADER } }).then(r => r.json())
   },
   updateMedia: (id, data) => request(`/media/${id}`, { method: 'PATCH', body: data }),
   deleteMedia: (id) => request(`/media/${id}`, { method: 'DELETE' }),
