@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git worktree remove --force /Users/merlinperrot/Code/epopee-guiles-et-avanturiers/.claude/worktrees/focused-torvalds)",
+      "Bash(git worktree remove --force /Users/merlinperrot/Code/epopee-guiles-et-avanturiers/.claude/worktrees/nostalgic-nightingale)",
+      "Bash(git branch -D claude/focused-torvalds claude/nostalgic-nightingale claude/romantic-bohr)",
+      "Bash(git clean -fdx --exclude='.claude/settings.local.json')"
+    ]
+  }
+}

@@ -1,0 +1,314 @@
+<template>
+  <div
+    class="canvas-container"
+    ref="containerRef"
+    @wheel.prevent="onWheel"
+    @mousedown="onCanvasBgClick"
+  >
+    <!-- Pannable/zoomable viewport -->
+    <div class="canvas-viewport" :style="viewportStyle">
+      <!-- Card boundary -->
+      <div class="card-boundary" :style="cardStyle">
+        <!-- Grid overlay -->
+        <svg
+          v-if="store.showGrid"
+          class="grid-overlay"
+          :width="mmToPx(cardW)" :height="mmToPx(cardH)"
+        >
+          <defs>
+            <pattern
+              id="grid-pattern"
+              :width="mmToPx(store.snapGrid)"
+              :height="mmToPx(store.snapGrid)"
+              patternUnits="userSpaceOnUse"
+            >
+              <path
+                :d="`M ${mmToPx(store.snapGrid)} 0 L 0 0 0 ${mmToPx(store.snapGrid)}`"
+                fill="none"
+                stroke="rgba(108,122,255,0.08)"
+                stroke-width="0.5"
+              />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#grid-pattern)" />
+        </svg>
+
+        <!-- Rendered elements -->
+        <div
+          v-for="el in store.allElements" :key="el.id"
+          class="canvas-element"
+          :class="{
+            selected: store.selectedElementId === el.id,
+            locked: el._layerLocked
+          }"
+          :style="elementStyle(el)"
+          @mousedown="onElementMouseDown($event, el)"
+        >
+          <!-- Atom renderer -->
+          <AtomRenderer
+            v-if="el.type === 'atom'"
+            :atomType="el.atomType"
+            :params="resolvedParams(el)"
+            :width_mm="el.width_mm"
+            :height_mm="el.height_mm"
+            :zoom="store.zoom"
+          />
+
+          <!-- Component placeholder -->
+          <div v-else-if="el.type === 'component'" class="placeholder-box component-ph">
+            <span>◧ {{ el.componentId }}</span>
+          </div>
+
+          <!-- Molecule placeholder -->
+          <div v-else-if="el.type === 'molecule'" class="placeholder-box molecule-ph">
+            <span>◬ {{ el.moleculeId }}</span>
+          </div>
+
+          <!-- Resize handles (when selected) -->
+          <template v-if="store.selectedElementId === el.id && !el._layerLocked">
+            <div
+              v-for="handle in resizeHandles" :key="handle"
+              class="resize-handle"
+              :class="`handle-${handle}`"
+              :style="{ cursor: dragDrop.resizeCursor(handle) }"
+              @mousedown.stop="dragDrop.startResize($event, el.id, handle)"
+            ></div>
+          </template>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rulers -->
+    <div class="ruler ruler-h">
+      <svg :width="rulerLen" height="20">
+        <g v-for="tick in hTicks" :key="tick.mm">
+          <line
+            :x1="tick.px" :x2="tick.px"
+            :y1="tick.major ? 0 : 12" y2="20"
+            stroke="var(--text-muted)" stroke-width="0.5"
+          />
+          <text
+            v-if="tick.major"
+            :x="tick.px + 2" y="10"
+            fill="var(--text-muted)" font-size="8" font-family="var(--font-mono)"
+          >{{ tick.mm }}</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</template>
+
+<script setup>
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { useEditorStore } from '@/stores/editor.js'
+import { useMmScale } from '@/composables/useMmScale.js'
+import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
+import { resolveElementParams } from '@/utils/binding.js'
+import AtomRenderer from './AtomRenderer.vue'
+
+const store = useEditorStore()
+const containerRef = ref(null)
+
+const zoom = computed(() => store.zoom)
+const { mmToPx, pxToMm } = useMmScale(zoom)
+const dragDrop = useDragAndDrop(store, { pxToMm })
+
+const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
+
+const cardW = computed(() => store.layout?.width_mm || 63)
+const cardH = computed(() => store.layout?.height_mm || 88)
+
+const rulerLen = computed(() => Math.max(mmToPx(cardW.value) + 200, 1000))
+
+const hTicks = computed(() => {
+  const ticks = []
+  const maxMm = Math.ceil(pxToMm(rulerLen.value))
+  for (let mm = 0; mm <= maxMm; mm += store.snapGrid) {
+    ticks.push({
+      mm,
+      px: mmToPx(mm) + store.panX,
+      major: mm % 10 === 0
+    })
+  }
+  return ticks
+})
+
+const viewportStyle = computed(() => ({
+  transform: `translate(${store.panX}px, ${store.panY}px)`
+}))
+
+const cardStyle = computed(() => ({
+  width: `${mmToPx(cardW.value)}px`,
+  height: `${mmToPx(cardH.value)}px`,
+}))
+
+function elementStyle(el) {
+  return {
+    left: `${mmToPx(el.x_mm)}px`,
+    top: `${mmToPx(el.y_mm)}px`,
+    width: `${mmToPx(el.width_mm)}px`,
+    height: `${mmToPx(el.height_mm)}px`,
+    transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+  }
+}
+
+function resolvedParams(el) {
+  if (store.previewData) {
+    return resolveElementParams(el, store.previewData)
+  }
+  return el.params || {}
+}
+
+function onElementMouseDown(e, el) {
+  store.selectedElementId = el.id
+  if (!el._layerLocked) {
+    dragDrop.startDrag(e, el.id)
+  }
+}
+
+function onCanvasBgClick(e) {
+  if (e.target === containerRef.value || e.target.classList.contains('card-boundary') || e.target.classList.contains('canvas-viewport')) {
+    store.selectedElementId = null
+  }
+  // Pan with middle mouse or if clicking on background
+  if (e.button === 1) {
+    startPan(e)
+  }
+}
+
+function onWheel(e) {
+  if (e.ctrlKey || e.metaKey) {
+    // Zoom
+    const delta = -e.deltaY * 0.001
+    store.zoom = Math.max(0.1, Math.min(5, store.zoom + delta))
+  } else {
+    // Pan
+    store.panX -= e.deltaX
+    store.panY -= e.deltaY
+  }
+}
+
+let panning = false
+function startPan(e) {
+  panning = true
+  const startX = e.clientX, startY = e.clientY
+  const startPanX = store.panX, startPanY = store.panY
+
+  const onMove = (e) => {
+    if (!panning) return
+    store.panX = startPanX + (e.clientX - startX)
+    store.panY = startPanY + (e.clientY - startY)
+  }
+  const onUp = () => {
+    panning = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+  }
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+}
+</script>
+
+<style scoped>
+.canvas-container {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  position: relative;
+  cursor: default;
+}
+
+.canvas-viewport {
+  position: absolute;
+  top: 40px;
+  left: 40px;
+}
+
+.card-boundary {
+  position: relative;
+  background: #ffffff;
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(108, 122, 255, 0.3),
+    0 4px 24px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.grid-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+}
+
+.canvas-element {
+  position: absolute;
+  cursor: move;
+  transition: box-shadow 80ms ease;
+}
+
+.canvas-element.selected {
+  outline: 1.5px solid var(--accent-primary);
+  outline-offset: 1px;
+  z-index: 100;
+}
+
+.canvas-element.locked {
+  cursor: default;
+  opacity: 0.7;
+}
+
+/* Resize handles */
+.resize-handle {
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: var(--accent-primary);
+  border: 1px solid white;
+  border-radius: 1px;
+  z-index: 101;
+}
+
+.handle-n  { top: -4px; left: 50%; transform: translateX(-50%); }
+.handle-s  { bottom: -4px; left: 50%; transform: translateX(-50%); }
+.handle-e  { right: -4px; top: 50%; transform: translateY(-50%); }
+.handle-w  { left: -4px; top: 50%; transform: translateY(-50%); }
+.handle-ne { top: -4px; right: -4px; }
+.handle-nw { top: -4px; left: -4px; }
+.handle-se { bottom: -4px; right: -4px; }
+.handle-sw { bottom: -4px; left: -4px; }
+
+/* Placeholder boxes for components/molecules */
+.placeholder-box {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: var(--text-muted);
+  border: 1px dashed var(--border-default);
+  border-radius: 2px;
+}
+
+.component-ph {
+  background: rgba(108, 122, 255, 0.05);
+  border-color: rgba(108, 122, 255, 0.3);
+}
+
+.molecule-ph {
+  background: rgba(74, 222, 128, 0.05);
+  border-color: rgba(74, 222, 128, 0.3);
+}
+
+/* Ruler */
+.ruler {
+  position: absolute;
+  top: 0;
+  left: 40px;
+  height: 20px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+</style>

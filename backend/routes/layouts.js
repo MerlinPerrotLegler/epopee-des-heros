@@ -1,0 +1,116 @@
+import { Router } from 'express';
+import { getDb } from '../db/database.js';
+import { randomUUID } from 'crypto';
+
+const router = Router();
+
+// List all layouts
+router.get('/', (req, res) => {
+  const db = getDb();
+  const { type } = req.query;
+  let rows;
+  if (type) {
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, created_at, updated_at FROM layouts WHERE card_type = ? ORDER BY name').all(type);
+  } else {
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, created_at, updated_at FROM layouts ORDER BY name').all();
+  }
+  res.json(rows);
+});
+
+// Get single layout with full definition
+router.get('/:id', (req, res) => {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  row.definition = JSON.parse(row.definition);
+  res.json(row);
+});
+
+// Create layout
+router.post('/', (req, res) => {
+  const db = getDb();
+  const { name, card_type, width_mm, height_mm, back_layout_id } = req.body;
+  if (!name || !card_type || !width_mm || !height_mm) {
+    return res.status(400).json({ error: 'Missing required fields: name, card_type, width_mm, height_mm' });
+  }
+  const id = randomUUID();
+  const definition = {
+    layers: [{ id: randomUUID(), name: 'Fond', locked: false, visible: true, elements: [] }],
+    dataSchema: {}
+  };
+  db.prepare('INSERT INTO layouts (id, name, card_type, width_mm, height_mm, back_layout_id, definition) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, card_type, width_mm, height_mm, back_layout_id || null, JSON.stringify(definition)
+  );
+  const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(id);
+  row.definition = JSON.parse(row.definition);
+  res.status(201).json(row);
+});
+
+// Update layout metadata
+router.patch('/:id', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
+  const { name, card_type, width_mm, height_mm, back_layout_id } = req.body;
+  db.prepare(`UPDATE layouts SET 
+    name = COALESCE(?, name),
+    card_type = COALESCE(?, card_type),
+    width_mm = COALESCE(?, width_mm),
+    height_mm = COALESCE(?, height_mm),
+    back_layout_id = ?,
+    updated_at = datetime('now')
+    WHERE id = ?`
+  ).run(name, card_type, width_mm, height_mm, back_layout_id ?? existing.back_layout_id, req.params.id);
+  
+  const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
+  row.definition = JSON.parse(row.definition);
+  res.json(row);
+});
+
+// Update layout definition (the visual structure)
+router.put('/:id/definition', (req, res) => {
+  const db = getDb();
+  const existing = db.prepare('SELECT id FROM layouts WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
+  db.prepare("UPDATE layouts SET definition = ?, updated_at = datetime('now') WHERE id = ?").run(
+    JSON.stringify(req.body), req.params.id
+  );
+  res.json({ ok: true });
+});
+
+// Duplicate layout
+router.post('/:id/duplicate', (req, res) => {
+  const db = getDb();
+  const original = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
+  if (!original) return res.status(404).json({ error: 'Not found' });
+
+  const id = randomUUID();
+  const name = req.body.name || `${original.name} (copie)`;
+  db.prepare('INSERT INTO layouts (id, name, card_type, width_mm, height_mm, back_layout_id, definition) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, original.card_type, original.width_mm, original.height_mm, original.back_layout_id, original.definition
+  );
+  
+  // Also duplicate card instances if requested
+  if (req.body.with_instances) {
+    const instances = db.prepare('SELECT * FROM card_instances WHERE layout_id = ?').all(original.id);
+    const stmt = db.prepare('INSERT INTO card_instances (id, layout_id, name, data, sort_order) VALUES (?, ?, ?, ?, ?)');
+    for (const inst of instances) {
+      stmt.run(randomUUID(), id, inst.name, inst.data, inst.sort_order);
+    }
+  }
+
+  const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(id);
+  row.definition = JSON.parse(row.definition);
+  res.status(201).json(row);
+});
+
+// Delete layout
+router.delete('/:id', (req, res) => {
+  const db = getDb();
+  db.prepare('DELETE FROM layouts WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+export default router;
