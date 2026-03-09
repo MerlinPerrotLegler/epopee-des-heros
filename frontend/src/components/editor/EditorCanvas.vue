@@ -39,7 +39,8 @@
           class="canvas-element"
           :class="{
             selected: store.selectedElementId === el.id,
-            locked: el._layerLocked
+            locked: el._layerLocked,
+            'is-background': BACKGROUND_ATOM_TYPES.has(el.atomType),
           }"
           :style="elementStyle(el)"
           @mousedown="onElementMouseDown($event, el)"
@@ -55,28 +56,32 @@
             :selected="store.selectedElementId === el.id"
           />
 
-          <!-- Component placeholder -->
-          <div v-else-if="el.type === 'component'" class="placeholder-box component-ph">
-            <span>◧ {{ el.componentId }}</span>
-          </div>
+          <!-- Component renderer -->
+          <ComponentRenderer
+            v-else-if="el.type === 'component'"
+            :component-id="el.componentId"
+            :width_mm="el.width_mm"
+            :height_mm="el.height_mm"
+            :zoom="store.zoom"
+          />
 
           <!-- Molecule placeholder -->
           <div v-else-if="el.type === 'molecule'" class="placeholder-box molecule-ph">
             <span>◬ {{ el.moleculeId }}</span>
           </div>
 
-          <!-- Floating action toolbar (delete / duplicate) when selected -->
+          <!-- Floating toolbar : pas de duplication pour le fond -->
           <div
             v-if="store.selectedElementId === el.id && !el._layerLocked"
             class="element-toolbar"
             @mousedown.stop
           >
-            <button class="el-btn el-btn-dup" title="Dupliquer" @click.stop="store.duplicateElement(el.id)">⧉</button>
+            <button v-if="!BACKGROUND_ATOM_TYPES.has(el.atomType)" class="el-btn el-btn-dup" title="Dupliquer" @click.stop="store.duplicateElement(el.id)">⧉</button>
             <button class="el-btn el-btn-del" title="Supprimer" @click.stop="store.removeElement(el.id)">🗑</button>
           </div>
 
-          <!-- Resize handles (when selected, atoms only — components have fixed size) -->
-          <template v-if="store.selectedElementId === el.id && !el._layerLocked && el.type !== 'component'">
+          <!-- Resize handles : pas pour le fond ni pour les composants -->
+          <template v-if="store.selectedElementId === el.id && !el._layerLocked && el.type !== 'component' && !BACKGROUND_ATOM_TYPES.has(el.atomType)">
             <div
               v-for="handle in resizeHandles" :key="handle"
               class="resize-handle"
@@ -117,6 +122,8 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import AtomRenderer from './AtomRenderer.vue'
+import ComponentRenderer from './ComponentRenderer.vue'
+import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
 const store = useEditorStore()
 const containerRef = ref(null)
@@ -161,6 +168,7 @@ function elementStyle(el) {
     width: `${mmToPx(el.width_mm)}px`,
     height: `${mmToPx(el.height_mm)}px`,
     transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
+    opacity: el._layerOpacity != null ? el._layerOpacity : undefined,
   }
 }
 
@@ -190,7 +198,8 @@ function onElementMouseDown(e, el) {
     }
   }
 
-  if (!el._layerLocked) {
+  // Le fond de carte n'est pas déplaçable
+  if (!el._layerLocked && !BACKGROUND_ATOM_TYPES.has(el.atomType)) {
     dragDrop.startDrag(e, el.id)
   }
 }
@@ -284,9 +293,21 @@ function startPan(e) {
   z-index: 100;
 }
 
+/* Le fond sélectionné : contour discret, pas de z-index élevé */
+.canvas-element.is-background {
+  cursor: default;
+  z-index: 0 !important;
+}
+.canvas-element.is-background.selected {
+  outline: 1.5px dashed rgba(108, 122, 255, 0.5);
+  outline-offset: -2px;
+  z-index: 0 !important;
+}
+
 .canvas-element.locked {
   cursor: default;
-  opacity: 0.7;
+  opacity: 0.5;
+  pointer-events: none;
 }
 
 /* Resize handles */

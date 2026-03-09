@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { api } from '@/utils/api.js'
+import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
 export const useEditorStore = defineStore('editor', () => {
   // === State ===
@@ -25,6 +26,9 @@ export const useEditorStore = defineStore('editor', () => {
   // Preview mode (with card instance data)
   const previewData = ref(null) // null = edit mode, {} = preview with data
 
+  // Cache des composants référencés dans le layout courant { [id]: compDef }
+  const componentsCache = ref({})
+
   // === Computed ===
   const definition = computed(() => layout.value?.definition || { layers: [], dataSchema: {} })
 
@@ -47,14 +51,17 @@ export const useEditorStore = defineStore('editor', () => {
   })
 
   const allElements = computed(() => {
-    const result = []
+    const bg = []
+    const rest = []
     for (const layer of layers.value) {
       if (!layer.visible) continue
       for (const el of (layer.elements || [])) {
-        result.push({ ...el, _layerId: layer.id, _layerLocked: layer.locked })
+        const item = { ...el, _layerId: layer.id, _layerLocked: layer.locked, _layerOpacity: layer.opacity ?? 1 }
+        if (el.type === 'atom' && BACKGROUND_ATOM_TYPES.has(el.atomType)) bg.push(item)
+        else rest.push(item)
       }
     }
-    return result
+    return [...bg, ...rest]   // fond toujours en premier (z-order le plus bas)
   })
 
   const dataSchema = computed(() => definition.value.dataSchema || {})
@@ -79,8 +86,27 @@ export const useEditorStore = defineStore('editor', () => {
       dirty.value = false
       selectedElementId.value = null
       selectedLayerId.value = layers.value[0]?.id || null
+      // Pré-charger les composants référencés dans le layout
+      await _preloadComponents()
     } finally {
       loading.value = false
+    }
+  }
+
+  async function _preloadComponents() {
+    const ids = new Set()
+    for (const layer of layers.value) {
+      for (const el of (layer.elements || [])) {
+        if (el.type === 'component' && el.componentId) ids.add(el.componentId)
+      }
+    }
+    const missing = [...ids].filter(id => !componentsCache.value[id])
+    if (!missing.length) return
+    const results = await Promise.allSettled(missing.map(id => api.getComponent(id)))
+    for (let i = 0; i < missing.length; i++) {
+      if (results[i].status === 'fulfilled') {
+        componentsCache.value[missing[i]] = results[i].value
+      }
     }
   }
 
@@ -180,10 +206,32 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  // Trouve le fond de carte existant dans n'importe quel calque
+  const backgroundElement = computed(() => {
+    for (const layer of layers.value) {
+      const bg = layer.elements?.find(e => e.type === 'atom' && BACKGROUND_ATOM_TYPES.has(e.atomType))
+      if (bg) return bg
+    }
+    return null
+  })
+
   // Element operations
   function addElement(layerId, element) {
     const layer = layout.value.definition.layers.find(l => l.id === layerId)
     if (!layer) return
+
+    // Les fonds couvrent toujours la totalité du layout, position (0,0), sans rotation
+    if (element.type === 'atom' && BACKGROUND_ATOM_TYPES.has(element.atomType)) {
+      element = {
+        ...element,
+        x_mm:      0,
+        y_mm:      0,
+        width_mm:  layout.value.width_mm,
+        height_mm: layout.value.height_mm,
+        rotation:  0,
+      }
+    }
+
     const el = {
       id: crypto.randomUUID(),
       x_mm: 0,
@@ -197,6 +245,12 @@ export const useEditorStore = defineStore('editor', () => {
     layer.elements.push(el)
     selectedElementId.value = el.id
     markDirty()
+    // Charger le composant en cache si nécessaire
+    if (el.type === 'component' && el.componentId && !componentsCache.value[el.componentId]) {
+      api.getComponent(el.componentId).then(comp => {
+        componentsCache.value[el.componentId] = comp
+      }).catch(() => {})
+    }
     return el
   }
 
@@ -260,15 +314,16 @@ export const useEditorStore = defineStore('editor', () => {
 
   return {
     layout, loading, dirty, saving,
-    selectedElementId, selectedLayerId, activeCellIdx,
+    selectedElementId, selectedLayerId, activeCellIdx, backgroundElement,
     zoom, panX, panY, snapGrid, showGrid,
     previewData,
+    componentsCache,
     definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,
     mode,
     loadLayout, loadComponent, saveDefinition, markDirty,
     addLayer, removeLayer, reorderLayers, updateLayer,
     addElement, updateElement, removeElement, duplicateElement,
     addSchemaField, removeSchemaField,
-    snap
+    snap, _preloadComponents
   }
 })

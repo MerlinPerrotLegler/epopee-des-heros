@@ -1,24 +1,18 @@
 import { Router } from 'express';
 import { getDb } from '../db/database.js';
-import { randomUUID } from 'crypto';
 import multer from 'multer';
 import { join, dirname, extname } from 'path';
 import { fileURLToPath } from 'url';
-import { existsSync, mkdirSync, unlinkSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
+import { createHash, randomUUID } from 'crypto';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const UPLOADS_DIR = join(__dirname, '..', 'data', 'uploads');
 
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: UPLOADS_DIR,
-  filename: (req, file, cb) => {
-    const ext = extname(file.originalname);
-    cb(null, `${randomUUID()}${ext}`);
-  }
-});
-const upload = multer({ storage, limits: { fileSize: 50 * 1024 * 1024 } });
+// Use memory storage so we can compute SHA1 before writing to disk
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
 
 const router = Router();
 
@@ -73,12 +67,34 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
   const folder_id = req.body.folder_id || 'default';
   const results = [];
 
-  const stmt = db.prepare('INSERT INTO media (id, filename, original_name, mime_type, width_px, height_px, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  
+  const insertStmt = db.prepare(
+    'INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, width_px, height_px, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?)'
+  );
+  const selectStmt = db.prepare('SELECT * FROM media WHERE id = ?');
+
   for (const file of req.files) {
-    const id = randomUUID();
-    stmt.run(id, file.filename, file.originalname, file.mimetype, null, null, folder_id);
-    results.push({ id, filename: file.filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
+    // Compute SHA1 of file buffer
+    const sha1 = createHash('sha1').update(file.buffer).digest('hex');
+    const ext  = extname(file.originalname).toLowerCase();
+    const filename = `${sha1}${ext}`;
+    const filepath = join(UPLOADS_DIR, filename);
+
+    // Check if already in DB
+    const existing = selectStmt.get(sha1);
+    if (existing) {
+      // Return existing record (dedup)
+      results.push(existing);
+      continue;
+    }
+
+    // Write file to disk (only if not already there)
+    if (!existsSync(filepath)) {
+      writeFileSync(filepath, file.buffer);
+    }
+
+    // Insert into DB
+    insertStmt.run(sha1, filename, file.originalname, file.mimetype, null, null, folder_id);
+    results.push({ id: sha1, filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
   }
 
   res.status(201).json(results);

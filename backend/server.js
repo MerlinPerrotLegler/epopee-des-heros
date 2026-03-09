@@ -5,7 +5,8 @@ import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 
 import { basicAuth } from './middleware/auth.js';
-import { closeDb } from './db/database.js';
+import { closeDb, getDb } from './db/database.js';
+import { seedBuiltins } from './db/seedBuiltins.js';
 
 import layoutsRouter from './routes/layouts.js';
 import componentsRouter from './routes/components.js';
@@ -26,16 +27,21 @@ const UPLOADS_DIR = join(DATA_DIR, 'uploads');
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
-const app = express();
+// Seed built-in assets (runs once per asset, idempotent)
+getDb()           // initialise la DB + schema
+seedBuiltins()
 
-// Auth on all routes
-app.use(basicAuth);
+const app = express();
 
 // Middleware
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// API routes
+// Serve uploaded media files (pas d'auth — les <img> du navigateur n'envoient pas d'en-tête)
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+// Auth + API routes
+app.use('/api', basicAuth);
 app.use('/api/layouts', layoutsRouter);
 app.use('/api/components', componentsRouter);
 app.use('/api/molecules', moleculesRouter);
@@ -44,9 +50,6 @@ app.use('/api/media', mediaRouter);
 app.use('/api/snapshots', snapshotsRouter);
 app.use('/api/card-types', cardTypesRouter);
 app.use('/api/export', exportRouter);
-
-// Serve uploaded media files
-app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {

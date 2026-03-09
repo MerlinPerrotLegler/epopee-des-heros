@@ -6,13 +6,29 @@
         <button class="btn-icon btn-sm" @click="store.addLayer()" title="Nouveau calque">+</button>
       </div>
 
-      <div class="layer-list">
+      <div
+        class="layer-list"
+        @dragover.prevent="onListDragOver"
+        @drop.prevent="onListDrop"
+      >
         <div
           v-for="(layer, idx) in reversedLayers" :key="layer.id"
           class="layer-item"
-          :class="{ active: store.selectedLayerId === layer.id }"
+          :class="{
+            active: store.selectedLayerId === layer.id,
+            'drag-over': dragOverIdx === idx,
+          }"
+          draggable="true"
+          @dragstart="onDragStart($event, idx)"
+          @dragend="onDragEnd"
+          @dragover.prevent="dragOverIdx = idx"
+          @dragleave="dragOverIdx = null"
+          @drop.prevent="onDrop(idx)"
           @click="store.selectedLayerId = layer.id"
         >
+          <!-- Drag handle -->
+          <span class="layer-drag-handle" title="Réordonner">⋮⋮</span>
+
           <button
             class="btn-icon btn-sm"
             @click.stop="store.updateLayer(layer.id, { visible: !layer.visible })"
@@ -33,6 +49,13 @@
             @keydown.enter="finishRename(layer)"
             @keydown.escape="editingId = null"
           />
+
+          <!-- Opacity badge — drag left/right to change -->
+          <span
+            class="layer-opacity"
+            :title="`Opacité : ${Math.round((layer.opacity ?? 1) * 100)}%\nGlisser gauche/droite pour modifier`"
+            @mousedown.stop="startOpacityDrag($event, layer)"
+          >{{ Math.round((layer.opacity ?? 1) * 100) }}%</span>
 
           <button
             class="btn-icon btn-sm"
@@ -116,6 +139,64 @@ function finishRename(layer) {
   }
   editingId.value = null
 }
+
+// ── Drag & drop reorder ─────────────────────────────────────────────────────
+// reversedLayers is a visual reversal — index 0 in reversedLayers = last real layer
+// We convert: realIdx = (layers.length - 1) - reversedIdx
+
+const dragSrcIdx  = ref(null)  // index in reversedLayers
+const dragOverIdx = ref(null)
+
+function onDragStart(e, reversedIdx) {
+  dragSrcIdx.value = reversedIdx
+  e.dataTransfer.effectAllowed = 'move'
+}
+
+function onDragEnd() {
+  dragSrcIdx.value = null
+  dragOverIdx.value = null
+}
+
+function onListDragOver(e) {
+  e.preventDefault()
+}
+
+function onListDrop(e) {
+  // handled by individual item @drop
+}
+
+function onDrop(reversedTargetIdx) {
+  if (dragSrcIdx.value === null || dragSrcIdx.value === reversedTargetIdx) {
+    onDragEnd()
+    return
+  }
+  const n = store.layers.length
+  const fromReal = (n - 1) - dragSrcIdx.value
+  const toReal   = (n - 1) - reversedTargetIdx
+  store.reorderLayers(fromReal, toReal)
+  onDragEnd()
+}
+
+// ── Per-layer opacity drag ──────────────────────────────────────────────────
+function startOpacityDrag(e, layer) {
+  e.preventDefault()
+  const startX  = e.clientX
+  const startOp = layer.opacity ?? 1
+
+  const onMove = (ev) => {
+    const delta  = (ev.clientX - startX) / 150  // 150px = full range
+    const newOp  = Math.max(0, Math.min(1, startOp + delta))
+    store.updateLayer(layer.id, { opacity: Math.round(newOp * 100) / 100 })
+  }
+
+  const onUp = () => {
+    window.removeEventListener('mousemove', onMove)
+    window.removeEventListener('mouseup', onUp)
+  }
+
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
 </script>
 
 <style scoped>
@@ -133,10 +214,24 @@ function finishRename(layer) {
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
+  border: 1px solid transparent;
 }
 
 .layer-item:hover { background: var(--bg-hover); }
 .layer-item.active { background: var(--bg-tertiary); }
+.layer-item.drag-over { border-color: var(--accent-primary); background: rgba(108,122,255,0.08); }
+
+.layer-drag-handle {
+  font-size: 10px;
+  color: var(--text-muted);
+  cursor: grab;
+  flex-shrink: 0;
+  line-height: 1;
+  letter-spacing: -1px;
+  padding: 0 2px;
+  user-select: none;
+}
+.layer-drag-handle:active { cursor: grabbing; }
 
 .layer-name {
   flex: 1;
@@ -151,6 +246,21 @@ function finishRename(layer) {
   font-size: 12px;
   padding: 1px 4px;
 }
+
+.layer-opacity {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  cursor: ew-resize;
+  padding: 1px 4px;
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle);
+  user-select: none;
+  flex-shrink: 0;
+  min-width: 28px;
+  text-align: center;
+}
+.layer-opacity:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
 
 .element-list {
   display: flex;

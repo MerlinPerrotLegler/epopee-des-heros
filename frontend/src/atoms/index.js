@@ -3,7 +3,78 @@
 // Each atom type defines its default params and metadata
 // ============================================
 
+// ── Constante partagée : les 4 types "fond de carte" ──────────────────────
+export const BACKGROUND_ATOM_TYPES = new Set([
+  'backgroundTexture',
+  'backgroundGradientLinear',
+  'backgroundGradientRadial',
+  'backgroundImage',
+])
+
 export const ATOM_TYPES = {
+  // ── Fonds de carte (empilables, toujours sous le contenu) ─────────────────
+  backgroundTexture: {
+    label: 'Fond — Texture',
+    icon: '▨',
+    defaultParams: {
+      mediaId:   null,
+      repeatX:   true,      // CSS repeat horizontal
+      repeatY:   true,      // CSS repeat vertical
+      scale:     1,         // multiplicateur de taille (1 = 100% largeur)
+      blendMode: 'normal',
+      opacity:   1,
+    },
+    defaultSize: { width_mm: 63, height_mm: 88 },
+    isBackground: true,
+  },
+
+  backgroundGradientLinear: {
+    label: 'Fond — Dégradé linéaire',
+    icon: '▤',
+    defaultParams: {
+      angle:   135,
+      stops:   [
+        { color: '#2a3050', pos: 0 },
+        { color: '#6c7aff', pos: 100 },
+      ],
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 63, height_mm: 88 },
+    isBackground: true,
+  },
+
+  backgroundGradientRadial: {
+    label: 'Fond — Dégradé radial',
+    icon: '◉',
+    defaultParams: {
+      posX:  50,             // % centre horizontal
+      posY:  50,             // % centre vertical
+      shape: 'ellipse',      // 'ellipse' | 'circle'
+      stops: [
+        { color: '#6c7aff', pos: 0 },
+        { color: '#2a3050', pos: 100 },
+      ],
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 63, height_mm: 88 },
+    isBackground: true,
+  },
+
+  backgroundImage: {
+    label: 'Fond — Image',
+    icon: '▧',
+    defaultParams: {
+      mediaId:   null,
+      fit:       'cover',    // 'cover' | 'contain' | 'fill' | 'none'
+      posX:      50,         // % position X (CSS background-position)
+      posY:      50,         // % position Y
+      blendMode: 'normal',
+      opacity:   1,
+    },
+    defaultSize: { width_mm: 63, height_mm: 88 },
+    isBackground: true,
+  },
+
   title: {
     label: 'Titre',
     icon: 'T',
@@ -91,11 +162,17 @@ export const ATOM_TYPES = {
     label: 'Carte placeholder',
     icon: '▭',
     defaultParams: {
-      cardType: 'equipement', // card_type enum
-      label: 'Carte',
-      bgColor: 'rgba(108, 122, 255, 0.1)',
-      borderColor: '#6c7aff',
-      borderStyle: 'dashed',
+      cardType:      'equipement',
+      label:         'Carte',
+      bgColor:       'rgba(108, 122, 255, 0.1)',
+      borderColor:   '#6c7aff',
+      borderStyle:   'dashed',
+      borderWidth:   0.4,         // mm
+      borderRadius:  4,           // px
+      textColor:     '#6c7aff',
+      fontSize:      2.5,         // mm
+      iconMediaId:   null,        // SVG/image au-dessus du label
+      iconSize:      6,           // mm
     },
     defaultSize: { width_mm: 20, height_mm: 28 }
   },

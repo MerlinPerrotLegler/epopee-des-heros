@@ -9,6 +9,41 @@
  */
 export const PARAM_HELP = {
 
+  // ── AtomBackground ────────────────────────────────────────────────────────
+  baseColor:        'Couleur de fond unie (en dessous de tout le reste)',
+  grad1:            'Activer le premier dégradé',
+  grad1Type:        'Type de dégradé : linéaire ou radial (ellipse depuis le centre)',
+  grad1Angle:       'Angle du dégradé linéaire en degrés (0 = vers le bas, 90 = vers la droite)',
+  grad1Color1:      'Couleur de départ du dégradé 1',
+  grad1Stop1:       'Position de départ du dégradé 1 en % (0 = bord)',
+  grad1Color2:      'Couleur d\'arrivée du dégradé 1',
+  grad1Stop2:       'Position d\'arrivée du dégradé 1 en % (100 = bord opposé)',
+  grad1Opacity:     'Opacité du calque dégradé 1 (0 = invisible, 1 = opaque)',
+  grad2:            'Activer le second dégradé (superposé au premier)',
+  grad2Type:        'Type de dégradé : linéaire ou radial',
+  grad2Angle:       'Angle du second dégradé linéaire en degrés',
+  grad2Color1:      'Couleur de départ du dégradé 2',
+  grad2Stop1:       'Position de départ du dégradé 2 en %',
+  grad2Color2:      'Couleur d\'arrivée du dégradé 2',
+  grad2Stop2:       'Position d\'arrivée du dégradé 2 en %',
+  grad2Opacity:     'Opacité du calque dégradé 2',
+  textureMediaId:   'ID du fichier image ou SVG utilisé comme texture de fond',
+  textureOpacity:   'Opacité de la texture (0 = invisible, 1 = opaque)',
+  textureFit:       'Redimensionnement de la texture : remplir, contenir, ou étirer',
+  textureBlendMode: 'Mode de fusion de la texture avec les calques inférieurs',
+  overlayMediaId:   'ID d\'une image décorative placée librement sur le fond',
+  overlayOpacity:   'Opacité de l\'image décorative',
+  overlayFit:       'Redimensionnement de l\'image décorative',
+  overlayX:         'Position horizontale de l\'image décorative en % depuis la gauche',
+  overlayY:         'Position verticale de l\'image décorative en % depuis le haut',
+  overlayW:         'Largeur de l\'image décorative en % de la carte',
+  overlayH:         'Hauteur de l\'image décorative en % de la carte',
+
+  // ── AtomCardPlaceholder ───────────────────────────────────────────────────
+  borderWidth:      'Épaisseur du contour en millimètres',
+  iconMediaId:      'ID d\'une icône SVG ou image affichée au-dessus du label',
+  iconSize:         'Taille de l\'icône en millimètres',
+
   // ── Communs à plusieurs atomes ─────────────────────────────────────────────
   text:          'Texte affiché. Peut contenir une référence de données, ex : {nom.texte}',
   fontSize:      'Taille du texte en millimètres',

@@ -16,6 +16,10 @@
 <script setup>
 import { computed } from 'vue'
 
+import AtomBackgroundTexture        from '@/atoms/components/AtomBackgroundTexture.vue'
+import AtomBackgroundGradientLinear from '@/atoms/components/AtomBackgroundGradientLinear.vue'
+import AtomBackgroundGradientRadial from '@/atoms/components/AtomBackgroundGradientRadial.vue'
+import AtomBackgroundImage          from '@/atoms/components/AtomBackgroundImage.vue'
 import AtomTitle               from '@/atoms/components/AtomTitle.vue'
 import AtomText                from '@/atoms/components/AtomText.vue'
 import AtomIcon                from '@/atoms/components/AtomIcon.vue'
@@ -38,6 +42,10 @@ import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 
 const ATOM_COMPONENTS = {
+  backgroundTexture:        AtomBackgroundTexture,
+  backgroundGradientLinear: AtomBackgroundGradientLinear,
+  backgroundGradientRadial: AtomBackgroundGradientRadial,
+  backgroundImage:          AtomBackgroundImage,
   title:               AtomTitle,
   text:                AtomText,
   icon:                AtomIcon,

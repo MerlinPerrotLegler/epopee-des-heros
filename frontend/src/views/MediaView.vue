@@ -6,7 +6,7 @@
         <button class="btn-ghost" @click="showNewFolder = true">+ Dossier</button>
         <label class="btn-primary" style="cursor:pointer">
           ⤒ Upload
-          <input type="file" multiple accept="image/*,.svg" @change="upload" style="display:none" />
+          <input ref="fileInput" type="file" multiple accept="image/*,.svg" @change="upload" style="display:none" />
         </label>
       </div>
     </header>
@@ -17,25 +17,37 @@
         <div
           v-for="f in folders" :key="f.id"
           class="folder-item"
-          :class="{ active: currentFolder === f.id }"
+          :class="{
+            active: currentFolder === f.id,
+            'drop-target': dragOver === f.id
+          }"
           @click="currentFolder = f.id"
+          @dragover.prevent="dragOver = f.id"
+          @dragleave="dragOver = null"
+          @drop.prevent="onDropToFolder(f.id)"
         >
           <span>📁</span>
           <span>{{ f.name }}</span>
-          <button v-if="f.id !== 'root' && f.id !== 'default'" class="btn-icon btn-sm" @click.stop="deleteFolder(f)">✕</button>
+          <button v-if="f.id !== 'root' && f.id !== 'default' && f.id !== 'builtin'" class="btn-icon btn-sm" @click.stop="deleteFolder(f)">✕</button>
         </div>
       </div>
 
       <!-- Files -->
       <div class="media-grid">
-        <div v-for="m in filteredMedia" :key="m.id" class="media-card">
-          <div class="media-thumb">
-            <img v-if="m.mime_type?.startsWith('image/')" :src="`/uploads/${m.filename}`" />
+        <div
+          v-for="m in filteredMedia" :key="m.id"
+          class="media-card"
+          draggable="true"
+          @dragstart="onDragStart(m)"
+          @dragend="draggedMedia = null"
+        >
+          <div class="media-thumb" @click="preview = m">
+            <img v-if="isImage(m)" :src="`/uploads/${m.filename}`" />
             <span v-else class="svg-icon">SVG</span>
           </div>
           <div class="media-info">
             <span class="media-name" :title="m.original_name">{{ m.original_name }}</span>
-            <code class="media-id">{{ m.id.slice(0, 8) }}</code>
+            <code class="media-id">{{ m.id }}</code>
           </div>
           <div class="media-actions">
             <button class="btn-icon btn-sm" @click="copyId(m.id)" title="Copier l'ID">📋</button>
@@ -46,10 +58,24 @@
       </div>
     </div>
 
+    <!-- Preview lightbox -->
+    <div class="modal-overlay" v-if="preview" @click.self="preview = null">
+      <div class="preview-modal">
+        <button class="preview-close" @click="preview = null">✕</button>
+        <img v-if="isImage(preview)" :src="`/uploads/${preview.filename}`" />
+        <div class="preview-meta">
+          <strong>{{ preview.original_name }}</strong>
+          <code>{{ preview.id }}</code>
+          <button class="btn-primary btn-sm" @click="copyId(preview.id); preview = null">📋 Copier l'ID</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- New folder modal -->
     <div class="modal-overlay" v-if="showNewFolder" @click.self="showNewFolder = false">
       <div class="modal">
         <h3>Nouveau dossier</h3>
-        <div class="field-row"><label>Nom</label><input v-model="newFolderName" /></div>
+        <div class="field-row"><label>Nom</label><input v-model="newFolderName" @keyup.enter="createFolder" /></div>
         <div class="modal-actions">
           <button class="btn-ghost" @click="showNewFolder = false">Annuler</button>
           <button class="btn-primary" @click="createFolder">Créer</button>
@@ -63,16 +89,24 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 
-const folders = ref([])
-const media = ref([])
+const folders       = ref([])
+const media         = ref([])
 const currentFolder = ref('root')
 const showNewFolder = ref(false)
 const newFolderName = ref('')
+const fileInput     = ref(null)
+const preview       = ref(null)
+const draggedMedia  = ref(null)
+const dragOver      = ref(null)
 
 const filteredMedia = computed(() => {
   if (currentFolder.value === 'root') return media.value
   return media.value.filter(m => m.folder_id === currentFolder.value)
 })
+
+function isImage(m) {
+  return m.mime_type?.startsWith('image/')
+}
 
 onMounted(async () => {
   [folders.value, media.value] = await Promise.all([api.getFolders(), api.getMedia()])
@@ -86,30 +120,47 @@ async function upload(e) {
   fd.append('folder_id', currentFolder.value === 'root' ? 'default' : currentFolder.value)
   const results = await api.uploadMedia(fd)
   media.value.push(...results)
+  if (fileInput.value) fileInput.value.value = ''
 }
 
 async function createFolder() {
   if (!newFolderName.value) return
-  const f = await api.createFolder({ name: newFolderName.value, parent_id: currentFolder.value === 'root' ? 'root' : currentFolder.value })
+  const f = await api.createFolder({ name: newFolderName.value, parent_id: 'root' })
   folders.value.push(f)
   showNewFolder.value = false
   newFolderName.value = ''
 }
 
 async function deleteFolder(f) {
-  if (!confirm(`Supprimer le dossier "${f.name}" ?`)) return
+  if (!confirm('Supprimer le dossier "' + f.name + '" ?')) return
   await api.deleteFolder(f.id)
   folders.value = folders.value.filter(x => x.id !== f.id)
+  if (currentFolder.value === f.id) currentFolder.value = 'root'
 }
 
 async function deleteMedia(m) {
-  if (!confirm(`Supprimer "${m.original_name}" ?`)) return
+  if (!confirm('Supprimer "' + m.original_name + '" ?')) return
   await api.deleteMedia(m.id)
   media.value = media.value.filter(x => x.id !== m.id)
+  if (preview.value?.id === m.id) preview.value = null
 }
 
 function copyId(id) {
   navigator.clipboard.writeText(id)
+}
+
+function onDragStart(m) {
+  draggedMedia.value = m
+}
+
+async function onDropToFolder(targetFolderId) {
+  dragOver.value = null
+  if (!draggedMedia.value) return
+  if (draggedMedia.value.folder_id === targetFolderId) return
+  const updated = await api.updateMedia(draggedMedia.value.id, { folder_id: targetFolderId })
+  const idx = media.value.findIndex(m => m.id === updated.id)
+  if (idx !== -1) media.value[idx] = updated
+  draggedMedia.value = null
 }
 </script>
 
@@ -118,18 +169,66 @@ function copyId(id) {
 .view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
 .view-header h1 { font-size: 20px; font-weight: 600; }
 .media-layout { display: flex; gap: 16px; }
+
 .folder-tree { width: 200px; flex-shrink: 0; }
-.folder-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; }
+.folder-item {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 8px; border-radius: var(--radius-sm);
+  cursor: pointer; font-size: 12px;
+  border: 2px solid transparent;
+  transition: border-color 100ms, background 100ms;
+}
 .folder-item:hover { background: var(--bg-hover); }
 .folder-item.active { background: var(--bg-tertiary); color: var(--accent-primary); }
-.media-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-content: start; }
-.media-card { background: var(--bg-secondary); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); overflow: hidden; }
-.media-thumb { height: 100px; background: var(--bg-deep); display: flex; align-items: center; justify-content: center; overflow: hidden; }
+.folder-item.drop-target { border-color: var(--accent-primary); background: rgba(108,122,255,0.12); }
+
+.media-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+.media-card {
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  cursor: grab;
+}
+.media-card:active { cursor: grabbing; }
+.media-thumb {
+  height: 100px; background: var(--bg-deep);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; cursor: pointer;
+}
+.media-thumb:hover { opacity: 0.85; }
 .media-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .svg-icon { color: var(--accent-primary); font-weight: 700; font-size: 18px; }
 .media-info { padding: 8px; }
 .media-name { font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.media-id { font-size: 9px; color: var(--text-muted); }
+.media-id { font-size: 9px; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .media-actions { display: flex; gap: 4px; padding: 0 8px 8px; }
 .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted); }
+
+.preview-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+  padding: 16px;
+  max-width: 80vw; max-height: 80vh;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 12px; position: relative;
+}
+.preview-modal img { max-width: 100%; max-height: 60vh; object-fit: contain; border-radius: var(--radius-sm); }
+.preview-close {
+  position: absolute; top: 8px; right: 8px;
+  background: none; border: none; cursor: pointer;
+  color: var(--text-muted); font-size: 16px;
+}
+.preview-close:hover { color: var(--text-primary); }
+.preview-meta { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
+.preview-meta strong { color: var(--text-primary); }
+.preview-meta code { color: var(--text-muted); font-size: 10px; }
+.btn-sm { font-size: 11px; padding: 4px 10px; }
 </style>
