@@ -29,9 +29,11 @@ export const ATOM_TYPES = {
       fontWeight: 400,
       fontFamily: 'Outfit',
       color: '#333333',
-      textAlign: 'left',
+      textAlign: 'center',
       lineHeight: 1.3,
       overflow: 'hidden', // hidden | visible | ellipsis
+      autoSize: true,     // agrandit le texte pour remplir la zone
+      maxFontSize: 10,    // taille maximale en mm (autoSize seulement)
     },
     defaultSize: { width_mm: 40, height_mm: 10 }
   },

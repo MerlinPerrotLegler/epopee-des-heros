@@ -29,13 +29,25 @@ onMounted(() => {
   store.loadComponent(props.id)
 })
 
+function isInputFocused() {
+  const tag = document.activeElement?.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+}
+
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
     store.saveDefinition()
   }
-  if (e.key === 'Delete' && store.selectedElementId) {
+  if (e.key === 'Delete' && store.selectedElementId && !isInputFocused()) {
     store.removeElement(store.selectedElementId)
+  }
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    if (!isInputFocused() && store.selectedElementId) {
+      e.preventDefault()
+      const input = document.querySelector('[data-param-key="text"]')
+      if (input) { input.focus(); input.select() }
+    }
   }
 }
 

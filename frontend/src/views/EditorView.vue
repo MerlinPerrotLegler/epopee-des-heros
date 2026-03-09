@@ -36,14 +36,31 @@ onMounted(() => {
   store.loadLayout(props.id)
 })
 
+function isInputFocused() {
+  const tag = document.activeElement?.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
+}
+
 // Autosave on Ctrl+S
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
     store.saveDefinition()
   }
-  if (e.key === 'Delete' && store.selectedElementId) {
+
+  // Delete selected element (not when typing in an input)
+  if (e.key === 'Delete' && store.selectedElementId && !isInputFocused()) {
     store.removeElement(store.selectedElementId)
+  }
+
+  // Ctrl+A: focus & select the "text" param input of the selected element
+  if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
+    if (!isInputFocused() && store.selectedElementId) {
+      e.preventDefault()
+      const input = document.querySelector('[data-param-key="text"]')
+      if (input) { input.focus(); input.select() }
+    }
+    // when already in an input: let the browser select-all natively
   }
 }
 

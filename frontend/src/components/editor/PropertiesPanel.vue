@@ -104,35 +104,35 @@
 
         <!-- Color picker -->
         <template v-if="isColorParam(key, value)">
-          <input type="color" :value="value" @input="updateParam(key, $event.target.value)" class="color-input" />
-          <input :value="value" @input="updateParam(key, $event.target.value)" class="color-text" />
+          <input type="color" :value="value" @input="updateParam(key, $event.target.value)" class="color-input" :data-param-key="key" />
+          <input :value="value" @input="updateParam(key, $event.target.value)" class="color-text" :data-param-key="key" />
         </template>
 
         <!-- Number -->
         <template v-else-if="typeof value === 'number'">
-          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" />
+          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" :data-param-key="key" />
         </template>
 
         <!-- Boolean -->
         <template v-else-if="typeof value === 'boolean'">
-          <input type="checkbox" :checked="value" @change="updateParam(key, $event.target.checked)" />
+          <input type="checkbox" :checked="value" @change="updateParam(key, $event.target.checked)" :data-param-key="key" />
         </template>
 
         <!-- Select for known enums -->
         <template v-else-if="getEnumOptions(key)">
-          <select :value="value" @change="updateParam(key, $event.target.value)">
+          <select :value="value" @change="updateParam(key, $event.target.value)" :data-param-key="key">
             <option v-for="opt in getEnumOptions(key)" :key="opt" :value="opt">{{ opt }}</option>
           </select>
         </template>
 
         <!-- Text (supports {{binding}} syntax) -->
         <template v-else-if="typeof value === 'string'">
-          <input :value="value" @input="updateParam(key, $event.target.value)" />
+          <input :value="value" @input="updateParam(key, $event.target.value)" :data-param-key="key" />
         </template>
 
         <!-- Object / other (JSON editor) -->
         <template v-else>
-          <input :value="JSON.stringify(value)" @change="updateParamJson(key, $event.target.value)" class="json-input" />
+          <input :value="JSON.stringify(value)" @change="updateParamJson(key, $event.target.value)" class="json-input" :data-param-key="key" />
         </template>
         </div><!-- /.field-row -->
       </div><!-- /.param-block -->

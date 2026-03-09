@@ -260,8 +260,10 @@ function startPan(e) {
   box-shadow:
     0 0 0 1px rgba(108, 122, 255, 0.3),
     0 4px 24px rgba(0, 0, 0, 0.4);
-  overflow: hidden;
+  /* overflow: visible so handles and floating toolbar are not clipped at card edges */
+  overflow: visible;
 }
+
 
 .grid-overlay {
   position: absolute;

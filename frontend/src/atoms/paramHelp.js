@@ -80,6 +80,10 @@ export const PARAM_HELP = {
   // ── AtomHexTile ────────────────────────────────────────────────────────────
   // (bgColor, borderColor, borderWidth, text, fontSize, textColor)
 
+  // ── AtomText (auto-size) ──────────────────────────────────────────────────
+  autoSize:      'Agrandit automatiquement le texte pour occuper tout l\'espace disponible',
+  maxFontSize:   'Taille de police maximale autorisée en mm (utilisée avec le redimensionnement automatique)',
+
   // ── AtomImage ─────────────────────────────────────────────────────────────
   fit:           'Ajustement de l\'image dans son cadre : remplir, contenir, ou étirer',
   aiPrompt:      'Description pour générer l\'image par IA (fonctionnalité future)',
