@@ -13,7 +13,7 @@
  */
 
 import { existsSync, copyFileSync, readdirSync } from 'fs'
-import { join, extname, basename } from 'path'
+import { join, extname } from 'path'
 import { getDb } from './database.js'
 
 const SEEDS_DIR  = join(import.meta.dirname, '..', 'data', 'seeds')
@@ -53,8 +53,8 @@ export function seedBuiltins() {
     const mime = MIME_MAP[ext]
     if (!mime) continue                          // ignorer les fichiers non-image
 
-    const id       = `builtin-${basename(file, ext)}`   // ex: builtin-texture-parchemin
     const destFile = `builtin-${file}`                   // nom fixe dans uploads/
+    const id       = destFile                            // ex: builtin-texture-parchemin.png
 
     // Copier vers uploads/ si absent
     const destPath = join(UPLOADS_DIR, destFile)

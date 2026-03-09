@@ -73,28 +73,25 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
   const selectStmt = db.prepare('SELECT * FROM media WHERE id = ?');
 
   for (const file of req.files) {
-    // Compute SHA1 of file buffer
+    // id = filename (with ext) so /uploads/${mediaId} works directly in atom renderers
     const sha1 = createHash('sha1').update(file.buffer).digest('hex');
     const ext  = extname(file.originalname).toLowerCase();
     const filename = `${sha1}${ext}`;
     const filepath = join(UPLOADS_DIR, filename);
 
-    // Check if already in DB
-    const existing = selectStmt.get(sha1);
+    // Dedup by id=filename
+    const existing = selectStmt.get(filename);
     if (existing) {
-      // Return existing record (dedup)
       results.push(existing);
       continue;
     }
 
-    // Write file to disk (only if not already there)
     if (!existsSync(filepath)) {
       writeFileSync(filepath, file.buffer);
     }
 
-    // Insert into DB
-    insertStmt.run(sha1, filename, file.originalname, file.mimetype, null, null, folder_id);
-    results.push({ id: sha1, filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
+    insertStmt.run(filename, filename, file.originalname, file.mimetype, null, null, folder_id);
+    results.push({ id: filename, filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
   }
 
   res.status(201).json(results);
