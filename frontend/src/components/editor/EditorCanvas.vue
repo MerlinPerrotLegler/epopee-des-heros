@@ -52,6 +52,7 @@
             :width_mm="el.width_mm"
             :height_mm="el.height_mm"
             :zoom="store.zoom"
+            :selected="store.selectedElementId === el.id"
           />
 
           <!-- Component placeholder -->
@@ -114,6 +115,7 @@ import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
+import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import AtomRenderer from './AtomRenderer.vue'
 
 const store = useEditorStore()
@@ -170,7 +172,24 @@ function resolvedParams(el) {
 }
 
 function onElementMouseDown(e, el) {
+  const wasAlreadySelected = store.selectedElementId === el.id
   store.selectedElementId = el.id
+
+  // Clic sur une case d'un CardTrack déjà sélectionné → sélection de case
+  if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' && el.atomType === 'cardTrack') {
+    const cardEl = containerRef.value?.querySelector('.card-boundary')
+    if (cardEl) {
+      const cardRect = cardEl.getBoundingClientRect()
+      const relX_mm  = pxToMm(e.clientX - cardRect.left) - el.x_mm
+      const relY_mm  = pxToMm(e.clientY - cardRect.top)  - el.y_mm
+      const idx = hitTestCardTrackCell(el.params || {}, el.width_mm, el.height_mm, relX_mm, relY_mm)
+      if (idx !== null) {
+        store.activeCellIdx = idx
+        return // pas de drag : l'utilisateur sélectionne une case
+      }
+    }
+  }
+
   if (!el._layerLocked) {
     dragDrop.startDrag(e, el.id)
   }

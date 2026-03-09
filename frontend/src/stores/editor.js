@@ -13,6 +13,7 @@ export const useEditorStore = defineStore('editor', () => {
   // Selection
   const selectedElementId = ref(null)
   const selectedLayerId = ref(null)
+  const activeCellIdx = ref(null) // index de la case CardTrack active (édition par case)
 
   // Canvas
   const zoom = ref(1)
@@ -135,6 +136,9 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  // Réinitialise la case active quand l'élément sélectionné change
+  watch(selectedElementId, () => { activeCellIdx.value = null })
+
   function markDirty() {
     dirty.value = true
   }
@@ -256,7 +260,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   return {
     layout, loading, dirty, saving,
-    selectedElementId, selectedLayerId,
+    selectedElementId, selectedLayerId, activeCellIdx,
     zoom, panX, panY, snapGrid, showGrid,
     previewData,
     definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,

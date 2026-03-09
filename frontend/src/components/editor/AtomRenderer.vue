@@ -7,6 +7,7 @@
       :width_mm="width_mm"
       :height_mm="height_mm"
       :zoom="zoom"
+      :selected="selected"
     />
     <div v-else class="atom-unknown">{{ atomType }}</div>
   </div>
@@ -64,7 +65,8 @@ const props = defineProps({
   params:   { type: Object, default: () => ({}) },
   width_mm: Number,
   height_mm: Number,
-  zoom:     { type: Number, default: 1 }
+  zoom:     { type: Number, default: 1 },
+  selected: { type: Boolean, default: false }
 })
 
 const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)

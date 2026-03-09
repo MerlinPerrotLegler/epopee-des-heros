@@ -256,15 +256,30 @@ export const ATOM_TYPES = {
     label: 'CardTrack (4 bords)',
     icon: '⊞',
     defaultParams: {
-      max:         50,           // cases droites totales (hors 4 coins)
-      n_start:     0,            // premier numéro
-      startCorner: 'topLeft',    // 'topLeft'|'topRight'|'bottomRight'|'bottomLeft'
-      bgColor:     '#2a3050',
-      textColor:   '#ffffff',
-      fontSize:    2.5,
-      borderColor: '#6c7aff',
-      borderWidth: 0.2,
-      svgMediaId:  null,         // SVG décoratif dans les coins (optionnel)
+      // ── Distribution des cases ──────────────────────────────────────
+      n_end:        50,           // dernier numéro affiché (ex-max)
+      cells_top:    null,         // override : cases sur chaque côté horizontal
+      cells_left:   null,         // override : cases sur chaque côté vertical
+      roundMode:    'round',      // 'round'|'floor'|'ceil' (arrondi de la distribution)
+      // ── Épaisseur explicite des pistes ────────────────────────────
+      thicknessH_mm: null,        // épaisseur pistes haut/bas (null = auto)
+      thicknessV_mm: null,        // épaisseur pistes gauche/droite (null = auto)
+      // ── Numérotation ──────────────────────────────────────────────
+      n_start:      0,
+      startCorner:  'topLeft',    // 'topLeft'|'topRight'|'bottomRight'|'bottomLeft'
+      // ── Orientation du texte ───────────────────────────────────────
+      textOrientation:  'parallel',   // 'parallel'|'perpendicular'
+      cornerTextMode:   'bisect',     // 'bisect'|'parallel'|'perpendicular'|'custom'
+      cornerTextAngle:  45,           // utilisé quand cornerTextMode === 'custom'
+      // ── Apparence globale ─────────────────────────────────────────
+      bgColor:      '#2a3050',
+      textColor:    '#ffffff',
+      fontSize:     2.5,
+      borderColor:  '#6c7aff',
+      borderWidth:  0.2,
+      svgMediaId:   null,         // SVG décoratif dans tous les coins
+      // ── Surcharges par case ────────────────────────────────────────
+      cellOverrides: {},          // { [idx]: { bgColor?, svgMediaId? } }
     },
     defaultSize: { width_mm: 63, height_mm: 88 }
   },
