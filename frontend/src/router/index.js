@@ -22,6 +22,12 @@ const routes = [
     component: () => import('@/views/ComponentsView.vue')
   },
   {
+    path: '/components/:id/editor',
+    name: 'ComponentEditor',
+    component: () => import('@/views/ComponentEditorView.vue'),
+    props: true
+  },
+  {
     path: '/molecules',
     name: 'Molecules',
     component: () => import('@/views/MoleculesView.vue')

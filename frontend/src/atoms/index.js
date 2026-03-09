@@ -67,28 +67,22 @@ export const ATOM_TYPES = {
     label: 'Dé 8',
     icon: 'D8',
     defaultParams: {
-      value: '',
-      bgColor: '#1a1e2e',
+      value: '3',
       textColor: '#ffffff',
-      fontSize: 3,
-      strokeColor: '#6c7aff',
-      strokeWidth: 0.3,
+      fontSize: 3.5,
     },
-    defaultSize: { width_mm: 8, height_mm: 9 }
+    defaultSize: { width_mm: 8, height_mm: 7 }
   },
 
   die12: {
     label: 'Dé 12',
     icon: 'D12',
     defaultParams: {
-      value: '',
-      bgColor: '#1a1e2e',
+      value: '8',
       textColor: '#ffffff',
       fontSize: 3,
-      strokeColor: '#ff6b6b',
-      strokeWidth: 0.3,
     },
-    defaultSize: { width_mm: 9, height_mm: 10 }
+    defaultSize: { width_mm: 9, height_mm: 9 }
   },
 
   cardPlaceholder: {
@@ -223,6 +217,83 @@ export const ATOM_TYPES = {
     },
     defaultSize: { width_mm: 40, height_mm: 0.3 }
   },
+
+  trakCorner: {
+    label: 'Trak Corner',
+    icon: '◇',
+    defaultParams: {
+      n:           0,
+      bgColor:     '#2a3050',
+      textColor:   '#ffffff',
+      fontSize:    2.5,
+      borderColor: '#6c7aff',
+      borderWidth: 0.2,
+      svgMediaId:  null,     // SVG décoratif optionnel
+      textRotation: 45,      // rotation du chiffre en degrés
+    },
+    defaultSize: { width_mm: 5, height_mm: 5 }
+  },
+
+  trak: {
+    label: 'Trak',
+    icon: '▤',
+    defaultParams: {
+      n_start:     0,
+      n_end:       10,
+      direction:   'horizontal', // 'horizontal' | 'vertical'
+      cellSize_mm: 5,
+      bgColor:     '#2a3050',
+      textColor:   '#ffffff',
+      fontSize:    2.5,
+      borderColor: '#6c7aff',
+      borderWidth: 0.2,
+      caps:        false, // triangles rectangles aux extrémités
+    },
+    defaultSize: { width_mm: 55, height_mm: 5 }
+  },
+
+  cardTrack: {
+    label: 'CardTrack (4 bords)',
+    icon: '⊞',
+    defaultParams: {
+      max:         50,           // cases droites totales (hors 4 coins)
+      n_start:     0,            // premier numéro
+      startCorner: 'topLeft',    // 'topLeft'|'topRight'|'bottomRight'|'bottomLeft'
+      bgColor:     '#2a3050',
+      textColor:   '#ffffff',
+      fontSize:    2.5,
+      borderColor: '#6c7aff',
+      borderWidth: 0.2,
+      svgMediaId:  null,         // SVG décoratif dans les coins (optionnel)
+    },
+    defaultSize: { width_mm: 63, height_mm: 88 }
+  },
+
+  caracteristique: {
+    label: 'Caractéristique',
+    icon: '△',
+    defaultParams: {
+      stat: 'FOR',          // FOR | DEX | INI | CHA | MAG | DEV | VIE
+      modifier: '',         // optional prefix: '+2' | '-1' | ''
+      threshold: '',        // optional number after '>' : '5' | ''
+      svgMediaId: null,     // media ID of SVG overlay (null = none)
+      svgPosition: 'front', // 'front' | 'behind'
+      textColor: '#ffffff',
+      fontSize: 3,
+    },
+    defaultSize: { width_mm: 12, height_mm: 11 }
+  },
+}
+
+// Stat types with fixed colors (triangle color)
+export const STAT_TYPES = {
+  FOR: { label: 'Force',      color: '#ef4444' },
+  DEX: { label: 'Dextérité', color: '#22c55e' },
+  INI: { label: 'Initiative', color: '#14b8a6' },
+  CHA: { label: 'Charisme',  color: '#ec4899' },
+  MAG: { label: 'Magie',     color: '#a855f7' },
+  DEV: { label: 'Déviation', color: '#f97316' },
+  VIE: { label: 'Vie',       color: '#dc2626' },
 }
 
 // Resource types with colors and icons

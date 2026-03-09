@@ -8,6 +8,7 @@ export const useEditorStore = defineStore('editor', () => {
   const loading = ref(false)
   const dirty = ref(false)
   const saving = ref(false)
+  const mode = ref('layout') // 'layout' | 'component'
 
   // Selection
   const selectedElementId = ref(null)
@@ -71,6 +72,7 @@ export const useEditorStore = defineStore('editor', () => {
   // === Actions ===
   async function loadLayout(id) {
     loading.value = true
+    mode.value = 'layout'
     try {
       layout.value = await api.getLayout(id)
       dirty.value = false
@@ -81,11 +83,52 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  async function loadComponent(id) {
+    loading.value = true
+    mode.value = 'component'
+    try {
+      const comp = await api.getComponent(id)
+      // Wrap elements in a single-layer structure compatible with the canvas
+      layout.value = {
+        id: comp.id,
+        name: comp.name,
+        width_mm: comp.width_mm || 60,
+        height_mm: comp.height_mm || 40,
+        card_type: null,
+        definition: {
+          layers: [{
+            id: 'default',
+            name: 'Éléments',
+            locked: false,
+            visible: true,
+            elements: comp.definition?.elements || []
+          }],
+          dataSchema: {}
+        }
+      }
+      dirty.value = false
+      selectedElementId.value = null
+      selectedLayerId.value = 'default'
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function saveDefinition() {
     if (!layout.value || !dirty.value) return
     saving.value = true
     try {
-      await api.updateLayoutDefinition(layout.value.id, layout.value.definition)
+      if (mode.value === 'component') {
+        // Extract elements from the single layer and save as component definition
+        const elements = layers.value[0]?.elements || []
+        await api.updateComponent(layout.value.id, {
+          width_mm: layout.value.width_mm,
+          height_mm: layout.value.height_mm,
+          definition: { elements }
+        })
+      } else {
+        await api.updateLayoutDefinition(layout.value.id, layout.value.definition)
+      }
       dirty.value = false
     } finally {
       saving.value = false
@@ -217,7 +260,8 @@ export const useEditorStore = defineStore('editor', () => {
     zoom, panX, panY, snapGrid, showGrid,
     previewData,
     definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,
-    loadLayout, saveDefinition, markDirty,
+    mode,
+    loadLayout, loadComponent, saveDefinition, markDirty,
     addLayer, removeLayer, reorderLayers, updateLayer,
     addElement, updateElement, removeElement, duplicateElement,
     addSchemaField, removeSchemaField,

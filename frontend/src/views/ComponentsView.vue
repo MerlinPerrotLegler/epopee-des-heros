@@ -16,7 +16,8 @@
           <p class="crud-desc" v-if="item.description">{{ item.description }}</p>
         </div>
         <div class="crud-actions">
-          <button class="btn-ghost btn-sm" @click="edit(item)">Éditer</button>
+          <button class="btn-primary btn-sm" @click="$router.push(`/components/${item.id}/editor`)">Ouvrir</button>
+          <button class="btn-ghost btn-sm" @click="edit(item)">Renommer</button>
           <button class="btn-ghost btn-sm" @click="duplicate(item)">Dupliquer</button>
           <button class="btn-danger btn-sm" @click="remove(item)">Supprimer</button>
         </div>
@@ -27,15 +28,11 @@
     <!-- Create/Edit Modal -->
     <div class="modal-overlay" v-if="showCreate || editing" @click.self="closeModal">
       <div class="modal">
-        <h3>{{ editing ? 'Modifier' : 'Nouveau' }} composant</h3>
+        <h3>{{ editing ? 'Renommer' : 'Nouveau' }} composant</h3>
         <div class="field-row"><label>Nom</label><input v-model="form.name" /></div>
         <div class="field-row"><label>Description</label><input v-model="form.description" /></div>
         <div class="field-row"><label>Largeur (mm)</label><input type="number" v-model.number="form.width_mm" /></div>
         <div class="field-row"><label>Hauteur (mm)</label><input type="number" v-model.number="form.height_mm" /></div>
-        <div class="field-row">
-          <label>Définition (JSON)</label>
-          <textarea v-model="formDefJson" rows="6" style="flex:1; font-family: var(--font-mono); font-size: 10px; min-height: 100px"></textarea>
-        </div>
         <div class="modal-actions">
           <button class="btn-ghost" @click="closeModal">Annuler</button>
           <button class="btn-primary" @click="save">{{ editing ? 'Sauvegarder' : 'Créer' }}</button>
@@ -66,13 +63,12 @@ function edit(item) {
 function closeModal() { showCreate.value = false; editing.value = null; form.value = { name: '', description: '', width_mm: 30, height_mm: 20 }; formDefJson.value = '{"elements":[]}' }
 
 async function save() {
-  let def; try { def = JSON.parse(formDefJson.value) } catch { alert('JSON invalide'); return }
   if (editing.value) {
-    const updated = await api.updateComponent(editing.value, { ...form.value, definition: def })
+    const updated = await api.updateComponent(editing.value, { ...form.value })
     const idx = items.value.findIndex(i => i.id === editing.value)
     if (idx > -1) items.value[idx] = updated
   } else {
-    const created = await api.createComponent({ ...form.value, definition: def })
+    const created = await api.createComponent({ ...form.value, definition: { elements: [] } })
     items.value.push(created)
   }
   closeModal()

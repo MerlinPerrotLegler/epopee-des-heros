@@ -64,8 +64,18 @@
             <span>◬ {{ el.moleculeId }}</span>
           </div>
 
-          <!-- Resize handles (when selected) -->
-          <template v-if="store.selectedElementId === el.id && !el._layerLocked">
+          <!-- Floating action toolbar (delete / duplicate) when selected -->
+          <div
+            v-if="store.selectedElementId === el.id && !el._layerLocked"
+            class="element-toolbar"
+            @mousedown.stop
+          >
+            <button class="el-btn el-btn-dup" title="Dupliquer" @click.stop="store.duplicateElement(el.id)">⧉</button>
+            <button class="el-btn el-btn-del" title="Supprimer" @click.stop="store.removeElement(el.id)">🗑</button>
+          </div>
+
+          <!-- Resize handles (when selected, atoms only — components have fixed size) -->
+          <template v-if="store.selectedElementId === el.id && !el._layerLocked && el.type !== 'component'">
             <div
               v-for="handle in resizeHandles" :key="handle"
               class="resize-handle"
@@ -300,6 +310,37 @@ function startPan(e) {
   background: rgba(74, 222, 128, 0.05);
   border-color: rgba(74, 222, 128, 0.3);
 }
+
+/* Floating element toolbar (delete/duplicate) */
+.element-toolbar {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  display: flex;
+  gap: 2px;
+  z-index: 200;
+  pointer-events: all;
+}
+
+.el-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  background: var(--bg-secondary, #1e2235);
+  color: var(--text-primary, #e8eaf0);
+  box-shadow: 0 1px 4px rgba(0,0,0,0.4);
+  transition: background 80ms;
+}
+
+.el-btn:hover { background: var(--bg-tertiary, #2a3050); }
+.el-btn-del:hover { background: #ef4444; color: #fff; }
 
 /* Ruler */
 .ruler {

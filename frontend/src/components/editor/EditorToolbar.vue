@@ -1,10 +1,11 @@
 <template>
   <div class="toolbar">
     <div class="toolbar-left">
-      <router-link to="/layouts" class="btn-icon" title="Retour">←</router-link>
+      <router-link :to="store.mode === 'component' ? '/components' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
       <span class="toolbar-divider"></span>
       <span class="toolbar-title">{{ store.layout?.name || '…' }}</span>
-      <span class="badge" v-if="store.layout">{{ store.layout.card_type }}</span>
+      <span class="badge" v-if="store.mode === 'component'">Composant</span>
+      <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }}×{{ store.layout.height_mm }}mm</span>
       <span class="save-indicator" v-if="store.dirty">● non sauvegardé</span>
     </div>
