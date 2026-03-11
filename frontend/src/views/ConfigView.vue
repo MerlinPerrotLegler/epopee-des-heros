@@ -7,11 +7,15 @@
     <div class="config-body">
       <ConfigPanel />
     </div>
+    <div class="config-body" style="margin-top: 16px">
+      <FontManager />
+    </div>
   </div>
 </template>
 
 <script setup>
 import ConfigPanel from '@/components/editor/ConfigPanel.vue'
+import FontManager from '@/components/editor/FontManager.vue'
 </script>
 
 <style scoped>

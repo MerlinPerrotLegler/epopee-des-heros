@@ -6,7 +6,7 @@
         Ces valeurs s'appliquent à tous les atomes dont le paramètre correspondant est <code>null</code>.
       </p>
 
-      <div v-for="token in CONFIG_KEYS" :key="token.key" class="param-block">
+      <div v-for="token in resolvedKeys" :key="token.key" class="param-block">
         <div class="param-header">
           <label class="param-label">{{ token.label }}</label>
         </div>
@@ -57,11 +57,23 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useConfigStore, CONFIG_KEYS } from '@/stores/config.js'
+import { useFontsStore } from '@/stores/fonts.js'
 import ColorPickerAlpha from './ColorPickerAlpha.vue'
 
 const configStore = useConfigStore()
 const config = configStore.config
+const fontsStore = useFontsStore()
+
+// Inject custom fonts into the fontFamily token options
+const resolvedKeys = computed(() =>
+  CONFIG_KEYS.map(token =>
+    token.key === 'fontFamily'
+      ? { ...token, options: [...token.options, ...fontsStore.familyNames] }
+      : token
+  )
+)
 </script>
 
 <style scoped>

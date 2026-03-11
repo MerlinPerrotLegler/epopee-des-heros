@@ -17,6 +17,7 @@ import snapshotsRouter from './routes/snapshots.js';
 import cardTypesRouter from './routes/cardTypes.js';
 import exportRouter from './routes/export.js';
 import configRouter from './routes/config.js';
+import fontsRouter from './routes/fonts.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -52,6 +53,7 @@ app.use('/api/snapshots', snapshotsRouter);
 app.use('/api/card-types', cardTypesRouter);
 app.use('/api/export', exportRouter);
 app.use('/api/config', configRouter);
+app.use('/api/fonts', fontsRouter);
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {

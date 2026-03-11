@@ -53,10 +53,12 @@ import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useEditorStore } from '@/stores/editor.js'
 import { useConfigStore } from '@/stores/config.js'
+import { useFontsStore } from '@/stores/fonts.js'
 
 const route = useRoute()
 const editorStore = useEditorStore()
 const configStore = useConfigStore()
+const fontsStore = useFontsStore()
 
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -71,6 +73,7 @@ function onKeyDown(e) {
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
   configStore.load()
+  fontsStore.load()
 })
 onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>

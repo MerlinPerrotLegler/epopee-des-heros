@@ -130,6 +130,16 @@ CREATE TABLE IF NOT EXISTS import_mappings (
 );
 
 -- ============================================
+-- Custom fonts (Google Fonts)
+-- ============================================
+CREATE TABLE IF NOT EXISTS fonts (
+  id TEXT PRIMARY KEY,
+  family TEXT NOT NULL UNIQUE,
+  url TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+-- ============================================
 -- Settings (global design config)
 -- ============================================
 CREATE TABLE IF NOT EXISTS settings (

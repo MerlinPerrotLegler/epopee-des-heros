@@ -87,4 +87,9 @@ export const api = {
   // Global design config
   getConfig: () => request('/config'),
   putConfig: (data) => request('/config', { method: 'PUT', body: data }),
+
+  // Custom fonts
+  getFonts: () => request('/fonts'),
+  createFont: (data) => request('/fonts', { method: 'POST', body: data }),
+  deleteFont: (id) => request(`/fonts/${id}`, { method: 'DELETE' }),
 }

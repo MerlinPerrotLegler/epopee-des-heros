@@ -154,6 +154,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { useFontsStore } from '@/stores/fonts.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import GradientStopEditor from './GradientStopEditor.vue'
@@ -162,6 +163,7 @@ import ColorPickerAlpha from './ColorPickerAlpha.vue'
 
 const store = useEditorStore()
 const el = computed(() => store.selectedElement)
+const fontsStore = useFontsStore()
 
 const typeLabel = computed(() => {
   if (!el.value) return ''
@@ -275,6 +277,9 @@ const ENUM_MAPS = {
 }
 
 function getEnumOptions(key) {
+  if (key === 'fontFamily') {
+    return [...ENUM_MAPS.fontFamily, ...fontsStore.familyNames]
+  }
   return ENUM_MAPS[key] || null
 }
 </script>
