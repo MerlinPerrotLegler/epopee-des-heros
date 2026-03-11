@@ -351,14 +351,21 @@ export const ATOM_TYPES = {
       cornerTextMode:   'bisect',     // 'bisect'|'parallel'|'perpendicular'|'custom'
       cornerTextAngle:  45,           // utilisé quand cornerTextMode === 'custom'
       // ── Apparence globale ─────────────────────────────────────────
-      bgColor:      '#2a3050',
-      textColor:    '#ffffff',
+      bgColor:      'transparent',
+      textColor:    '#000000',
       fontSize:     2.5,
       borderColor:  '#6c7aff',
       borderWidth:  0.2,
       svgMediaId:   null,         // SVG décoratif dans tous les coins
       // ── Surcharges par case ────────────────────────────────────────
       cellOverrides: {},          // { [idx]: { bgColor?, svgMediaId? } }
+      // ── Traits de plume entre cases ───────────────────────────────
+      penStyle:    true,          // true = fuseaux SVG à la plume (remplace les bordures rect)
+      penSeedH:    1,             // seed des variantes — séparateurs bords haut/bas
+      penSeedV:    2,             // seed des variantes — séparateurs bords gauche/droite
+      penPoolSize: 4,             // nombre de variantes dans chaque pool (min 1)
+      penColor:    null,          // null → utilise borderColor
+      penWidth:    0.4,           // épaisseur max du fuseau en mm (half-width = penWidth/2)
     },
     defaultSize: { width_mm: 63, height_mm: 88 }
   },

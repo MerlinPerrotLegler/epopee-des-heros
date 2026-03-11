@@ -35,8 +35,8 @@
         :x="sv(cell.x)" :y="sv(cell.y)"
         :width="sv(cell.w)" :height="sv(cell.h)"
         :fill="cellBg(cell)"
-        :stroke="p.borderColor || '#6c7aff'"
-        :stroke-width="bw"
+        :stroke="penEnabled ? 'none' : (p.borderColor || '#6c7aff')"
+        :stroke-width="penEnabled ? 0 : bw"
       />
       <!-- SVG override au-dessus du fond, sous le numéro -->
       <image
@@ -81,8 +81,8 @@
         :x="sv(cell.x)" :y="sv(cell.y)"
         :width="sv(cell.w)" :height="sv(cell.h)"
         :fill="cellBg(cell)"
-        :stroke="p.borderColor || '#6c7aff'"
-        :stroke-width="bw"
+        :stroke="penEnabled ? 'none' : (p.borderColor || '#6c7aff')"
+        :stroke-width="penEnabled ? 0 : bw"
       />
       <!-- Texte incliné selon cornerTextMode -->
       <text
@@ -104,6 +104,17 @@
         pointer-events="none"
       />
     </g>
+    <!-- ── Passe 3 : traits de plume (au-dessus de tout) ── -->
+    <!-- Chaque trait est un fuseau rempli (filled polygon) effilé aux extrémités -->
+    <g v-if="penEnabled" pointer-events="none">
+      <path
+        v-for="(stroke, i) in strokePaths"
+        :key="`pen-${i}`"
+        :d="stroke.d"
+        :fill="penColor"
+        stroke="none"
+      />
+    </g>
   </svg>
 </template>
 
@@ -116,6 +127,12 @@
 import { computed }                from 'vue'
 import { useEditorStore }          from '@/stores/editor.js'
 import { buildCardTrackCells }     from '@/utils/cardTrackLayout.js'
+import {
+  buildStrokePool,
+  buildSeparators,
+  variantToPath,
+  pickVariant,
+} from '@/utils/cardTrackStrokes.js'
 
 const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
@@ -158,4 +175,35 @@ function cellBg(cell) {
 // ── Styles globaux ────────────────────────────────────────────────────────────
 const fontSz = computed(() => (p.value.fontSize    || 2.5) * SCALE)
 const bw     = computed(() => (p.value.borderWidth || 0.2) * SCALE)
+
+// ── Traits de plume ───────────────────────────────────────────────────────────
+const penEnabled      = computed(() => p.value.penStyle === true)
+const penColor        = computed(() => p.value.penColor || p.value.borderColor || '#6c7aff')
+// Épaisseur max / 2 → maxHalfWidth pour les fuseaux remplis
+const penHalfWidthSVG = computed(() => (p.value.penWidth ?? 0.4) / 2 * SCALE)
+
+// Pools de variantes (un par type de bande)
+// poolH = bords haut/bas (séparateurs verticaux courts), seed penSeedH
+// poolV = bords gauche/droite (séparateurs horizontaux courts), seed penSeedV
+const poolH = computed(() =>
+  penEnabled.value ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeedH ?? 1) : [])
+const poolV = computed(() =>
+  penEnabled.value ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeedV ?? 2) : [])
+
+// Tous les séparateurs de l'anneau (coins inclus)
+const separators = computed(() =>
+  penEnabled.value ? buildSeparators(cells.value, SCALE) : [])
+
+// Chemins SVG des fuseaux
+const strokePaths = computed(() => {
+  if (!penEnabled.value) return []
+  return separators.value.map(sep => {
+    // Séparateur vertical (isVertical) → bande H (haut/bas) → poolH
+    const pool     = sep.isVertical ? poolH.value : poolV.value
+    const seedBase = sep.isVertical ? (p.value.penSeedH ?? 1) : (p.value.penSeedV ?? 2)
+    const variant  = pickVariant(pool, seedBase, sep.pairIdx)
+    if (!variant) return null
+    return { d: variantToPath(sep.x1, sep.y1, sep.x2, sep.y2, variant, penHalfWidthSVG.value) }
+  }).filter(Boolean)
+})
 </script>
