@@ -83,4 +83,8 @@ export const api = {
 
   // Export
   prepareExport: (data) => request('/export/prepare', { method: 'POST', body: data }),
+
+  // Global design config
+  getConfig: () => request('/config'),
+  putConfig: (data) => request('/config', { method: 'PUT', body: data }),
 }

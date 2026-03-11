@@ -16,6 +16,7 @@ import mediaRouter from './routes/media.js';
 import snapshotsRouter from './routes/snapshots.js';
 import cardTypesRouter from './routes/cardTypes.js';
 import exportRouter from './routes/export.js';
+import configRouter from './routes/config.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -50,6 +51,7 @@ app.use('/api/media', mediaRouter);
 app.use('/api/snapshots', snapshotsRouter);
 app.use('/api/card-types', cardTypesRouter);
 app.use('/api/export', exportRouter);
+app.use('/api/config', configRouter);
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {

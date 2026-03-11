@@ -21,18 +21,10 @@
     <!-- ── Stop sélectionné ── -->
     <div v-if="selected !== null" class="gse-selected">
       <div class="gse-row">
-        <input
-          type="color"
-          :value="stops[selected]?.color || '#000000'"
-          @input="updateColor(selected, $event.target.value)"
-          class="gse-color"
-        />
-        <input
-          type="text"
-          :value="stops[selected]?.color || ''"
-          @input="updateColor(selected, $event.target.value)"
-          class="gse-colortext"
-          placeholder="#rrggbb ou rgba(…)"
+        <ColorPickerAlpha
+          :model-value="stops[selected]?.color ?? null"
+          @update:model-value="updateColor(selected, $event)"
+          class="gse-cpa"
         />
         <input
           type="number"
@@ -66,6 +58,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import ColorPickerAlpha from './ColorPickerAlpha.vue'
 
 const props = defineProps({
   modelValue: { type: Array, default: () => [] },
@@ -204,20 +197,9 @@ function startDrag(e, idx) {
   align-items: center;
   gap: 4px;
 }
-.gse-color {
-  width: 28px; height: 24px;
-  padding: 1px;
-  border: 1px solid var(--border-default);
-  cursor: pointer;
-  flex-shrink: 0;
-  border-radius: 3px;
-}
-.gse-colortext {
+.gse-cpa {
   flex: 1;
   min-width: 0;
-  font-family: var(--font-mono);
-  font-size: 10px;
-  padding: 2px 4px;
 }
 .gse-pos {
   width: 44px;

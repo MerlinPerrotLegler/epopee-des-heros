@@ -59,8 +59,10 @@
       <template v-if="store.activeCellIdx !== null">
         <div class="field-row">
           <label>Fond</label>
-          <input type="color" :value="activeCellOverride.bgColor || el.params.bgColor || '#2a3050'" @input="setCellProp('bgColor', $event.target.value)" class="color-input" />
-          <input :value="activeCellOverride.bgColor || ''" @input="setCellProp('bgColor', $event.target.value || undefined)" class="color-text" placeholder="hérite" />
+          <ColorPickerAlpha
+            :model-value="activeCellOverride.bgColor ?? null"
+            @update:model-value="setCellProp('bgColor', $event ?? undefined)"
+          />
         </div>
         <div class="field-row">
           <label>SVG ID</label>
@@ -98,10 +100,13 @@
         </div>
         <div class="field-row">
 
-        <!-- Color picker -->
+        <!-- Color picker avec alpha -->
         <template v-if="isColorParam(key, value)">
-          <input type="color" :value="value" @input="updateParam(key, $event.target.value)" class="color-input" :data-param-key="key" />
-          <input :value="value" @input="updateParam(key, $event.target.value)" class="color-text" :data-param-key="key" />
+          <ColorPickerAlpha
+            :model-value="typeof value === 'string' ? value : null"
+            @update:model-value="updateParam(key, $event)"
+            :data-param-key="key"
+          />
         </template>
 
         <!-- Number -->
@@ -153,6 +158,7 @@ import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import GradientStopEditor from './GradientStopEditor.vue'
 import MediaPicker from './MediaPicker.vue'
+import ColorPickerAlpha from './ColorPickerAlpha.vue'
 
 const store = useEditorStore()
 const el = computed(() => store.selectedElement)
@@ -224,8 +230,10 @@ function paramLabel(key) {
 }
 
 function isColorParam(key, value) {
-  if (typeof value !== 'string') return false
-  return key.toLowerCase().includes('color') || /^#[0-9a-fA-F]{6,8}$/.test(value)
+  if (value !== null && typeof value !== 'string') return false
+  if (key.toLowerCase().includes('color')) return true
+  if (typeof value === 'string') return /^#[0-9a-fA-F]{6,8}$/.test(value)
+  return false
 }
 
 // Params whose value is always a media ID

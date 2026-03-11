@@ -129,6 +129,15 @@ CREATE TABLE IF NOT EXISTS import_mappings (
   created_at TEXT DEFAULT (datetime('now'))
 );
 
+-- ============================================
+-- Settings (global design config)
+-- ============================================
+CREATE TABLE IF NOT EXISTS settings (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  design_config JSON NOT NULL DEFAULT '{}'
+);
+INSERT OR IGNORE INTO settings (id, design_config) VALUES (1, '{}');
+
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_media_folder ON media(folder_id);
 CREATE INDEX IF NOT EXISTS idx_card_instances_layout ON card_instances(layout_id);

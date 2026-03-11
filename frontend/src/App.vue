@@ -32,6 +32,10 @@
         </router-link>
       </div>
       <div class="nav-bottom">
+        <router-link to="/config" class="nav-item" :class="{ active: route.path === '/config' }">
+          <span class="nav-icon">⚙</span>
+          <span class="nav-label">Config</span>
+        </router-link>
         <router-link to="/snapshots" class="nav-item" :class="{ active: route.path === '/snapshots' }">
           <span class="nav-icon">⟲</span>
           <span class="nav-label">Versions</span>
@@ -48,9 +52,11 @@
 import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { useEditorStore } from '@/stores/editor.js'
+import { useConfigStore } from '@/stores/config.js'
 
 const route = useRoute()
 const editorStore = useEditorStore()
+const configStore = useConfigStore()
 
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
@@ -62,7 +68,10 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => document.addEventListener('keydown', onKeyDown))
+onMounted(() => {
+  document.addEventListener('keydown', onKeyDown)
+  configStore.load()
+})
 onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>
 

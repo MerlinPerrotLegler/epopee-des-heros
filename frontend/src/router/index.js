@@ -52,6 +52,11 @@ const routes = [
     path: '/snapshots',
     name: 'Snapshots',
     component: () => import('@/views/SnapshotsView.vue')
+  },
+  {
+    path: '/config',
+    name: 'Config',
+    component: () => import('@/views/ConfigView.vue')
   }
 ]
 

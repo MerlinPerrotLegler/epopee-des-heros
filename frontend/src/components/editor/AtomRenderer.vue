@@ -3,7 +3,7 @@
     <component
       v-if="atomComponent"
       :is="atomComponent"
-      :params="params"
+      :params="resolvedParams"
       :width_mm="width_mm"
       :height_mm="height_mm"
       :zoom="zoom"
@@ -15,6 +15,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useConfigStore } from '@/stores/config.js'
 
 import AtomBackgroundTexture        from '@/atoms/components/AtomBackgroundTexture.vue'
 import AtomBackgroundGradientLinear from '@/atoms/components/AtomBackgroundGradientLinear.vue'
@@ -77,7 +78,21 @@ const props = defineProps({
   selected: { type: Boolean, default: false }
 })
 
+const configStore = useConfigStore()
+
 const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
+
+// Merge params with global config: null values in params are replaced by the config value
+const resolvedParams = computed(() => {
+  const cfg = configStore.config
+  const resolved = { ...props.params }
+  for (const [key, cfgVal] of Object.entries(cfg)) {
+    if (cfgVal !== null && cfgVal !== undefined && resolved[key] === null) {
+      resolved[key] = cfgVal
+    }
+  }
+  return resolved
+})
 </script>
 
 <style scoped>

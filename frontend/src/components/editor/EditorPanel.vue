@@ -70,6 +70,11 @@
     <div v-if="activeTab === 'data'" class="panel-content">
       <DataPanel />
     </div>
+
+    <!-- Global Config Tab -->
+    <div v-if="activeTab === 'config'" class="panel-content">
+      <ConfigPanel />
+    </div>
   </div>
 </template>
 
@@ -81,6 +86,7 @@ import { api } from '@/utils/api.js'
 import LayerPanel from './LayerPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import DataPanel from './DataPanel.vue'
+import ConfigPanel from './ConfigPanel.vue'
 
 const store = useEditorStore()
 
@@ -89,6 +95,7 @@ const tabs = [
   { id: 'add', label: 'Ajouter' },
   { id: 'props', label: 'Propriétés' },
   { id: 'data', label: 'Data' },
+  { id: 'config', label: 'Config' },
 ]
 
 const activeTab = ref('layers')
