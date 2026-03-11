@@ -16,15 +16,16 @@ export function useDragAndDrop(store, mmScale) {
   function startDrag(e, elementId) {
     const el = findElement(elementId)
     if (!el || el._layerLocked) return
-    
+
     e.preventDefault()
     e.stopPropagation()
-    
+
+    store._snapshot() // snapshot avant le début du drag
     isDragging.value = true
     currentElementId = elementId
     startMouse = { x: e.clientX, y: e.clientY }
     startEl = { x: el.x_mm, y: el.y_mm, w: el.width_mm, h: el.height_mm }
-    
+
     store.selectedElementId = elementId
 
     document.addEventListener('mousemove', onDragMove)
@@ -38,6 +39,7 @@ export function useDragAndDrop(store, mmScale) {
     e.preventDefault()
     e.stopPropagation()
 
+    store._snapshot() // snapshot avant le début du resize
     isResizing.value = true
     resizeHandle.value = handle
     currentElementId = elementId
@@ -56,7 +58,7 @@ export function useDragAndDrop(store, mmScale) {
     const newX = store.snap(startEl.x + dx)
     const newY = store.snap(startEl.y + dy)
 
-    store.updateElement(currentElementId, { x_mm: newX, y_mm: newY })
+    store.updateElement(currentElementId, { x_mm: newX, y_mm: newY }, { noHistory: true })
   }
 
   function onDragEnd() {
@@ -88,7 +90,7 @@ export function useDragAndDrop(store, mmScale) {
       h = newH
     }
 
-    store.updateElement(currentElementId, { x_mm: x, y_mm: y, width_mm: w, height_mm: h })
+    store.updateElement(currentElementId, { x_mm: x, y_mm: y, width_mm: w, height_mm: h }, { noHistory: true })
   }
 
   function onResizeEnd() {

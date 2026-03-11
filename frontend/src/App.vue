@@ -45,8 +45,25 @@
 </template>
 
 <script setup>
+import { onMounted, onUnmounted } from 'vue'
 import { useRoute } from 'vue-router'
+import { useEditorStore } from '@/stores/editor.js'
+
 const route = useRoute()
+const editorStore = useEditorStore()
+
+function onKeyDown(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+    // Ignorer si on est dans un champ de saisie
+    const tag = document.activeElement?.tagName
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+    e.preventDefault()
+    editorStore.undo()
+  }
+}
+
+onMounted(() => document.addEventListener('keydown', onKeyDown))
+onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>
 
 <style scoped>

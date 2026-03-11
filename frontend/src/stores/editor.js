@@ -3,6 +3,9 @@ import { ref, computed, watch } from 'vue'
 import { api } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
+// Nombre max d'entrées dans l'historique undo. 0 = illimité (retour jusqu'au début de session).
+const MAX_HISTORY = 0
+
 export const useEditorStore = defineStore('editor', () => {
   // === State ===
   const layout = ref(null)
@@ -10,6 +13,9 @@ export const useEditorStore = defineStore('editor', () => {
   const dirty = ref(false)
   const saving = ref(false)
   const mode = ref('layout') // 'layout' | 'component'
+
+  // === Undo history ===
+  const history = ref([]) // snapshots de layout.value.definition
 
   // Selection
   const selectedElementId = ref(null)
@@ -77,6 +83,23 @@ export const useEditorStore = defineStore('editor', () => {
     return names
   })
 
+  // === Undo ===
+  function _snapshot() {
+    if (!layout.value) return
+    history.value.push(JSON.parse(JSON.stringify(layout.value.definition)))
+    if (MAX_HISTORY > 0 && history.value.length > MAX_HISTORY) {
+      history.value.shift()
+    }
+  }
+
+  const canUndo = computed(() => history.value.length > 0)
+
+  function undo() {
+    if (!history.value.length || !layout.value) return
+    layout.value.definition = history.value.pop()
+    dirty.value = true
+  }
+
   // === Actions ===
   async function loadLayout(id) {
     loading.value = true
@@ -84,6 +107,7 @@ export const useEditorStore = defineStore('editor', () => {
     try {
       layout.value = await api.getLayout(id)
       dirty.value = false
+      history.value = []
       selectedElementId.value = null
       selectedLayerId.value = layers.value[0]?.id || null
       // Pré-charger les composants référencés dans le layout
@@ -134,6 +158,7 @@ export const useEditorStore = defineStore('editor', () => {
         }
       }
       dirty.value = false
+      history.value = []
       selectedElementId.value = null
       selectedLayerId.value = 'default'
     } finally {
@@ -171,6 +196,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Layer operations
   function addLayer(name) {
+    _snapshot()
     const id = crypto.randomUUID()
     layout.value.definition.layers.push({
       id, name: name || `Calque ${layers.value.length + 1}`,
@@ -183,6 +209,7 @@ export const useEditorStore = defineStore('editor', () => {
   function removeLayer(id) {
     const idx = layout.value.definition.layers.findIndex(l => l.id === id)
     if (idx > -1) {
+      _snapshot()
       layout.value.definition.layers.splice(idx, 1)
       if (selectedLayerId.value === id) {
         selectedLayerId.value = layers.value[0]?.id || null
@@ -192,6 +219,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function reorderLayers(fromIdx, toIdx) {
+    _snapshot()
     const arr = layout.value.definition.layers
     const [item] = arr.splice(fromIdx, 1)
     arr.splice(toIdx, 0, item)
@@ -201,6 +229,7 @@ export const useEditorStore = defineStore('editor', () => {
   function updateLayer(id, updates) {
     const layer = layout.value.definition.layers.find(l => l.id === id)
     if (layer) {
+      _snapshot()
       Object.assign(layer, updates)
       markDirty()
     }
@@ -219,6 +248,7 @@ export const useEditorStore = defineStore('editor', () => {
   function addElement(layerId, element) {
     const layer = layout.value.definition.layers.find(l => l.id === layerId)
     if (!layer) return
+    _snapshot()
 
     // Les fonds couvrent toujours la totalité du layout, position (0,0), sans rotation
     if (element.type === 'atom' && BACKGROUND_ATOM_TYPES.has(element.atomType)) {
@@ -254,10 +284,12 @@ export const useEditorStore = defineStore('editor', () => {
     return el
   }
 
-  function updateElement(elementId, updates) {
+  // noHistory: true pour les updates en continu (drag/resize) — snapshot géré en amont
+  function updateElement(elementId, updates, { noHistory = false } = {}) {
     for (const layer of layout.value.definition.layers) {
       const el = layer.elements?.find(e => e.id === elementId)
       if (el) {
+        if (!noHistory) _snapshot()
         Object.assign(el, updates)
         markDirty()
         return
@@ -269,6 +301,7 @@ export const useEditorStore = defineStore('editor', () => {
     for (const layer of layout.value.definition.layers) {
       const idx = layer.elements?.findIndex(e => e.id === elementId)
       if (idx > -1) {
+        _snapshot()
         layer.elements.splice(idx, 1)
         if (selectedElementId.value === elementId) selectedElementId.value = null
         markDirty()
@@ -281,6 +314,7 @@ export const useEditorStore = defineStore('editor', () => {
     for (const layer of layout.value.definition.layers) {
       const el = layer.elements?.find(e => e.id === elementId)
       if (el) {
+        _snapshot()
         const clone = JSON.parse(JSON.stringify(el))
         clone.id = crypto.randomUUID()
         clone.x_mm += 2
@@ -296,12 +330,14 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Data schema operations
   function addSchemaField(name, type = 'string') {
+    _snapshot()
     if (!layout.value.definition.dataSchema) layout.value.definition.dataSchema = {}
     layout.value.definition.dataSchema[name] = { type, default: '' }
     markDirty()
   }
 
   function removeSchemaField(name) {
+    _snapshot()
     delete layout.value.definition.dataSchema[name]
     markDirty()
   }
@@ -320,6 +356,7 @@ export const useEditorStore = defineStore('editor', () => {
     componentsCache,
     definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,
     mode,
+    history, canUndo, undo, _snapshot,
     loadLayout, loadComponent, saveDefinition, markDirty,
     addLayer, removeLayer, reorderLayers, updateLayer,
     addElement, updateElement, removeElement, duplicateElement,
