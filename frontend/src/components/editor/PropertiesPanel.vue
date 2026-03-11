@@ -91,7 +91,7 @@
       <div class="panel-section-title">Paramètres — {{ typeLabel }}</div>
       <!-- cellOverrides et stops (géré par sections dédiées) sont cachés -->
       <div
-        v-for="(value, key) in el.params" :key="key" class="param-block"
+        v-for="(value, key) in effectiveParams" :key="key" class="param-block"
         v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops')"
       >
         <div class="param-header">
@@ -177,6 +177,13 @@ const isGradientAtom = computed(() =>
   el.value?.type === 'atom' &&
   (el.value.atomType === 'backgroundGradientLinear' || el.value.atomType === 'backgroundGradientRadial')
 )
+
+// Merge stored params with atom defaults so newly-added default keys always appear
+const effectiveParams = computed(() => {
+  if (!el.value?.params) return {}
+  const defaults = (el.value.type === 'atom' && ATOM_TYPES[el.value.atomType]?.defaultParams) || {}
+  return { ...defaults, ...el.value.params }
+})
 
 function update(key, value) {
   store.updateElement(el.value.id, { [key]: value })

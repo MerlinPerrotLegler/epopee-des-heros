@@ -60,7 +60,7 @@
         dominant-baseline="central"
         :fill="params.textColor || '#ffffff'"
         :font-size="fontSizePx"
-        font-family="Outfit"
+        :font-family="params.fontFamily || 'Outfit'"
         font-weight="600"
       >{{ n }}</text>
     </g>

@@ -51,7 +51,7 @@
         text-anchor="middle" dominant-baseline="central"
         :fill="p.textColor || '#ffffff'"
         :font-size="fontSz"
-        font-family="Outfit" font-weight="600"
+        :font-family="p.fontFamily || 'Outfit'" font-weight="600"
         :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
       >{{ cell.n }}</text>
       <!-- Highlight de la case active (édition) -->
@@ -90,7 +90,7 @@
         text-anchor="middle" dominant-baseline="central"
         :fill="p.textColor || '#ffffff'"
         :font-size="fontSz"
-        font-family="Outfit" font-weight="600"
+        :font-family="p.fontFamily || 'Outfit'" font-weight="600"
         :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
       >{{ cell.n }}</text>
       <!-- Highlight coin actif -->

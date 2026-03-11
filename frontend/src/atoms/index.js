@@ -324,6 +324,7 @@ export const ATOM_TYPES = {
       bgColor:     '#2a3050',
       textColor:   '#ffffff',
       fontSize:    2.5,
+      fontFamily:  null,          // null → utilise la police globale ou 'Outfit'
       borderColor: '#6c7aff',
       borderWidth: 0.2,
       caps:        false, // triangles rectangles aux extrémités
@@ -354,6 +355,7 @@ export const ATOM_TYPES = {
       bgColor:      'transparent',
       textColor:    '#000000',
       fontSize:     2.5,
+      fontFamily:   null,         // null → utilise la police globale ou 'Outfit'
       borderColor:  '#6c7aff',
       borderWidth:  0.2,
       svgMediaId:   null,         // SVG décoratif dans tous les coins
