@@ -51,6 +51,15 @@ export const api = {
   updateCard: (id, data) => request(`/cards/${id}`, { method: 'PUT', body: data }),
   deleteCard: (id) => request(`/cards/${id}`, { method: 'DELETE' }),
   importCards: (data) => request('/cards/import', { method: 'POST', body: data }),
+  previewCsvUrl: (url) => request('/cards/preview-url', { method: 'POST', body: { url } }),
+  importCardsFromUrl: (data) => request('/cards/import-url', { method: 'POST', body: data }),
+  exportCardsUrl: (layoutId) => `${BASE}/cards/export?layout_id=${layoutId}`,
+
+  // Import Jobs
+  getImportJobs: () => request('/import-jobs'),
+  getImportJob: (id) => request(`/import-jobs/${id}`),
+  syncImportJob: (id) => request(`/import-jobs/${id}/sync`, { method: 'POST' }),
+  deleteImportJob: (id) => request(`/import-jobs/${id}`, { method: 'DELETE' }),
 
   // Media
   getMedia: (folderId) => request(folderId ? `/media?folder_id=${folderId}` : '/media'),

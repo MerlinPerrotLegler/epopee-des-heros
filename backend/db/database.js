@@ -24,6 +24,40 @@ export function getDb() {
     try { db.exec('ALTER TABLE layouts ADD COLUMN is_back INTEGER NOT NULL DEFAULT 0') } catch {}
     // Migrate existing back layouts (card_type = 'dos') to is_back = 1
     try { db.exec("UPDATE layouts SET is_back = 1 WHERE card_type = 'dos' AND is_back = 0") } catch {}
+    // TSD-006: sheets_url for Google Sheets sync
+    try { db.exec('ALTER TABLE layouts ADD COLUMN sheets_url TEXT') } catch {}
+    // TSD-007: ImportJobs table
+    try { db.exec(`CREATE TABLE IF NOT EXISTS import_jobs (
+      id TEXT PRIMARY KEY,
+      label TEXT,
+      source_url TEXT NOT NULL,
+      mode TEXT NOT NULL DEFAULT 'single',
+      layout_id TEXT REFERENCES layouts(id) ON DELETE SET NULL,
+      layout_column TEXT,
+      id_column TEXT NOT NULL,
+      mappings JSON NOT NULL DEFAULT '{}',
+      created_at TEXT DEFAULT (datetime('now')),
+      last_synced_at TEXT,
+      last_sync_stats JSON
+    )`) } catch {}
+    // TSD-007: import_job_id on card instances
+    try { db.exec('ALTER TABLE card_instances ADD COLUMN import_job_id TEXT REFERENCES import_jobs(id) ON DELETE SET NULL') } catch {}
+    // TSD-012: missing_media table (non-blocking detection during import)
+    try { db.exec(`CREATE TABLE IF NOT EXISTS missing_media (
+      id TEXT PRIMARY KEY,
+      card_instance_id TEXT NOT NULL REFERENCES card_instances(id) ON DELETE CASCADE,
+      binding_path TEXT NOT NULL,
+      media_type TEXT,
+      media_id_ref TEXT,
+      status TEXT NOT NULL DEFAULT 'pending',
+      resolved_media_id TEXT REFERENCES media(id) ON DELETE SET NULL,
+      error_message TEXT,
+      detected_at TEXT NOT NULL DEFAULT (datetime('now')),
+      resolved_at TEXT,
+      generation_prompt TEXT
+    )`) } catch {}
+    try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_missing_media_uniq ON missing_media(card_instance_id, binding_path)') } catch {}
+    try { db.exec('CREATE INDEX IF NOT EXISTS idx_missing_media_status ON missing_media(status)') } catch {}
   }
   return db;
 }
@@ -31,7 +65,7 @@ export function getDb() {
 // Create a full snapshot of the database
 export function createSnapshot(label, codeVersion) {
   const db = getDb();
-  const tables = ['card_types', 'media_folders', 'media', 'molecules', 'components', 'layouts', 'card_instances', 'import_mappings'];
+  const tables = ['card_types', 'media_folders', 'media', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings'];
   const dump = {};
   
   for (const table of tables) {
@@ -53,7 +87,7 @@ export function restoreSnapshot(snapshotId) {
   if (!snapshot) throw new Error('Snapshot not found');
   
   const dump = JSON.parse(snapshot.dump);
-  const tables = ['card_instances', 'import_mappings', 'layouts', 'components', 'molecules', 'media', 'media_folders', 'card_types'];
+  const tables = ['card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media', 'media_folders', 'card_types'];
   
   const restore = db.transaction(() => {
     // Delete in reverse dependency order

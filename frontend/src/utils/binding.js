@@ -2,11 +2,12 @@
 // Data Binding Utility
 // Resolves {{bindingPath}} expressions using card instance data
 // ============================================
+import Papa from 'papaparse'
 
 /**
  * Resolve a binding expression against card data.
  * Binding paths: "nameInLayout.paramName" or just "paramName"
- * 
+ *
  * Card data structure: {
  *   "card_name.text": "Épée en fer",
  *   "stats.force.value": "3",
@@ -28,13 +29,15 @@ export function resolveBinding(template, data) {
 /**
  * Resolve all params of an element against card data.
  * Uses the element's nameInLayout as prefix.
+ * prefixOverride: used for atoms nested inside components, e.g. "stats.attack"
  */
-export function resolveElementParams(element, data) {
-  if (!data || !element.nameInLayout) return element.params || {}
+export function resolveElementParams(element, data, prefixOverride = null) {
+  if (!data) return element.params || {}
+
+  const prefix = prefixOverride ?? element.nameInLayout
+  if (!prefix) return element.params || {}
 
   const resolved = {}
-  const prefix = element.nameInLayout
-
   for (const [key, value] of Object.entries(element.params || {})) {
     const bindPath = `${prefix}.${key}`
     if (bindPath in data) {
@@ -50,12 +53,12 @@ export function resolveElementParams(element, data) {
 }
 
 /**
- * Get all bindable paths from a layout definition.
+ * Get all bindable paths from a layout definition (direct atoms only, no component traversal).
  * Returns array of { path, label, type, elementId, nameInLayout }
  */
 export function getBindablePaths(definition) {
   const paths = []
-  
+
   function walkItems(items) {
     for (const item of items) {
       if (item.kind === 'group') { walkItems(item.children || []); continue }
@@ -78,23 +81,76 @@ export function getBindablePaths(definition) {
 }
 
 /**
- * Parse CSV text into array of objects using first row as headers.
+ * Extract all bindable paths from a layout, including atoms nested inside components.
+ * componentRegistry: { componentId: componentDefinition }
+ * Returns array of { path, nameInLayout, paramName, atomType, elementId }
  */
-export function parseCsvToObjects(csvText) {
-  const lines = csvText.trim().split('\n')
-  if (lines.length < 2) return []
+export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
+  const paths = []
 
-  const headers = lines[0].split(',').map(h => h.trim().replace(/^"|"$/g, ''))
-  const rows = []
+  function walkItems(items, prefixParts = []) {
+    for (const item of items) {
+      if (item.kind === 'group') {
+        walkItems(item.children || [], prefixParts)
+        continue
+      }
+      const el = item
+      if (!el.nameInLayout) continue
 
-  for (let i = 1; i < lines.length; i++) {
-    const values = lines[i].split(',').map(v => v.trim().replace(/^"|"$/g, ''))
-    const obj = {}
-    headers.forEach((h, idx) => {
-      obj[h] = values[idx] || ''
-    })
-    rows.push(obj)
+      const currentParts = [...prefixParts, el.nameInLayout]
+
+      if (el.type === 'component' && el.componentId) {
+        const comp = componentRegistry[el.componentId]
+        if (comp?.definition) {
+          const compItems = comp.definition.elements || comp.definition.layers || []
+          walkItems(compItems, currentParts)
+        }
+      } else {
+        for (const paramKey of Object.keys(el.params || {})) {
+          paths.push({
+            path: [...currentParts, paramKey].join('.'),
+            nameInLayout: currentParts.join('.'),
+            paramName: paramKey,
+            atomType: el.atomType || el.type,
+            elementId: el.id,
+          })
+        }
+      }
+    }
   }
 
-  return rows
+  for (const layer of layoutDefinition.layers || []) {
+    walkItems(layer.children || layer.elements || [])
+  }
+
+  return paths
+}
+
+/**
+ * Parse CSV text into array of objects using first row as headers.
+ * Uses papaparse for RFC 4180 compliance (handles quoted fields, etc.)
+ */
+export function parseCsvToObjects(csvText) {
+  const result = Papa.parse(csvText.trim(), {
+    header: true,
+    skipEmptyLines: true,
+    transformHeader: h => h.trim(),
+    transform: v => v.trim(),
+  })
+  return result.data || []
+}
+
+/**
+ * Normalize Google Sheets URL to published CSV format.
+ * Handles /edit and /pub URLs, preserves gid param.
+ */
+export function normalizeGoogleSheetsUrl(url) {
+  if (!url) return url
+  if (url.includes('docs.google.com/spreadsheets')) {
+    const gidMatch = url.match(/[?&]gid=(\d+)/)
+    const gid = gidMatch ? `&gid=${gidMatch[1]}` : ''
+    const base = url.replace(/\/edit.*$/, '').replace(/\/pub.*$/, '')
+    return `${base}/pub?output=csv${gid}`
+  }
+  return url
 }

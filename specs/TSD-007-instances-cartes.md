@@ -493,6 +493,7 @@ type MappingEntry = {
 
 ### Backend
 - [ ] Migration : `ALTER TABLE card_instances ADD COLUMN import_job_id TEXT`
+- [ ] Migration : `CREATE TABLE missing_media (...)` — voir TSD-012
 - [ ] Migration : `CREATE TABLE import_jobs (...)`
 - [ ] Migration : `ALTER TABLE layouts ADD COLUMN sheets_url TEXT`
 - [ ] Route CRUD `/cards` (si pas déjà fait)
@@ -544,7 +545,27 @@ La lib `papaparse` est déjà dans les dépendances frontend. L'utiliser côté 
 ### 11.2 Identification stable des lignes
 La colonne `idColumn` est le seul moyen de faire des mises à jour idempotentes lors d'une sync. Sans ID stable, chaque sync crée des doublons. L'utilisateur doit explicitement choisir cette colonne dans l'étape ①.
 
-### 11.3 Upsert en transaction
+### 11.3 Médias manquants — détection non-bloquante
+Après chaque upsert d'instance, scanner les bindings de type `mediaId`. Pour chaque valeur qui ne correspond à aucun `media.id`, insérer une ligne dans `missing_media` (si absente). Non-bloquant : l'instance est créée même si des médias manquent. Voir TSD-012.
+
+```js
+function detectMissingMedia(instanceId, data, bindingPaths, db) {
+  const mediaPaths = bindingPaths.filter(p => p.paramName === 'mediaId')
+  for (const { path } of mediaPaths) {
+    const mediaId = data[path]
+    if (!mediaId) continue
+    const exists = db.prepare('SELECT id FROM media WHERE id = ?').get(mediaId)
+    if (!exists) {
+      db.prepare(`INSERT OR IGNORE INTO missing_media
+        (id, card_instance_id, binding_path, media_id_ref, status)
+        VALUES (?, ?, ?, ?, 'pending')`
+      ).run(randomUUID(), instanceId, path, mediaId)
+    }
+  }
+}
+```
+
+### 11.4 Upsert en transaction
 Pour 1000+ lignes, wrapper tous les INSERT/UPDATE dans une seule transaction SQLite :
 ```js
 const upsert = db.transaction((rows) => {
