@@ -89,10 +89,10 @@
     <!-- Type-specific params -->
     <div class="panel-section" v-if="el.params">
       <div class="panel-section-title">Paramètres — {{ typeLabel }}</div>
-      <!-- cellOverrides et stops (géré par sections dédiées) sont cachés -->
+      <!-- cellOverrides, stops et params IA (gérés par sections dédiées) sont cachés -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops')"
+        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type'"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -143,6 +143,49 @@
         </template>
         </div><!-- /.field-row -->
       </div><!-- /.param-block -->
+    </div>
+
+    <!-- ── Section image : cadrage + IA prompt ──────────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'image'">
+      <div class="panel-section-title">Cadrage (cover)</div>
+      <div class="field-row">
+        <label>Pos X</label>
+        <input type="range" min="0" max="100" step="1"
+          :value="el.params.posX ?? 50"
+          @input="updateParam('posX', +$event.target.value)" style="flex:1" />
+        <span class="unit">{{ el.params.posX ?? 50 }}%</span>
+      </div>
+      <div class="field-row">
+        <label>Pos Y</label>
+        <input type="range" min="0" max="100" step="1"
+          :value="el.params.posY ?? 50"
+          @input="updateParam('posY', +$event.target.value)" style="flex:1" />
+        <span class="unit">{{ el.params.posY ?? 50 }}%</span>
+      </div>
+
+      <div class="panel-section-title" style="margin-top:10px">IA — Génération (TSD-012)</div>
+      <div class="field-row">
+        <label>Type</label>
+        <select :value="el.params.ai_media_type || 'illustration'"
+          @change="updateParam('ai_media_type', $event.target.value)" style="flex:1">
+          <option value="illustration">Illustration</option>
+          <option value="icone">Icône</option>
+          <option value="fond">Fond</option>
+          <option value="autre">Autre</option>
+        </select>
+      </div>
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Prompt template</label>
+          <span class="param-help">Variables : {{card_name.text}}, {{card_type}}…</span>
+        </div>
+        <textarea
+          :value="el.params.ai_prompt_template || ''"
+          @input="updateParam('ai_prompt_template', $event.target.value)"
+          placeholder="Illustration d'un {{card_name.text}}, carte {{card_type}}, style médiéval"
+          style="width:100%;height:56px;resize:vertical;font-size:10px;font-family:var(--font-mono);background:var(--bg-secondary);border:1px solid var(--border-subtle);color:var(--text-primary);padding:4px 6px;border-radius:var(--radius-sm)"
+        ></textarea>
+      </div>
     </div>
   </div>
 
@@ -296,7 +339,7 @@ function isMediaParam(key) {
 const INTEGER_PARAMS = new Set([
   'n_start', 'n_end', 'cells_top', 'cells_left',
   'fontWeight', 'borderRadius', 'cornerTextAngle',
-  'value', 'n',
+  'value', 'n', 'posX', 'posY',
 ])
 
 const ENUM_MAPS = {

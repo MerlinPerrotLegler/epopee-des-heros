@@ -131,7 +131,7 @@ N/A — les atomes sont rendus côté client uniquement. Leur définition est da
 - [x] `AtomPrice.vue`, `AtomResource.vue`, `AtomCounter.vue`
 - [x] `AtomCardPlaceholder.vue`, `AtomResourcePlaceholder.vue`
 - [x] `AtomCardType.vue`
-- [ ] `AtomImage.vue` : upload + recadrage + rendu
+- [x] `AtomImage.vue` : upload + recadrage + rendu
 - [ ] `AtomHexTile.vue` : finaliser rendu SVG hexagonal avec types de terrain
 
 ---
@@ -155,7 +155,7 @@ N/A — les atomes sont rendus côté client uniquement. Leur définition est da
 - [x] Die8 et Die12 : forme pilotée par les dimensions, nombre par fontSize
 - [x] Pen strokes SVG sur die8/die12 (pas de fill, traits calligraphiques)
 - [x] `defaultParams` complets pour tous les types dans le registre
-- [ ] AtomImage : upload et affichage dans le canvas
+- [x] AtomImage : upload et affichage dans le canvas
 - [ ] AtomHexTile : rendu hexagonal complet
 
 ---

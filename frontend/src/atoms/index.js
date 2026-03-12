@@ -272,13 +272,15 @@ export const ATOM_TYPES = {
     label: 'Image',
     icon: '🖼',
     defaultParams: {
-      mediaId: null, // media library reference
-      fit: 'cover', // cover | contain | fill
+      mediaId: null,   // media library reference
+      fit: 'cover',    // cover | contain | fill | none
+      posX: 50,        // % objectPosition X (recadrage horizontal, utilisé quand fit=cover)
+      posY: 50,        // % objectPosition Y (recadrage vertical, utilisé quand fit=cover)
       opacity: 1,
       borderRadius: 0,
-      // AI placeholder fields (V2)
-      aiPrompt: '',
-      aiGenerated: false,
+      // IA — génération (TSD-012)
+      ai_media_type: 'illustration',  // illustration | icone | fond | autre
+      ai_prompt_template: '',         // template avec variables {{binding_path}}
     },
     defaultSize: { width_mm: 30, height_mm: 30 }
   },
