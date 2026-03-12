@@ -14,10 +14,6 @@
           <span class="nav-icon">◧</span>
           <span class="nav-label">Composants</span>
         </router-link>
-        <router-link to="/molecules" class="nav-item" :class="{ active: route.path === '/molecules' }">
-          <span class="nav-icon">◬</span>
-          <span class="nav-label">Molécules</span>
-        </router-link>
         <router-link to="/media" class="nav-item" :class="{ active: route.path === '/media' }">
           <span class="nav-icon">▣</span>
           <span class="nav-label">Média</span>

@@ -10,7 +10,6 @@ import { seedBuiltins } from './db/seedBuiltins.js';
 
 import layoutsRouter from './routes/layouts.js';
 import componentsRouter from './routes/components.js';
-import moleculesRouter from './routes/molecules.js';
 import cardsRouter from './routes/cards.js';
 import mediaRouter from './routes/media.js';
 import snapshotsRouter from './routes/snapshots.js';
@@ -46,7 +45,6 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 app.use('/api', basicAuth);
 app.use('/api/layouts', layoutsRouter);
 app.use('/api/components', componentsRouter);
-app.use('/api/molecules', moleculesRouter);
 app.use('/api/cards', cardsRouter);
 app.use('/api/media', mediaRouter);
 app.use('/api/snapshots', snapshotsRouter);

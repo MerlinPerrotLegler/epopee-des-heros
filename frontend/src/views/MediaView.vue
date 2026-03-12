@@ -92,7 +92,7 @@
               </button>
               <button class="btn-icon btn-sm" @click.stop="startRename(m)" title="Renommer">✎</button>
               <button class="btn-icon btn-sm" @click.stop="copyId(m.id)" title="Copier l'ID">⧉</button>
-              <button class="btn-icon btn-sm act-del" @click.stop="deleteMedia(m)" title="Supprimer">✕</button>
+              <button class="btn-icon btn-sm act-del" @click.stop="deleteTarget = m" title="Supprimer">✕</button>
             </div>
           </div>
         </div>
@@ -115,6 +115,18 @@
             <button v-if="canRemoveBg(preview)" class="btn-ghost btn-sm" :disabled="!!processingId" @click="removeBgFor(preview); preview = null">✦ Supprimer le fond</button>
             <button class="btn-primary btn-sm" @click="copyId(preview.id); preview = null">⧉ Copier l'ID</button>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete confirm modal -->
+    <div class="modal-overlay" v-if="deleteTarget" @click.self="deleteTarget = null">
+      <div class="modal modal-danger">
+        <h3>Supprimer le fichier ?</h3>
+        <p class="modal-hint">« {{ deleteTarget.original_name }} » sera définitivement supprimé.</p>
+        <div class="modal-actions">
+          <button class="btn-ghost" @click="deleteTarget = null">Annuler</button>
+          <button class="btn-danger" @click="confirmDeleteMedia">Supprimer</button>
         </div>
       </div>
     </div>
@@ -267,8 +279,12 @@ async function deleteFolder(f) {
   if (currentFolder.value === f.id) currentFolder.value = 'root'
 }
 
-async function deleteMedia(m) {
-  if (!confirm('Supprimer "' + m.original_name + '" ?')) return
+const deleteTarget = ref(null)
+
+async function confirmDeleteMedia() {
+  const m = deleteTarget.value
+  if (!m) return
+  deleteTarget.value = null
   await api.deleteMedia(m.id)
   media.value = media.value.filter(x => x.id !== m.id)
   if (preview.value?.id === m.id) preview.value = null
@@ -382,4 +398,14 @@ async function onDropToFolder(targetFolderId) {
 .preview-meta strong { color: var(--text-primary); }
 .preview-meta code { color: var(--text-muted); font-size: 10px; }
 .btn-sm { font-size: 11px; padding: 4px 10px; }
+
+/* Danger modal */
+.modal-danger h3 { color: #ef4444; }
+.modal-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 8px; line-height: 1.5; overflow: hidden; text-overflow: ellipsis; }
+.btn-danger {
+  padding: 6px 14px; font-size: 12px; font-weight: 500; cursor: pointer;
+  background: #ef4444; border: 1px solid #ef4444; border-radius: var(--radius-sm);
+  color: #fff; transition: background 80ms;
+}
+.btn-danger:hover { background: #dc2626; border-color: #dc2626; }
 </style>

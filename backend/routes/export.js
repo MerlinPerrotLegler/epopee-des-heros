@@ -45,27 +45,18 @@ router.post('/prepare', (req, res) => {
   // Parse instance data
   instances.forEach(i => i.data = JSON.parse(i.data));
 
-  // Fetch components and molecules referenced in layouts
+  // Fetch components referenced in layouts
   const components = {};
-  const molecules = {};
-  
   const allComponents = db.prepare('SELECT * FROM components').all();
   allComponents.forEach(c => {
     c.definition = JSON.parse(c.definition);
     components[c.id] = c;
-  });
-  
-  const allMolecules = db.prepare('SELECT * FROM molecules').all();
-  allMolecules.forEach(m => {
-    m.definition = JSON.parse(m.definition);
-    molecules[m.id] = m;
   });
 
   res.json({
     instances,
     layouts,
     components,
-    molecules,
     exportConfig: {
       page_width_mm: page_width_mm || 210,
       page_height_mm: page_height_mm || 297,

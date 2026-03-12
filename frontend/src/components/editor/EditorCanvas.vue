@@ -65,11 +65,6 @@
             :zoom="store.zoom"
           />
 
-          <!-- Molecule placeholder -->
-          <div v-else-if="el.type === 'molecule'" class="placeholder-box molecule-ph">
-            <span>◬ {{ el.moleculeId }}</span>
-          </div>
-
           <!-- Floating toolbar : pas de duplication pour le fond -->
           <div
             v-if="store.selectedElementId === el.id && !el._layerLocked"
@@ -422,11 +417,6 @@ function startPan(e) {
 .component-ph {
   background: rgba(108, 122, 255, 0.05);
   border-color: rgba(108, 122, 255, 0.3);
-}
-
-.molecule-ph {
-  background: rgba(74, 222, 128, 0.05);
-  border-color: rgba(74, 222, 128, 0.3);
 }
 
 /* Floating element toolbar (delete/duplicate) */

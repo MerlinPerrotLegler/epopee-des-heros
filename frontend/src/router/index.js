@@ -28,11 +28,6 @@ const routes = [
     props: true
   },
   {
-    path: '/molecules',
-    name: 'Molecules',
-    component: () => import('@/views/MoleculesView.vue')
-  },
-  {
     path: '/media',
     name: 'Media',
     component: () => import('@/views/MediaView.vue')

@@ -46,19 +46,6 @@
         </div>
       </div>
 
-      <div class="panel-section" v-if="molecules.length">
-        <div class="panel-section-title">Molécules</div>
-        <div class="component-list">
-          <button
-            v-for="mol in molecules" :key="mol.id"
-            class="component-btn"
-            @click="addMolecule(mol)"
-          >
-            <span>◬</span>
-            <span>{{ mol.name }}</span>
-          </button>
-        </div>
-      </div>
     </div>
 
     <!-- Properties Tab -->
@@ -100,13 +87,9 @@ const tabs = [
 
 const activeTab = ref('layers')
 const components = ref([])
-const molecules = ref([])
 
 onMounted(async () => {
-  [components.value, molecules.value] = await Promise.all([
-    api.getComponents(),
-    api.getMolecules()
-  ])
+  components.value = await api.getComponents()
 })
 
 // Auto-switch to props when element selected
@@ -129,16 +112,6 @@ function addComponent(comp) {
   })
 }
 
-function addMolecule(mol) {
-  const def = mol.definition || {}
-  store.addElement({
-    type: 'molecule',
-    moleculeId: mol.id,
-    width_mm: def.width_mm || 20,
-    height_mm: def.height_mm || 10,
-    params: {}
-  })
-}
 </script>
 
 <style scoped>

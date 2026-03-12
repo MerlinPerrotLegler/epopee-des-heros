@@ -44,14 +44,6 @@ export const api = {
   duplicateComponent: (id, data) => request(`/components/${id}/duplicate`, { method: 'POST', body: data || {} }),
   deleteComponent: (id) => request(`/components/${id}`, { method: 'DELETE' }),
 
-  // Molecules
-  getMolecules: () => request('/molecules'),
-  getMolecule: (id) => request(`/molecules/${id}`),
-  createMolecule: (data) => request('/molecules', { method: 'POST', body: data }),
-  updateMolecule: (id, data) => request(`/molecules/${id}`, { method: 'PUT', body: data }),
-  duplicateMolecule: (id, data) => request(`/molecules/${id}/duplicate`, { method: 'POST', body: data || {} }),
-  deleteMolecule: (id) => request(`/molecules/${id}`, { method: 'DELETE' }),
-
   // Cards
   getCards: (layoutId) => request(layoutId ? `/cards?layout_id=${layoutId}` : '/cards'),
   getCard: (id) => request(`/cards/${id}`),
