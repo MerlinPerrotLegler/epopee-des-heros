@@ -28,6 +28,8 @@ export const useEditorStore = defineStore('editor', () => {
   const panY = ref(0)
   const snapGrid = ref(1) // mm
   const showGrid = ref(true)
+  // 'fit' | '1:1' | null — EditorCanvas écoute et exécute le calcul (accès container)
+  const requestFit = ref(null)
 
   // Preview mode (with card instance data)
   const previewData = ref(null) // null = edit mode, {} = preview with data
@@ -110,6 +112,7 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = []
       selectedElementId.value = null
       selectedLayerId.value = layers.value[0]?.id || null
+      requestFit.value = 'fit'
       // Pré-charger les composants référencés dans le layout
       await _preloadComponents()
     } finally {
@@ -161,6 +164,7 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = []
       selectedElementId.value = null
       selectedLayerId.value = 'default'
+      requestFit.value = 'fit'
     } finally {
       loading.value = false
     }
@@ -351,7 +355,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     layout, loading, dirty, saving,
     selectedElementId, selectedLayerId, activeCellIdx, backgroundElement,
-    zoom, panX, panY, snapGrid, showGrid,
+    zoom, panX, panY, snapGrid, showGrid, requestFit,
     previewData,
     componentsCache,
     definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,

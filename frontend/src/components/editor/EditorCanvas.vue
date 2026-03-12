@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -216,15 +216,44 @@ function onCanvasBgClick(e) {
 
 function onWheel(e) {
   if (e.ctrlKey || e.metaKey) {
-    // Zoom
-    const delta = -e.deltaY * 0.001
-    store.zoom = Math.max(0.1, Math.min(5, store.zoom + delta))
+    store.zoom = Math.max(0.05, store.zoom + (-e.deltaY * 0.001))
   } else {
-    // Pan
     store.panX -= e.deltaX
     store.panY -= e.deltaY
   }
 }
+
+const PX_PER_MM  = 3.7795
+const RULER_SIZE = 40
+const FIT_PAD    = 48 // espace autour de la carte en mode fit
+
+function applyFit(mode) {
+  if (!containerRef.value) return
+  const cw = containerRef.value.offsetWidth  - RULER_SIZE
+  const ch = containerRef.value.offsetHeight - RULER_SIZE
+  if (mode === 'fit') {
+    const fz = Math.min(
+      (cw - FIT_PAD * 2) / (cardW.value * PX_PER_MM),
+      (ch - FIT_PAD * 2) / (cardH.value * PX_PER_MM)
+    )
+    store.zoom = fz
+    store.panX = (cw - cardW.value * PX_PER_MM * fz) / 2
+    store.panY = (ch - cardH.value * PX_PER_MM * fz) / 2
+  } else if (mode === '1:1') {
+    store.zoom = 1
+    store.panX = (cw - cardW.value * PX_PER_MM) / 2
+    store.panY = (ch - cardH.value * PX_PER_MM) / 2
+  }
+}
+
+watch(() => store.requestFit, (val) => {
+  if (!val) return
+  // nextTick pour que le container soit rendu si layout vient de changer
+  requestAnimationFrame(() => {
+    applyFit(val)
+    store.requestFit = null
+  })
+})
 
 let panning = false
 function startPan(e) {

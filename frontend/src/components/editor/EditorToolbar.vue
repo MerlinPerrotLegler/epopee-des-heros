@@ -10,9 +10,11 @@
       <span class="save-indicator" v-if="store.dirty">● non sauvegardé</span>
     </div>
     <div class="toolbar-center">
-      <button class="btn-icon btn-sm" @click="store.zoom = Math.max(0.25, store.zoom - 0.25)">−</button>
+      <button class="btn-icon btn-sm" @click="store.zoom = Math.max(0.05, store.zoom - 0.25)">−</button>
       <span class="zoom-label" @click="store.zoom = 1">{{ Math.round(store.zoom * 100) }}%</span>
-      <button class="btn-icon btn-sm" @click="store.zoom = Math.min(4, store.zoom + 0.25)">+</button>
+      <button class="btn-icon btn-sm" @click="store.zoom += 0.25">+</button>
+      <button class="btn-zoom btn-sm" @click="store.requestFit = '1:1'" title="Taille réelle (1:1)">1:1</button>
+      <button class="btn-zoom btn-sm" @click="store.requestFit = 'fit'" title="Ajuster à la fenêtre">⊡</button>
       <span class="toolbar-divider"></span>
       <label class="toggle-label">
         <input type="checkbox" v-model="store.showGrid" />
@@ -79,6 +81,19 @@ const store = useEditorStore()
   text-align: center;
 }
 .zoom-label:hover { color: var(--accent-primary); }
+
+.btn-zoom {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  line-height: 1.6;
+}
+.btn-zoom:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
 
 .toggle-label, .snap-label {
   font-size: 11px;
