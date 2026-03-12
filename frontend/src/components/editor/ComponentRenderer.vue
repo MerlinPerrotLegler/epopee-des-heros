@@ -44,11 +44,26 @@ const comp = computed(() => store.componentsCache[props.componentId] ?? null)
 const compW = computed(() => comp.value?.width_mm || 60)
 const compH = computed(() => comp.value?.height_mm || 40)
 
-// Elements come from the single-layer structure or from definition.layers[0].elements
+// Flatten component definition tree to a renderable list of elements
 const elements = computed(() => {
   if (!comp.value) return []
-  // Components have definition.elements (flat) or definition.layers[0].elements
-  return comp.value.definition?.elements || comp.value.definition?.layers?.[0]?.elements || []
+  const def = comp.value.definition
+  if (!def) return []
+  // Old flat format
+  if (def.elements) return def.elements
+  // New tree format: { layers: [...] } — flatten recursively
+  if (def.layers) {
+    const result = []
+    function flatten(items) {
+      for (const item of items) {
+        if (item.kind === 'group') flatten(item.children || [])
+        else result.push(item)
+      }
+    }
+    flatten(def.layers)
+    return result
+  }
+  return []
 })
 
 // Scale factor to fit component into the allocated space

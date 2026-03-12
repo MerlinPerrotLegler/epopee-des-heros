@@ -9,7 +9,8 @@
       "Bash(nvm --version)",
       "Bash(fnm --version)",
       "Bash(volta --version)",
-      "Bash(ls /Users/merlinperrot/Code/epopee-guiles-et-avanturiers/.env*)"
+      "Bash(ls /Users/merlinperrot/Code/epopee-guiles-et-avanturiers/.env*)",
+      "Bash(npm install:*)"
     ]
   }
 }

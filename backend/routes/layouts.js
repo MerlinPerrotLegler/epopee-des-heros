@@ -10,9 +10,9 @@ router.get('/', (req, res) => {
   const { type } = req.query;
   let rows;
   if (type) {
-    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, created_at, updated_at FROM layouts WHERE card_type = ? ORDER BY name').all(type);
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, thumbnail, created_at, updated_at FROM layouts WHERE card_type = ? ORDER BY name').all(type);
   } else {
-    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, created_at, updated_at FROM layouts ORDER BY name').all();
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, thumbnail, created_at, updated_at FROM layouts ORDER BY name').all();
   }
   res.json(rows);
 });
@@ -68,15 +68,26 @@ router.patch('/:id', (req, res) => {
   res.json(row);
 });
 
-// Update layout definition (the visual structure)
+// Update layout definition (the visual structure) + optional thumbnail
 router.put('/:id/definition', (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT id FROM layouts WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
-  db.prepare("UPDATE layouts SET definition = ?, updated_at = datetime('now') WHERE id = ?").run(
-    JSON.stringify(req.body), req.params.id
-  );
+  // Body peut être { definition, thumbnail } ou directement la définition (legacy)
+  const hasWrapper = req.body && typeof req.body === 'object' && ('definition' in req.body || 'thumbnail' in req.body)
+  const definition = hasWrapper ? req.body.definition : req.body
+  const thumbnail  = hasWrapper ? (req.body.thumbnail || null) : null
+
+  if (thumbnail !== null) {
+    db.prepare("UPDATE layouts SET definition = ?, thumbnail = ?, updated_at = datetime('now') WHERE id = ?").run(
+      JSON.stringify(definition), thumbnail, req.params.id
+    );
+  } else {
+    db.prepare("UPDATE layouts SET definition = ?, updated_at = datetime('now') WHERE id = ?").run(
+      JSON.stringify(definition), req.params.id
+    );
+  }
   res.json({ ok: true });
 });
 

@@ -56,10 +56,11 @@ export function resolveElementParams(element, data) {
 export function getBindablePaths(definition) {
   const paths = []
   
-  for (const layer of (definition.layers || [])) {
-    for (const el of (layer.elements || [])) {
+  function walkItems(items) {
+    for (const item of items) {
+      if (item.kind === 'group') { walkItems(item.children || []); continue }
+      const el = item
       if (!el.nameInLayout) continue
-
       for (const [paramKey, paramValue] of Object.entries(el.params || {})) {
         paths.push({
           path: `${el.nameInLayout}.${paramKey}`,
@@ -71,6 +72,7 @@ export function getBindablePaths(definition) {
       }
     }
   }
+  walkItems(definition.layers || [])
 
   return paths
 }

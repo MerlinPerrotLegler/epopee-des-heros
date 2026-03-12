@@ -146,6 +146,42 @@
     </div>
   </div>
 
+  <!-- Group selected -->
+  <div class="properties-panel" v-else-if="selectedGroup">
+    <div class="panel-section">
+      <div class="panel-section-title">Groupe</div>
+      <div class="field-row">
+        <label>Nom</label>
+        <input :value="selectedGroup.name" @input="store.updateItem(selectedGroup.id, { name: $event.target.value })" style="flex:1" />
+      </div>
+      <div class="field-row">
+        <label>Verrouillé</label>
+        <input type="checkbox" :checked="selectedGroup.locked" @change="store.updateItem(selectedGroup.id, { locked: $event.target.checked })" />
+      </div>
+      <div class="field-row">
+        <label>Opacité</label>
+        <input type="number" step="5" min="0" max="100"
+          :value="Math.round((selectedGroup.opacity ?? 1) * 100)"
+          @input="store.updateItem(selectedGroup.id, { opacity: +$event.target.value / 100 })"
+        />
+        <span class="unit">%</span>
+      </div>
+    </div>
+    <div class="panel-section">
+      <div class="panel-section-title">Déplacer le groupe</div>
+      <div class="field-row">
+        <label>Δ X</label>
+        <input type="number" step="0.5" :value="0" @change="store.moveGroupBy(selectedGroup.id, +$event.target.value, 0); $event.target.value = 0" />
+        <span class="unit">mm</span>
+      </div>
+      <div class="field-row">
+        <label>Δ Y</label>
+        <input type="number" step="0.5" :value="0" @change="store.moveGroupBy(selectedGroup.id, 0, +$event.target.value); $event.target.value = 0" />
+        <span class="unit">mm</span>
+      </div>
+    </div>
+  </div>
+
   <div class="properties-empty" v-else>
     <p>Sélectionnez un élément pour voir ses propriétés.</p>
   </div>
@@ -163,6 +199,10 @@ import ColorPickerAlpha from './ColorPickerAlpha.vue'
 
 const store = useEditorStore()
 const el = computed(() => store.selectedElement)
+const selectedGroup = computed(() => {
+  const item = store.selectedItem
+  return item?.kind === 'group' ? item : null
+})
 const fontsStore = useFontsStore()
 
 const typeLabel = computed(() => {

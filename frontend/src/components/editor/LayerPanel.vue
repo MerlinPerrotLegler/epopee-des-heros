@@ -1,312 +1,463 @@
 <template>
   <div class="layer-panel">
-    <div class="panel-section">
-      <div class="panel-section-title" style="display:flex; justify-content:space-between; align-items:center;">
-        <span>Calques</span>
-        <button class="btn-icon btn-sm" @click="store.addLayer()" title="Nouveau calque">+</button>
-      </div>
+    <!-- Header -->
+    <div class="panel-section-title lp-header">
+      <span>Calques</span>
+      <button class="btn-icon btn-sm" @click="store.addGroup()" title="Nouveau groupe">⊞</button>
+    </div>
 
-      <div
-        class="layer-list"
-        @dragover.prevent="onListDragOver"
-        @drop.prevent="onListDrop"
-      >
+    <!-- Tree -->
+    <div
+      class="layer-list"
+      @dragover.prevent
+      @drop.prevent="onListDrop"
+    >
+      <template v-for="row in flatTree" :key="row.id">
+        <!-- Drop zone ABOVE this row -->
         <div
-          v-for="(layer, idx) in reversedLayers" :key="layer.id"
+          class="drop-zone"
+          :class="{ active: dropTarget === row.id && dropMode === 'above' }"
+          @dragover.prevent="setDrop(row.id, 'above')"
+          @dragleave="clearDrop"
+          @drop.prevent="commitZoneDrop(row.id, 'above')"
+        ></div>
+
+        <div
           class="layer-item"
           :class="{
-            active: store.selectedLayerId === layer.id,
-            'drag-over': dragOverIdx === idx,
+            selected: store.selectedItemId === row.id,
+            'drop-inside': dropTarget === row.id && dropMode === 'inside',
+            'is-group': row.kind === 'group',
           }"
+          :style="{ paddingLeft: `${8 + row._depth * 14}px` }"
           draggable="true"
-          @dragstart="onDragStart($event, idx)"
+          @dragstart="onDragStart($event, row.id)"
           @dragend="onDragEnd"
-          @dragover.prevent="dragOverIdx = idx"
-          @dragleave="dragOverIdx = null"
-          @drop.prevent="onDrop(idx)"
-          @click="store.selectedLayerId = layer.id"
+          @dragover.prevent="onItemDragOver(row.id, row.kind)"
+          @dragleave="clearDrop"
+          @drop.prevent="onItemDrop(row.id, row.kind)"
+          @click="selectItem(row)"
         >
-          <!-- Drag handle -->
-          <span class="layer-drag-handle" title="Réordonner">⋮⋮</span>
+          <!-- Expand toggle for groups -->
+          <button
+            v-if="row.kind === 'group'"
+            class="expand-btn"
+            @click.stop="toggleExpand(row.id)"
+            :title="expanded.has(row.id) ? 'Réduire' : 'Développer'"
+          >{{ expanded.has(row.id) ? '▾' : '▸' }}</button>
+          <span v-else class="expand-spacer"></span>
 
+          <!-- Visibility -->
           <button
             class="btn-icon btn-sm"
-            @click.stop="store.updateLayer(layer.id, { visible: !layer.visible })"
-            :title="layer.visible ? 'Masquer' : 'Afficher'"
-          >{{ layer.visible ? '◉' : '○' }}</button>
+            @click.stop="store.updateItem(row.id, { visible: row.visible === false })"
+            :title="row.visible !== false ? 'Masquer' : 'Afficher'"
+          >{{ row.visible !== false ? '◉' : '○' }}</button>
 
+          <!-- Icon -->
+          <span class="layer-icon">{{ getIcon(row) }}</span>
+
+          <!-- Name (editable) -->
           <span
+            v-if="editingId !== row.id"
             class="layer-name"
-            v-if="editingId !== layer.id"
-            @dblclick="startRename(layer)"
-          >{{ layer.name }}</span>
+            @dblclick.stop="startRename(row)"
+          >{{ getDisplayName(row) }}</span>
           <input
             v-else
-            ref="renameInput"
             class="layer-name-input"
             v-model="editName"
-            @blur="finishRename(layer)"
-            @keydown.enter="finishRename(layer)"
+            @blur="finishRename(row)"
+            @keydown.enter="finishRename(row)"
             @keydown.escape="editingId = null"
+            @click.stop
+            autofocus
           />
 
-          <!-- Opacity badge — drag left/right to change -->
+          <!-- Opacity badge -->
           <span
             class="layer-opacity"
-            :title="`Opacité : ${Math.round((layer.opacity ?? 1) * 100)}%\nGlisser gauche/droite pour modifier`"
-            @mousedown.stop="startOpacityDrag($event, layer)"
-          >{{ Math.round((layer.opacity ?? 1) * 100) }}%</span>
+            :class="{ 'opacity-faded': (row.opacity ?? 1) >= 1 }"
+            :title="`Opacité : ${Math.round((row.opacity ?? 1) * 100)}%\nGlisser gauche/droite`"
+            @mousedown.stop="startOpacityDrag($event, row)"
+          >{{ Math.round((row.opacity ?? 1) * 100) }}%</span>
 
+          <!-- Lock (SVG, CSS-colorable) -->
           <button
-            class="btn-icon btn-sm"
-            @click.stop="store.updateLayer(layer.id, { locked: !layer.locked })"
-            :title="layer.locked ? 'Déverrouiller' : 'Verrouiller'"
-          >{{ layer.locked ? '🔒' : '🔓' }}</button>
+            class="btn-icon btn-sm btn-lock"
+            :class="{ 'is-locked': row.locked }"
+            @click.stop="store.updateItem(row.id, { locked: !row.locked })"
+            :title="row.locked ? 'Déverrouiller' : 'Verrouiller'"
+          >
+            <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true">
+              <rect x="1" y="5" width="8" height="7" rx="1.2" />
+              <!-- Closed shackle -->
+              <path
+                v-if="row.locked"
+                d="M3 5V3.5a2 2 0 0 1 4 0V5"
+                fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              />
+              <!-- Open shackle (right side detached) -->
+              <path
+                v-else
+                d="M3 5V3.5a2 2 0 0 1 4 0"
+                fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+              />
+            </svg>
+          </button>
 
+          <!-- Delete -->
           <button
-            class="btn-icon btn-sm"
-            @click.stop="store.removeLayer(layer.id)"
+            class="btn-icon btn-sm act-del"
+            @click.stop="store.removeItem(row.id)"
             title="Supprimer"
-            v-if="store.layers.length > 1"
           >✕</button>
         </div>
+
+        <!-- Drop zone BELOW the last child of a group (bottom of group's children) -->
+        <div
+          v-if="isLastChildInGroup(row)"
+          class="drop-zone"
+          :class="{ active: dropTarget === row.id && dropMode === 'below-last' }"
+          @dragover.prevent="setDrop(row.id, 'below-last')"
+          @dragleave="clearDrop"
+          @drop.prevent="commitZoneDrop(row.id, 'below-last')"
+        ></div>
+      </template>
+
+      <!-- Drop zone at the very bottom of the top-level list -->
+      <div
+        class="drop-zone"
+        :class="{ active: dropMode === 'list-bottom' }"
+        @dragover.prevent="setDrop(null, 'list-bottom')"
+        @dragleave="clearDrop"
+        @drop.prevent="onListBottomDrop"
+      ></div>
+
+      <div v-if="!flatTree.length" class="empty-hint">
+        Utilisez "Ajouter" pour placer des éléments.
       </div>
     </div>
 
-    <!-- Layer elements list -->
-    <div class="panel-section" v-if="store.activeLayer">
-      <div class="panel-section-title">Éléments du calque</div>
-      <div class="element-list" v-if="layerElements.length">
-        <div
-          v-for="el in layerElements" :key="el.id"
-          class="element-item"
-          :class="{ active: store.selectedElementId === el.id }"
-          @click="store.selectedElementId = el.id"
-        >
-          <span class="el-type">{{ getTypeIcon(el) }}</span>
-          <span class="el-name">{{ el.nameInLayout || getTypeLabel(el) }}</span>
-          <span class="el-pos">{{ el.x_mm.toFixed(0) }},{{ el.y_mm.toFixed(0) }}</span>
-          <button class="btn-icon btn-sm" @click.stop="store.duplicateElement(el.id)" title="Dupliquer">⧉</button>
-          <button class="btn-icon btn-sm" @click.stop="store.removeElement(el.id)" title="Supprimer">✕</button>
-        </div>
+    <!-- Group properties -->
+    <div class="panel-section" v-if="selectedGroup">
+      <div class="panel-section-title">Groupe — {{ selectedGroup.name }}</div>
+      <div class="field-row">
+        <label>Δ X</label>
+        <input type="number" step="0.5" value="0"
+          @change="store.moveGroupBy(selectedGroup.id, +$event.target.value, 0); $event.target.value = 0" />
+        <span class="unit">mm</span>
       </div>
-      <div v-else class="empty-hint">Aucun élément. Allez dans "Ajouter".</div>
+      <div class="field-row">
+        <label>Δ Y</label>
+        <input type="number" step="0.5" value="0"
+          @change="store.moveGroupBy(selectedGroup.id, 0, +$event.target.value); $event.target.value = 0" />
+        <span class="unit">mm</span>
+      </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 
 const store = useEditorStore()
-const editingId = ref(null)
-const editName = ref('')
 
-const reversedLayers = computed(() => [...store.layers].reverse())
+// ── Expanded state (persisted in localStorage) ────────────────────────────────
+const expanded = ref(new Set())
 
-const layerElements = computed(() => {
-  return store.activeLayer?.elements || []
+const storageKey = computed(() => `layer-expanded-${store.layout?.id || 'default'}`)
+
+function saveExpanded() {
+  try { localStorage.setItem(storageKey.value, JSON.stringify([...expanded.value])) } catch {}
+}
+
+function loadExpanded() {
+  try {
+    const saved = localStorage.getItem(storageKey.value)
+    expanded.value = saved ? new Set(JSON.parse(saved)) : new Set()
+  } catch { expanded.value = new Set() }
+}
+
+onMounted(loadExpanded)
+watch(() => store.layout?.id, loadExpanded)
+
+function toggleExpand(id) {
+  const next = new Set(expanded.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  expanded.value = next
+  saveExpanded()
+}
+
+// ── Flatten tree for rendering (reversed: last in array = top in UI) ──────────
+const flatTree = computed(() => {
+  const rows = []
+  function walk(items, depth, parentId) {
+    for (let i = items.length - 1; i >= 0; i--) {
+      const item = items[i]
+      rows.push({ ...item, _depth: depth, _parentId: parentId ?? null })
+      if (item.kind === 'group' && expanded.value.has(item.id)) {
+        walk(item.children || [], depth + 1, item.id)
+      }
+    }
+  }
+  walk(store.layers, 0, null)
+  return rows
 })
 
-function getTypeIcon(el) {
-  if (el.type === 'atom' && ATOM_TYPES[el.atomType]) return ATOM_TYPES[el.atomType].icon
-  if (el.type === 'component') return '◧'
-  if (el.type === 'molecule') return '◬'
+// True for the bottom-most visual child of a group (= index 0 in children array)
+function isLastChildInGroup(row) {
+  if (!row._parentId) return false
+  const siblings = flatTree.value.filter(r => r._parentId === row._parentId)
+  return siblings[siblings.length - 1]?.id === row.id
+}
+
+// ── Names & icons ─────────────────────────────────────────────────────────────
+function getIcon(row) {
+  if (row.kind === 'group') return '▤'
+  if (row.type === 'atom' && ATOM_TYPES[row.atomType]) return ATOM_TYPES[row.atomType].icon
+  if (row.type === 'component') return '◧'
+  if (row.type === 'molecule') return '◬'
   return '?'
 }
 
-function getTypeLabel(el) {
-  if (el.type === 'atom' && ATOM_TYPES[el.atomType]) return ATOM_TYPES[el.atomType].label
-  if (el.type === 'component') return `Composant`
-  if (el.type === 'molecule') return `Molécule`
-  return 'Élément'
+function getDisplayName(row) {
+  if (row.kind === 'group') return row.name || 'Groupe'
+  return row.name || row.nameInLayout || ATOM_TYPES[row.atomType]?.label || row.type || '?'
 }
 
-function startRename(layer) {
-  editingId.value = layer.id
-  editName.value = layer.name
-  nextTick(() => {
-    const input = document.querySelector('.layer-name-input')
-    if (input) input.focus()
-  })
+// ── Rename ────────────────────────────────────────────────────────────────────
+const editingId = ref(null)
+const editName  = ref('')
+
+function startRename(row) {
+  editingId.value = row.id
+  editName.value  = getDisplayName(row)
 }
 
-function finishRename(layer) {
-  if (editName.value.trim()) {
-    store.updateLayer(layer.id, { name: editName.value.trim() })
-  }
+function finishRename(row) {
+  if (editName.value.trim()) store.updateItem(row.id, { name: editName.value.trim() })
   editingId.value = null
 }
 
-// ── Drag & drop reorder ─────────────────────────────────────────────────────
-// reversedLayers is a visual reversal — index 0 in reversedLayers = last real layer
-// We convert: realIdx = (layers.length - 1) - reversedIdx
+// ── Selection ─────────────────────────────────────────────────────────────────
+function selectItem(row) {
+  store.selectedItemId = row.id
+  if (row.kind !== 'group') {
+    store.selectedElementId = row.id
+  } else {
+    store.selectedElementId = null
+    if (!expanded.value.has(row.id)) toggleExpand(row.id)
+  }
+}
 
-const dragSrcIdx  = ref(null)  // index in reversedLayers
-const dragOverIdx = ref(null)
+const selectedGroup = computed(() => {
+  const item = store.selectedItem
+  return item?.kind === 'group' ? item : null
+})
 
-function onDragStart(e, reversedIdx) {
-  dragSrcIdx.value = reversedIdx
+// ── Opacity drag ──────────────────────────────────────────────────────────────
+function startOpacityDrag(e, row) {
+  e.preventDefault()
+  const startX  = e.clientX
+  const startOp = row.opacity ?? 1
+  const onMove = (ev) => {
+    const newOp = Math.max(0, Math.min(1, startOp + (ev.clientX - startX) / 150))
+    store.updateItem(row.id, { opacity: Math.round(newOp * 100) / 100 })
+  }
+  const onUp = () => { window.removeEventListener('mousemove', onMove); window.removeEventListener('mouseup', onUp) }
+  window.addEventListener('mousemove', onMove)
+  window.addEventListener('mouseup', onUp)
+}
+
+// ── Drag & drop ───────────────────────────────────────────────────────────────
+// IMPORTANT: The UI reverses the array order (last item in array = top in UI).
+// So "above" in the visual = "after" in the array, and vice-versa.
+
+const dragSrcId  = ref(null)
+const dropTarget = ref(null)
+const dropMode   = ref(null)   // 'above' | 'inside' | 'below-last' | 'list-bottom'
+
+function onDragStart(e, id) {
+  dragSrcId.value = id
   e.dataTransfer.effectAllowed = 'move'
 }
 
 function onDragEnd() {
-  dragSrcIdx.value = null
-  dragOverIdx.value = null
+  dragSrcId.value = null
+  dropTarget.value = null
+  dropMode.value   = null
 }
 
-function onListDragOver(e) {
-  e.preventDefault()
+function setDrop(id, mode) {
+  if (!dragSrcId.value) return
+  dropTarget.value = id
+  dropMode.value   = mode
 }
 
-function onListDrop(e) {
-  // handled by individual item @drop
+function clearDrop() {
+  dropTarget.value = null
+  dropMode.value   = null
 }
 
-function onDrop(reversedTargetIdx) {
-  if (dragSrcIdx.value === null || dragSrcIdx.value === reversedTargetIdx) {
-    onDragEnd()
-    return
-  }
-  const n = store.layers.length
-  const fromReal = (n - 1) - dragSrcIdx.value
-  const toReal   = (n - 1) - reversedTargetIdx
-  store.reorderLayers(fromReal, toReal)
+// Hovering directly over a row (not a zone) — offer 'inside' for groups
+function onItemDragOver(id, kind) {
+  if (!dragSrcId.value || dragSrcId.value === id) return
+  dropTarget.value = id
+  dropMode.value   = kind === 'group' ? 'inside' : null
+}
+
+function onItemDrop(id, kind) {
+  if (!dragSrcId.value || dragSrcId.value === id) { onDragEnd(); return }
+  if (kind === 'group') store.moveItemToGroup(dragSrcId.value, id)
   onDragEnd()
 }
 
-// ── Per-layer opacity drag ──────────────────────────────────────────────────
-function startOpacityDrag(e, layer) {
-  e.preventDefault()
-  const startX  = e.clientX
-  const startOp = layer.opacity ?? 1
-
-  const onMove = (ev) => {
-    const delta  = (ev.clientX - startX) / 150  // 150px = full range
-    const newOp  = Math.max(0, Math.min(1, startOp + delta))
-    store.updateLayer(layer.id, { opacity: Math.round(newOp * 100) / 100 })
+// Drop zone commit.
+// Because the UI is REVERSED, 'above' visually = 'after' in array, 'below-last' = 'before' in array.
+function commitZoneDrop(id, mode) {
+  if (!dragSrcId.value) { onDragEnd(); return }
+  if (mode === 'above') {
+    // Visual "above" item → insert after it in array (higher index = higher in visual)
+    store.reorderItemAroundTarget(dragSrcId.value, id, 'after')
+  } else if (mode === 'below-last') {
+    // Bottom of group children → insert before first child (index 0)
+    store.reorderItemAroundTarget(dragSrcId.value, id, 'before')
   }
+  onDragEnd()
+}
 
-  const onUp = () => {
-    window.removeEventListener('mousemove', onMove)
-    window.removeEventListener('mouseup', onUp)
+// Drop on the empty area at the very bottom of the list
+function onListBottomDrop() {
+  if (!dragSrcId.value) { onDragEnd(); return }
+  // Bottom of visual list = index 0 in array = insert before the first item in array
+  const topLevel = flatTree.value.filter(r => r._parentId === null)
+  const lowestRow = topLevel[topLevel.length - 1] // last in flatTree = index 0 in array
+  if (lowestRow && lowestRow.id !== dragSrcId.value) {
+    store.reorderItemAroundTarget(dragSrcId.value, lowestRow.id, 'before')
   }
+  onDragEnd()
+}
 
-  window.addEventListener('mousemove', onMove)
-  window.addEventListener('mouseup', onUp)
+// Drop on empty space (unnest to top level)
+function onListDrop() {
+  if (!dragSrcId.value) return
+  store.moveItemToGroup(dragSrcId.value, null)
+  onDragEnd()
 }
 </script>
 
 <style scoped>
+.layer-panel { display: flex; flex-direction: column; }
+
+.lp-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
 .layer-list {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  min-height: 20px;
 }
+
+.drop-zone {
+  height: 3px;
+  border-radius: 2px;
+  transition: background 60ms;
+  flex-shrink: 0;
+}
+.drop-zone.active { background: var(--accent-primary); }
 
 .layer-item {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 6px;
+  gap: 3px;
+  padding: 3px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
   border: 1px solid transparent;
+  min-width: 0;
 }
-
 .layer-item:hover { background: var(--bg-hover); }
-.layer-item.active { background: var(--bg-tertiary); }
-.layer-item.drag-over { border-color: var(--accent-primary); background: rgba(108,122,255,0.08); }
+.layer-item.selected { background: var(--bg-tertiary); }
+.layer-item.is-group { background: rgba(108,122,255,0.04); }
+.layer-item.is-group.selected { background: rgba(108,122,255,0.12); }
+.layer-item.drop-inside { border-color: var(--accent-primary); background: rgba(108,122,255,0.1); }
 
-.layer-drag-handle {
-  font-size: 10px;
-  color: var(--text-muted);
-  cursor: grab;
-  flex-shrink: 0;
-  line-height: 1;
-  letter-spacing: -1px;
-  padding: 0 2px;
-  user-select: none;
+.expand-btn {
+  width: 14px; height: 14px;
+  background: none; border: none;
+  color: var(--text-muted); cursor: pointer;
+  font-size: 9px; padding: 0; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
 }
-.layer-drag-handle:active { cursor: grabbing; }
+.expand-btn:hover { color: var(--accent-primary); }
+
+.expand-spacer { width: 14px; flex-shrink: 0; }
+
+.layer-icon {
+  font-size: 12px; width: 16px;
+  text-align: center; flex-shrink: 0;
+}
 
 .layer-name {
-  flex: 1;
-  font-size: 12px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  flex: 1; font-size: 11px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
 }
 
-.layer-name-input {
-  flex: 1;
-  font-size: 12px;
-  padding: 1px 4px;
-}
+.layer-name-input { flex: 1; font-size: 11px; padding: 1px 4px; min-width: 0; }
 
 .layer-opacity {
-  font-size: 9px;
-  font-family: var(--font-mono);
-  color: var(--text-muted);
-  cursor: ew-resize;
-  padding: 1px 4px;
-  border-radius: 3px;
+  font-size: 9px; font-family: var(--font-mono);
+  color: var(--text-muted); cursor: ew-resize;
+  padding: 1px 3px; border-radius: 3px;
   border: 1px solid var(--border-subtle);
-  user-select: none;
-  flex-shrink: 0;
-  min-width: 28px;
-  text-align: center;
+  user-select: none; flex-shrink: 0; min-width: 26px; text-align: center;
+  transition: opacity 80ms;
 }
 .layer-opacity:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+.layer-opacity.opacity-faded { opacity: 0; pointer-events: none; }
+.layer-item:hover .layer-opacity.opacity-faded { opacity: 1; pointer-events: auto; }
 
-.element-list {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-
-.element-item {
+/* Lock button — monochrome SVG icon */
+.btn-lock {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
-  font-size: 11px;
-  transition: background var(--transition-fast);
-}
-
-.element-item:hover { background: var(--bg-hover); }
-.element-item.active { background: var(--bg-active); }
-
-.el-type {
-  width: 18px;
-  text-align: center;
+  justify-content: center;
+  color: var(--accent-primary);   /* unlocked = accent color (same as active tab text) */
   flex-shrink: 0;
-  font-size: 12px;
+  transition: color 80ms;
 }
+.btn-lock:hover { color: var(--accent-primary); opacity: 0.7; }
+.btn-lock.is-locked { color: #ef4444; opacity: 1; }
+.btn-lock.is-locked:hover { color: #dc2626; }
 
-.el-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  color: var(--text-secondary);
-}
+/* Hide lock when unlocked until row is hovered */
+.layer-item:not(:hover) .btn-lock:not(.is-locked) { opacity: 0; pointer-events: none; }
+.layer-item:hover .btn-lock { opacity: 1; pointer-events: auto; }
 
-.el-pos {
-  font-family: var(--font-mono);
-  font-size: 9px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-}
+.act-del:hover { color: #ef4444 !important; }
 
 .empty-hint {
-  font-size: 11px;
-  color: var(--text-muted);
-  padding: 8px;
+  font-size: 11px; color: var(--text-muted);
+  padding: 12px 8px; text-align: center;
 }
+
+/* Group properties */
+.panel-section { border-top: 1px solid var(--border-subtle); padding: 8px; }
+.panel-section-title {
+  font-size: 10px; font-weight: 600; color: var(--text-muted);
+  text-transform: uppercase; letter-spacing: 0.05em;
+  padding: 6px 8px 4px;
+}
+.field-row { display: flex; align-items: center; gap: 6px; padding: 3px 0; font-size: 11px; }
+.field-row label { font-size: 10px; color: var(--text-muted); min-width: 32px; }
+.field-row input[type=number] { width: 56px; font-family: var(--font-mono); font-size: 10px; padding: 2px 4px; }
+.unit { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
 </style>

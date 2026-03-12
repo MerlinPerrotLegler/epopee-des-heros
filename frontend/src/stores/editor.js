@@ -3,7 +3,6 @@ import { ref, computed, watch } from 'vue'
 import { api } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
-// Nombre max d'entrées dans l'historique undo. 0 = illimité (retour jusqu'au début de session).
 const MAX_HISTORY = 0
 
 export const useEditorStore = defineStore('editor', () => {
@@ -15,83 +14,176 @@ export const useEditorStore = defineStore('editor', () => {
   const mode = ref('layout') // 'layout' | 'component'
 
   // === Undo history ===
-  const history = ref([]) // snapshots de layout.value.definition
+  const history = ref([])
 
   // Selection
-  const selectedElementId = ref(null)
-  const selectedLayerId = ref(null)
-  const activeCellIdx = ref(null) // index de la case CardTrack active (édition par case)
+  const selectedElementId = ref(null) // canvas selection (element only)
+  const selectedItemId    = ref(null) // layers panel selection (element or group)
+  const activeCellIdx     = ref(null)
 
   // Canvas
   const zoom = ref(1)
   const panX = ref(0)
   const panY = ref(0)
-  const snapGrid = ref(1) // mm
+  const snapGrid = ref(1)
   const showGrid = ref(true)
-  // 'fit' | '1:1' | null — EditorCanvas écoute et exécute le calcul (accès container)
   const requestFit = ref(null)
 
-  // Preview mode (with card instance data)
-  const previewData = ref(null) // null = edit mode, {} = preview with data
+  // Preview
+  const previewData = ref(null)
 
-  // Cache des composants référencés dans le layout courant { [id]: compDef }
+  // Thumbnail capture callback (non-reactive)
+  let captureCallback = null
+
+  // Components cache
   const componentsCache = ref({})
 
-  // === Computed ===
+  // ── Tree helpers ──────────────────────────────────────────────────────────
+
+  function _findItem(items, id) {
+    for (const item of items) {
+      if (item.id === id) return item
+      if (item.kind === 'group') {
+        const found = _findItem(item.children || [], id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  // Returns the array that directly contains itemId
+  function _findParentArray(items, id) {
+    for (const item of items) {
+      if (item.id === id) return items
+      if (item.kind === 'group') {
+        const found = _findParentArray(item.children || [], id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  function _collectAllElements(items, result = []) {
+    for (const item of items) {
+      if (item.kind === 'group') _collectAllElements(item.children || [], result)
+      else result.push(item)
+    }
+    return result
+  }
+
+  // ── Migration (old format: layers[].elements[] → new tree format) ─────────
+
+  function _migrateDefinition(def) {
+    if (!def) return { layers: [], dataSchema: {} }
+    const layers = def.layers || []
+    // Already new format: items have 'kind' field or layers is empty
+    if (!layers.length || layers[0].kind !== undefined) return def
+
+    const newLayers = []
+    for (const layer of layers) {
+      const elements = layer.elements || []
+      if (elements.length === 0) continue
+
+      if (elements.length === 1) {
+        const el = elements[0]
+        newLayers.push({
+          ...el,
+          kind: 'element',
+          name: el.nameInLayout || '',
+          locked: layer.locked || false,
+          visible: layer.visible !== false,
+          opacity: layer.opacity ?? 1,
+        })
+      } else {
+        newLayers.push({
+          id: layer.id,
+          kind: 'group',
+          name: layer.name,
+          locked: layer.locked || false,
+          visible: layer.visible !== false,
+          opacity: layer.opacity ?? 1,
+          children: elements.map(el => ({
+            ...el,
+            kind: 'element',
+            name: el.nameInLayout || '',
+            locked: false,
+            visible: true,
+            opacity: 1,
+          })),
+        })
+      }
+    }
+    return { ...def, layers: newLayers }
+  }
+
+  // ── Computed ───────────────────────────────────────────────────────────────
+
   const definition = computed(() => layout.value?.definition || { layers: [], dataSchema: {} })
 
   const layers = computed(() => definition.value.layers || [])
 
-  const activeLayer = computed(() => {
-    if (!selectedLayerId.value && layers.value.length) {
-      return layers.value[0]
-    }
-    return layers.value.find(l => l.id === selectedLayerId.value) || null
+  const selectedItem = computed(() => {
+    if (!selectedItemId.value) return null
+    return _findItem(definition.value.layers || [], selectedItemId.value)
   })
 
   const selectedElement = computed(() => {
     if (!selectedElementId.value) return null
-    for (const layer of layers.value) {
-      const el = layer.elements?.find(e => e.id === selectedElementId.value)
-      if (el) return el
-    }
-    return null
+    const item = _findItem(definition.value.layers || [], selectedElementId.value)
+    return item?.kind !== 'group' ? item : null
   })
 
   const allElements = computed(() => {
-    const bg = []
-    const rest = []
-    for (const layer of layers.value) {
-      if (!layer.visible) continue
-      for (const el of (layer.elements || [])) {
-        const item = { ...el, _layerId: layer.id, _layerLocked: layer.locked, _layerOpacity: layer.opacity ?? 1 }
-        if (el.type === 'atom' && BACKGROUND_ATOM_TYPES.has(el.atomType)) bg.push(item)
-        else rest.push(item)
+    const bg = [], rest = []
+    function collect(items, parentLocked, parentOpacity) {
+      for (const item of items) {
+        if (item.visible === false) continue
+        const locked  = parentLocked || (item.locked || false)
+        const opacity = parentOpacity * (item.opacity ?? 1)
+        if (item.kind === 'group') {
+          collect(item.children || [], locked, opacity)
+        } else {
+          const el = { ...item, _layerLocked: locked, _layerOpacity: opacity }
+          if (el.type === 'atom' && BACKGROUND_ATOM_TYPES.has(el.atomType)) bg.push(el)
+          else rest.push(el)
+        }
       }
     }
-    return [...bg, ...rest]   // fond toujours en premier (z-order le plus bas)
+    collect(definition.value.layers || [], false, 1)
+    return [...bg, ...rest]
   })
 
   const dataSchema = computed(() => definition.value.dataSchema || {})
 
-  // Collect all nameInLayout from all elements for data binding
   const bindingNames = computed(() => {
     const names = []
-    for (const layer of layers.value) {
-      for (const el of (layer.elements || [])) {
-        if (el.nameInLayout) names.push(el.nameInLayout)
+    function collect(items) {
+      for (const item of items) {
+        if (item.kind === 'group') collect(item.children || [])
+        else if (item.nameInLayout) names.push(item.nameInLayout)
       }
     }
+    collect(definition.value.layers || [])
     return names
   })
 
-  // === Undo ===
+  const backgroundElement = computed(() => {
+    function find(items) {
+      for (const item of items) {
+        if (item.kind === 'group') { const f = find(item.children || []); if (f) return f }
+        else if (item.type === 'atom' && BACKGROUND_ATOM_TYPES.has(item.atomType)) return item
+      }
+      return null
+    }
+    return find(definition.value.layers || [])
+  })
+
+  // ── Undo ──────────────────────────────────────────────────────────────────
+
   function _snapshot() {
     if (!layout.value) return
     history.value.push(JSON.parse(JSON.stringify(layout.value.definition)))
-    if (MAX_HISTORY > 0 && history.value.length > MAX_HISTORY) {
-      history.value.shift()
-    }
+    if (MAX_HISTORY > 0 && history.value.length > MAX_HISTORY) history.value.shift()
   }
 
   const canUndo = computed(() => history.value.length > 0)
@@ -102,18 +194,20 @@ export const useEditorStore = defineStore('editor', () => {
     dirty.value = true
   }
 
-  // === Actions ===
+  // ── Load / Save ───────────────────────────────────────────────────────────
+
   async function loadLayout(id) {
     loading.value = true
     mode.value = 'layout'
     try {
-      layout.value = await api.getLayout(id)
+      const raw = await api.getLayout(id)
+      raw.definition = _migrateDefinition(raw.definition)
+      layout.value = raw
       dirty.value = false
       history.value = []
       selectedElementId.value = null
-      selectedLayerId.value = layers.value[0]?.id || null
+      selectedItemId.value = layers.value[0]?.id || null
       requestFit.value = 'fit'
-      // Pré-charger les composants référencés dans le layout
       await _preloadComponents()
     } finally {
       loading.value = false
@@ -122,18 +216,14 @@ export const useEditorStore = defineStore('editor', () => {
 
   async function _preloadComponents() {
     const ids = new Set()
-    for (const layer of layers.value) {
-      for (const el of (layer.elements || [])) {
-        if (el.type === 'component' && el.componentId) ids.add(el.componentId)
-      }
+    for (const el of allElements.value) {
+      if (el.type === 'component' && el.componentId) ids.add(el.componentId)
     }
     const missing = [...ids].filter(id => !componentsCache.value[id])
     if (!missing.length) return
     const results = await Promise.allSettled(missing.map(id => api.getComponent(id)))
     for (let i = 0; i < missing.length; i++) {
-      if (results[i].status === 'fulfilled') {
-        componentsCache.value[missing[i]] = results[i].value
-      }
+      if (results[i].status === 'fulfilled') componentsCache.value[missing[i]] = results[i].value
     }
   }
 
@@ -142,28 +232,37 @@ export const useEditorStore = defineStore('editor', () => {
     mode.value = 'component'
     try {
       const comp = await api.getComponent(id)
-      // Wrap elements in a single-layer structure compatible with the canvas
+      let def
+      if (comp.definition?.layers) {
+        def = _migrateDefinition(comp.definition)
+      } else if (comp.definition?.elements) {
+        // Old flat format
+        def = {
+          layers: comp.definition.elements.map(el => ({
+            ...el,
+            kind: 'element',
+            name: el.nameInLayout || '',
+            locked: false,
+            visible: true,
+            opacity: 1,
+          })),
+          dataSchema: {}
+        }
+      } else {
+        def = { layers: [], dataSchema: {} }
+      }
       layout.value = {
         id: comp.id,
         name: comp.name,
         width_mm: comp.width_mm || 60,
         height_mm: comp.height_mm || 40,
         card_type: null,
-        definition: {
-          layers: [{
-            id: 'default',
-            name: 'Éléments',
-            locked: false,
-            visible: true,
-            elements: comp.definition?.elements || []
-          }],
-          dataSchema: {}
-        }
+        definition: def
       }
       dirty.value = false
       history.value = []
       selectedElementId.value = null
-      selectedLayerId.value = 'default'
+      selectedItemId.value = null
       requestFit.value = 'fit'
     } finally {
       loading.value = false
@@ -174,16 +273,16 @@ export const useEditorStore = defineStore('editor', () => {
     if (!layout.value || !dirty.value) return
     saving.value = true
     try {
+      const thumbnail = captureCallback ? await captureCallback() : null
       if (mode.value === 'component') {
-        // Extract elements from the single layer and save as component definition
-        const elements = layers.value[0]?.elements || []
         await api.updateComponent(layout.value.id, {
           width_mm: layout.value.width_mm,
           height_mm: layout.value.height_mm,
-          definition: { elements }
+          definition: { layers: definition.value.layers },
+          ...(thumbnail ? { thumbnail } : {})
         })
       } else {
-        await api.updateLayoutDefinition(layout.value.id, layout.value.definition)
+        await api.updateLayoutDefinition(layout.value.id, { definition: layout.value.definition, thumbnail })
       }
       dirty.value = false
     } finally {
@@ -191,95 +290,161 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  // Réinitialise la case active quand l'élément sélectionné change
+  function registerCaptureCallback(fn) { captureCallback = fn }
+  function unregisterCaptureCallback()  { captureCallback = null }
+
   watch(selectedElementId, () => { activeCellIdx.value = null })
 
-  function markDirty() {
-    dirty.value = true
-  }
+  function markDirty() { dirty.value = true }
 
-  // Layer operations
-  function addLayer(name) {
+  // ── Item operations (groups & elements) ──────────────────────────────────
+
+  function addGroup(name) {
+    if (!layout.value) return
     _snapshot()
     const id = crypto.randomUUID()
-    layout.value.definition.layers.push({
-      id, name: name || `Calque ${layers.value.length + 1}`,
-      locked: false, visible: true, elements: []
+    const groupCount = definition.value.layers.filter(i => i.kind === 'group').length
+    definition.value.layers.push({
+      id, kind: 'group',
+      name: name || `Groupe ${groupCount + 1}`,
+      locked: false, visible: true, opacity: 1,
+      children: []
     })
-    selectedLayerId.value = id
+    selectedItemId.value = id
     markDirty()
   }
 
-  function removeLayer(id) {
-    const idx = layout.value.definition.layers.findIndex(l => l.id === id)
-    if (idx > -1) {
-      _snapshot()
-      layout.value.definition.layers.splice(idx, 1)
-      if (selectedLayerId.value === id) {
-        selectedLayerId.value = layers.value[0]?.id || null
+  function updateItem(id, updates) {
+    const item = _findItem(definition.value.layers, id)
+    if (!item) return
+    _snapshot()
+    Object.assign(item, updates)
+    markDirty()
+  }
+
+  function removeItem(id) {
+    const parentArr = _findParentArray(definition.value.layers, id)
+    if (!parentArr) return
+    const idx = parentArr.findIndex(i => i.id === id)
+    if (idx === -1) return
+    _snapshot()
+    parentArr.splice(idx, 1)
+    if (selectedItemId.value === id) selectedItemId.value = null
+    if (selectedElementId.value === id) selectedElementId.value = null
+    markDirty()
+  }
+
+  // Move itemId before/after targetId in potentially different containers
+  function reorderItemAroundTarget(srcId, targetId, position /* 'before'|'after' */) {
+    if (srcId === targetId) return
+    const srcParent = _findParentArray(definition.value.layers, srcId)
+    if (!srcParent) return
+
+    _snapshot()
+    const srcIdx = srcParent.findIndex(i => i.id === srcId)
+    const [srcItem] = srcParent.splice(srcIdx, 1)
+
+    const tgtParent = _findParentArray(definition.value.layers, targetId)
+    if (!tgtParent) {
+      // Fallback: restore
+      srcParent.splice(srcIdx, 0, srcItem)
+      return
+    }
+    let tgtIdx = tgtParent.findIndex(i => i.id === targetId)
+    const insertIdx = position === 'before' ? tgtIdx : tgtIdx + 1
+    tgtParent.splice(insertIdx, 0, srcItem)
+    markDirty()
+  }
+
+  // Move itemId into a group's children (or to top-level if groupId===null)
+  function moveItemToGroup(itemId, groupId) {
+    if (itemId === groupId) return
+    const parentArr = _findParentArray(definition.value.layers, itemId)
+    if (!parentArr) return
+    const idx = parentArr.findIndex(i => i.id === itemId)
+    if (idx === -1) return
+
+    _snapshot()
+    const [item] = parentArr.splice(idx, 1)
+
+    if (groupId === null) {
+      definition.value.layers.push(item)
+    } else {
+      const targetGroup = _findItem(definition.value.layers, groupId)
+      if (targetGroup?.kind === 'group') {
+        targetGroup.children.push(item)
+      } else {
+        parentArr.splice(idx, 0, item)
+        return
       }
-      markDirty()
     }
-  }
-
-  function reorderLayers(fromIdx, toIdx) {
-    _snapshot()
-    const arr = layout.value.definition.layers
-    const [item] = arr.splice(fromIdx, 1)
-    arr.splice(toIdx, 0, item)
     markDirty()
   }
 
-  function updateLayer(id, updates) {
-    const layer = layout.value.definition.layers.find(l => l.id === id)
-    if (layer) {
-      _snapshot()
-      Object.assign(layer, updates)
-      markDirty()
+  // Move all elements inside a group by a delta
+  function moveGroupBy(groupId, dx_mm, dy_mm) {
+    const group = _findItem(definition.value.layers, groupId)
+    if (!group || group.kind !== 'group') return
+    _snapshot()
+    function shift(items) {
+      for (const item of items) {
+        if (item.kind === 'group') shift(item.children || [])
+        else { item.x_mm += dx_mm; item.y_mm += dy_mm }
+      }
     }
+    shift(group.children || [])
+    markDirty()
   }
 
-  // Trouve le fond de carte existant dans n'importe quel calque
-  const backgroundElement = computed(() => {
-    for (const layer of layers.value) {
-      const bg = layer.elements?.find(e => e.type === 'atom' && BACKGROUND_ATOM_TYPES.has(e.atomType))
-      if (bg) return bg
-    }
-    return null
-  })
+  // ── Element operations ────────────────────────────────────────────────────
 
-  // Element operations
-  function addElement(layerId, element) {
-    const layer = layout.value.definition.layers.find(l => l.id === layerId)
-    if (!layer) return
+  function addElement(element, targetGroupId = null) {
+    if (!layout.value) return
     _snapshot()
 
-    // Les fonds couvrent toujours la totalité du layout, position (0,0), sans rotation
     if (element.type === 'atom' && BACKGROUND_ATOM_TYPES.has(element.atomType)) {
       element = {
         ...element,
-        x_mm:      0,
-        y_mm:      0,
-        width_mm:  layout.value.width_mm,
+        x_mm: 0, y_mm: 0,
+        width_mm: layout.value.width_mm,
         height_mm: layout.value.height_mm,
-        rotation:  0,
+        rotation: 0,
       }
     }
 
     const el = {
       id: crypto.randomUUID(),
-      x_mm: 0,
-      y_mm: 0,
-      width_mm: 20,
-      height_mm: 10,
+      kind: 'element',
+      name: '',
+      locked: false,
+      visible: true,
+      opacity: 1,
+      x_mm: 0, y_mm: 0,
+      width_mm: 20, height_mm: 10,
       rotation: 0,
       nameInLayout: '',
       ...element
     }
-    layer.elements.push(el)
+
+    // Target: explicit > selected group > top level
+    const resolvedTarget = targetGroupId
+      ?? (selectedItem.value?.kind === 'group' ? selectedItem.value.id : null)
+
+    if (resolvedTarget) {
+      const group = _findItem(definition.value.layers, resolvedTarget)
+      if (group?.kind === 'group') {
+        group.children.push(el)
+      } else {
+        definition.value.layers.push(el)
+      }
+    } else {
+      definition.value.layers.push(el)
+    }
+
     selectedElementId.value = el.id
+    selectedItemId.value = el.id
     markDirty()
-    // Charger le composant en cache si nécessaire
+
     if (el.type === 'component' && el.componentId && !componentsCache.value[el.componentId]) {
       api.getComponent(el.componentId).then(comp => {
         componentsCache.value[el.componentId] = comp
@@ -288,51 +453,47 @@ export const useEditorStore = defineStore('editor', () => {
     return el
   }
 
-  // noHistory: true pour les updates en continu (drag/resize) — snapshot géré en amont
   function updateElement(elementId, updates, { noHistory = false } = {}) {
-    for (const layer of layout.value.definition.layers) {
-      const el = layer.elements?.find(e => e.id === elementId)
-      if (el) {
-        if (!noHistory) _snapshot()
-        Object.assign(el, updates)
-        markDirty()
-        return
-      }
-    }
+    const item = _findItem(definition.value.layers || [], elementId)
+    if (!item || item.kind === 'group') return
+    if (!noHistory) _snapshot()
+    Object.assign(item, updates)
+    markDirty()
   }
 
   function removeElement(elementId) {
-    for (const layer of layout.value.definition.layers) {
-      const idx = layer.elements?.findIndex(e => e.id === elementId)
-      if (idx > -1) {
-        _snapshot()
-        layer.elements.splice(idx, 1)
-        if (selectedElementId.value === elementId) selectedElementId.value = null
-        markDirty()
-        return
-      }
-    }
+    const parentArr = _findParentArray(definition.value.layers, elementId)
+    if (!parentArr) return
+    const idx = parentArr.findIndex(i => i.id === elementId)
+    if (idx === -1) return
+    _snapshot()
+    parentArr.splice(idx, 1)
+    if (selectedElementId.value === elementId) selectedElementId.value = null
+    if (selectedItemId.value === elementId) selectedItemId.value = null
+    markDirty()
   }
 
   function duplicateElement(elementId) {
-    for (const layer of layout.value.definition.layers) {
-      const el = layer.elements?.find(e => e.id === elementId)
-      if (el) {
-        _snapshot()
-        const clone = JSON.parse(JSON.stringify(el))
-        clone.id = crypto.randomUUID()
-        clone.x_mm += 2
-        clone.y_mm += 2
-        clone.nameInLayout = clone.nameInLayout ? `${clone.nameInLayout}_copy` : ''
-        layer.elements.push(clone)
-        selectedElementId.value = clone.id
-        markDirty()
-        return clone
-      }
-    }
+    const parentArr = _findParentArray(definition.value.layers, elementId)
+    if (!parentArr) return
+    const el = parentArr.find(i => i.id === elementId)
+    if (!el) return
+    _snapshot()
+    const clone = JSON.parse(JSON.stringify(el))
+    clone.id = crypto.randomUUID()
+    clone.x_mm += 2
+    clone.y_mm += 2
+    clone.nameInLayout = clone.nameInLayout ? `${clone.nameInLayout}_copy` : ''
+    const idx = parentArr.indexOf(el)
+    parentArr.splice(idx + 1, 0, clone)
+    selectedElementId.value = clone.id
+    selectedItemId.value = clone.id
+    markDirty()
+    return clone
   }
 
-  // Data schema operations
+  // ── Data schema ───────────────────────────────────────────────────────────
+
   function addSchemaField(name, type = 'string') {
     _snapshot()
     if (!layout.value.definition.dataSchema) layout.value.definition.dataSchema = {}
@@ -346,25 +507,38 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty()
   }
 
-  // Snap helper
   function snap(value) {
     if (!snapGrid.value) return value
     return Math.round(value / snapGrid.value) * snapGrid.value
   }
 
+  // ── Backward-compat aliases ───────────────────────────────────────────────
+  const selectedLayerId = selectedItemId // same ref
+  const activeLayer     = selectedItem   // same computed (element OR group)
+  const addLayer        = addGroup
+  const updateLayer     = updateItem
+  const removeLayer     = removeItem
+
   return {
     layout, loading, dirty, saving,
-    selectedElementId, selectedLayerId, activeCellIdx, backgroundElement,
+    selectedElementId, selectedItemId, selectedLayerId,
+    activeCellIdx, backgroundElement,
     zoom, panX, panY, snapGrid, showGrid, requestFit,
     previewData,
     componentsCache,
-    definition, layers, activeLayer, selectedElement, allElements, dataSchema, bindingNames,
+    definition, layers, selectedItem, activeLayer,
+    selectedElement, allElements, dataSchema, bindingNames,
     mode,
     history, canUndo, undo, _snapshot,
     loadLayout, loadComponent, saveDefinition, markDirty,
-    addLayer, removeLayer, reorderLayers, updateLayer,
+    // Group/item ops
+    addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
+    moveItemToGroup, moveGroupBy, reorderItemAroundTarget,
+    // Element ops
     addElement, updateElement, removeElement, duplicateElement,
+    // Data schema
     addSchemaField, removeSchemaField,
-    snap, _preloadComponents
+    snap, _preloadComponents,
+    registerCaptureCallback, unregisterCaptureCallback
   }
 })

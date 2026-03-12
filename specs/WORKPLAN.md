@@ -1,0 +1,129 @@
+# Plan de travail — Card Designer
+> Mis à jour automatiquement par Claude à la fin de chaque session de travail.
+> Ne pas modifier manuellement la section "Progression" ni les checkboxes — elles sont gérées par Claude.
+
+---
+
+## a) Plan général
+
+Le projet est divisé en 5 grandes phases :
+
+| Phase | Titre | État |
+|-------|-------|------|
+| 1 | Éditeur de layouts & composants (canvas, atomes, calques) | ✅ En cours / avancé |
+| 2 | Gestion des médias et assets | 🟡 Partiel |
+| 3 | Instances de cartes & data binding | 🔴 Non commencé |
+| 4 | Export & impression | 🔴 Non commencé |
+| 5 | Intégration règles du jeu & validation | 🔴 Non commencé |
+
+---
+
+## b) Mise en œuvre par étapes
+
+### Phase 1 — Éditeur (layouts & composants)
+
+- [x] Scaffold complet (routes, store, vues, SQLite)
+- [x] Canvas drag & drop, resize, snap mm
+- [x] Atomes de base : title, text, icon, pastille, die8, die12, price, resource, counter, hexTile, image, rectangle, line, cardPlaceholder, resourcePlaceholder, cardType
+- [x] D8/D12 : remplacement CSS par traits SVG calligraphiques (pen strokes)
+- [x] Fonts personnalisées (gestion dans la vue Médias)
+- [x] Zoom canvas : sans limite, bouton 1:1, bouton ⊡ fit
+- [x] Auto-fit à l'ouverture d'un layout/composant
+- [x] LayoutsView redesign : grille de tuiles, miniatures, filtre, tri, renommage inline
+- [x] ComponentsView redesign : idem
+- [x] Miniature auto-générée (html2canvas) à chaque sauvegarde
+- [x] Gestion des calques : chaque atome/composant = calque propre
+- [x] Groupes de calques : nommage, lock, opacité, drag & drop dans l'arbre
+- [x] Calques — persistance de l'état ouvert/fermé (localStorage)
+- [x] Calques — icône cadenas monochrome SVG (accent ouvert, rouge si lock)
+- [x] Calques — correction bug de réordonnancement (inversion visuelle)
+- [ ] Calques — déplacement global d'un groupe (Δx / Δy dans le panneau propriétés)
+- [ ] Recto / Verso : basculement et édition des deux faces dans le canvas
+- [ ] Molécules : définition, réutilisation, édition
+- [ ] Atome `image` : upload, recadrage, aperçu dans le canvas
+- [ ] Atome `hexTile` : finaliser le rendu SVG hexagonal
+
+### Phase 2 — Médias & assets
+
+- [x] Upload de médias (images, fonts)
+- [x] Renommage inline des médias (double-clic)
+- [ ] Suppression de médias avec confirmation
+- [ ] Prévisualisation d'une font avant utilisation
+- [ ] Gestion des doublons (même fichier uploadé deux fois)
+
+### Phase 3 — Instances de cartes & data binding
+
+- [ ] TSD à rédiger (TSD-003)
+- [ ] Modèle de données : `card_instances` (layout_id + JSON plat de bindings)
+- [ ] Vue liste des instances (`CardInstancesView`)
+- [ ] Formulaire d'édition d'une instance (champs générés depuis les placeholders du layout)
+- [ ] Aperçu live de l'instance rendu dans le canvas (lecture seule)
+- [ ] Duplication d'une instance
+- [ ] Import/export CSV d'instances
+
+### Phase 4 — Export & impression
+
+- [ ] TSD à rédiger (TSD-004)
+- [ ] Export PDF d'un layout (qualité impression)
+- [ ] Export PNG d'une instance unique
+- [ ] Export batch : toutes les instances d'un layout en un PDF
+- [ ] Gabarit de coupe (marge, fond perdu)
+
+### Phase 5 — Intégration règles & validation
+
+- [ ] TSD à rédiger (TSD-005)
+- [ ] Valider les types de cartes et ressources contre les règles du jeu
+- [ ] Contraintes métier : vérifier qu'un layout utilise bien les champs requis
+- [ ] Outil de relecture : afficher toutes les instances d'un type côte à côte
+
+---
+
+## c) Liste de contrôle — qualité & cohérence
+
+- [x] Toutes les mesures en mm dans le store et le canvas
+- [x] Snap magnétisme 1mm (configurable)
+- [x] Auth HTTP Basic en place
+- [x] Migrations SQLite idempotentes (try/catch sur ALTER TABLE)
+- [ ] Aucune route backend expose de données sans auth
+- [ ] Pas de valeur px codée en dur dans les composants Vue (toujours via SCALE)
+- [ ] Tous les atomes ont des `defaultParams` complets dans `atoms/index.js`
+- [ ] Chaque feature critique a un TSD dans `specs/`
+- [ ] Les TSDs existants ont leur section "Bugs connus" à jour
+
+---
+
+## d) Progression globale
+
+```
+Phase 1 — Éditeur          ████████████████░░░░  78%
+Phase 2 — Médias           ████████░░░░░░░░░░░░  40%
+Phase 3 — Instances cartes ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 4 — Export           ░░░░░░░░░░░░░░░░░░░░   0%
+Phase 5 — Règles / valid.  ░░░░░░░░░░░░░░░░░░░░   0%
+
+GLOBAL                     ████████░░░░░░░░░░░░  ~24%
+```
+
+> Le pourcentage global pondère : Phase 1 = 40 %, Phase 2 = 15 %, Phase 3 = 25 %, Phase 4 = 15 %, Phase 5 = 5 %.
+
+---
+
+## e) Prochaines actions
+
+> Classées par priorité décroissante. À réviser à chaque session.
+
+1. **[Phase 1]** Tester le réordonnancement des calques après correction du bug d'inversion — valider drag-and-drop dans tous les cas (top-level, dans un groupe, entre groupes)
+2. **[Phase 1]** Implémenter le déplacement global d'un groupe via les champs Δx/Δy dans le panneau propriétés
+3. **[Phase 1]** Recto/Verso — rédiger TSD-002 puis implémenter
+4. **[Phase 2]** Suppression de médias avec confirmation modale
+5. **[Phase 3]** Rédiger TSD-003 (instances de cartes) avant de commencer le dev
+
+---
+
+## f) Journal des sessions
+
+> Claude : ajouter une entrée à chaque fin de session avec la date et un résumé des changements effectués.
+
+| Date | Résumé |
+|------|--------|
+| 2026-03-12 | Initialisation du plan. Features complétées cette session : correction bug réordonnancement calques (inversion visuelle/array), persistance état expanded dans localStorage (clé par layout ID), remplacement icône cadenas emoji → SVG monochrome (accent = déverrouillé, rouge = verrouillé), zone de dépôt en bas de liste. Création de `specs/README.md` (guide TSD) et `specs/WORKPLAN.md`. Création de `CLAUDE.md` racine. |

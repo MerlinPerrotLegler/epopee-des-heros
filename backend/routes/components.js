@@ -40,17 +40,29 @@ router.post('/', (req, res) => {
 // Update component
 router.put('/:id', (req, res) => {
   const db = getDb();
-  const { name, description, width_mm, height_mm, definition } = req.body;
-  db.prepare(`UPDATE components SET 
+  const { name, description, width_mm, height_mm, definition, thumbnail } = req.body;
+  db.prepare(`UPDATE components SET
     name = COALESCE(?, name),
     description = COALESCE(?, description),
     width_mm = COALESCE(?, width_mm),
     height_mm = COALESCE(?, height_mm),
     definition = COALESCE(?, definition),
+    thumbnail = COALESCE(?, thumbnail),
     updated_at = datetime('now')
     WHERE id = ?`
-  ).run(name, description, width_mm, height_mm, definition ? JSON.stringify(definition) : null, req.params.id);
+  ).run(name, description, width_mm, height_mm, definition ? JSON.stringify(definition) : null, thumbnail ?? null, req.params.id);
   
+  const row = db.prepare('SELECT * FROM components WHERE id = ?').get(req.params.id);
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  row.definition = JSON.parse(row.definition);
+  res.json(row);
+});
+
+// Rename component (PATCH — metadata only)
+router.patch('/:id', (req, res) => {
+  const db = getDb();
+  const { name } = req.body;
+  db.prepare("UPDATE components SET name = COALESCE(?, name), updated_at = datetime('now') WHERE id = ?").run(name, req.params.id);
   const row = db.prepare('SELECT * FROM components WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
   row.definition = JSON.parse(row.definition);

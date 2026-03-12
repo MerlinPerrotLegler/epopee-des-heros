@@ -115,14 +115,12 @@ watch(() => store.selectedElementId, (id) => {
 })
 
 function addAtom(type) {
-  if (!store.activeLayer) return
   const defaults = getAtomDefaults(type)
-  store.addElement(store.activeLayer.id, defaults)
+  store.addElement(defaults)
 }
 
 function addComponent(comp) {
-  if (!store.activeLayer) return
-  store.addElement(store.activeLayer.id, {
+  store.addElement({
     type: 'component',
     componentId: comp.id,
     width_mm: comp.width_mm || 30,
@@ -132,9 +130,8 @@ function addComponent(comp) {
 }
 
 function addMolecule(mol) {
-  if (!store.activeLayer) return
   const def = mol.definition || {}
-  store.addElement(store.activeLayer.id, {
+  store.addElement({
     type: 'molecule',
     moleculeId: mol.id,
     width_mm: def.width_mm || 20,

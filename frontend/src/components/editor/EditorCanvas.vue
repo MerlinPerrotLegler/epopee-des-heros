@@ -8,7 +8,7 @@
     <!-- Pannable/zoomable viewport -->
     <div class="canvas-viewport" :style="viewportStyle">
       <!-- Card boundary -->
-      <div class="card-boundary" :style="cardStyle">
+      <div class="card-boundary" ref="cardBoundaryRef" :style="cardStyle">
         <!-- Grid overlay -->
         <svg
           v-if="store.showGrid"
@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -127,6 +127,7 @@ import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
 const store = useEditorStore()
 const containerRef = ref(null)
+const cardBoundaryRef = ref(null)
 
 const zoom = computed(() => store.zoom)
 const { mmToPx, pxToMm } = useMmScale(zoom)
@@ -246,6 +247,24 @@ function applyFit(mode) {
   }
 }
 
+// Thumbnail capture — html2canvas importé dynamiquement pour ne pas alourdir le bundle initial
+async function captureThumbnail() {
+  if (!cardBoundaryRef.value) return null
+  try {
+    const { default: html2canvas } = await import('html2canvas')
+    const canvas = await html2canvas(cardBoundaryRef.value, {
+      scale: 0.5,        // demi-résolution suffit pour une miniature
+      useCORS: true,
+      allowTaint: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+    })
+    return canvas.toDataURL('image/jpeg', 0.65)
+  } catch {
+    return null
+  }
+}
+
 function handleFitRequest(val) {
   if (!val) return
   // double RAF : premier pour que le DOM soit peint, second pour les dimensions finales
@@ -260,7 +279,11 @@ watch(() => store.requestFit, handleFitRequest)
 
 // Cas ouverture : EditorCanvas monte APRÈS que loadLayout a posé requestFit
 // (EditorView a un v-if="!store.loading" qui cache le canvas pendant le chargement)
-onMounted(() => handleFitRequest(store.requestFit))
+onMounted(() => {
+  handleFitRequest(store.requestFit)
+  store.registerCaptureCallback(captureThumbnail)
+})
+onBeforeUnmount(() => store.unregisterCaptureCallback())
 
 let panning = false
 function startPan(e) {

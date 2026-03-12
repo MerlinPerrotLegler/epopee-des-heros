@@ -40,6 +40,7 @@ export const api = {
   getComponent: (id) => request(`/components/${id}`),
   createComponent: (data) => request('/components', { method: 'POST', body: data }),
   updateComponent: (id, data) => request(`/components/${id}`, { method: 'PUT', body: data }),
+  patchComponent: (id, data) => request(`/components/${id}`, { method: 'PATCH', body: data }),
   duplicateComponent: (id, data) => request(`/components/${id}/duplicate`, { method: 'POST', body: data || {} }),
   deleteComponent: (id) => request(`/components/${id}`, { method: 'DELETE' }),
 

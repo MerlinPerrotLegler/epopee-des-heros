@@ -17,6 +17,10 @@ export function getDb() {
     // Run schema
     const schema = readFileSync(join(__dirname, 'schema.sql'), 'utf-8');
     db.exec(schema);
+
+    // Migrations (idempotent — SQLite ne supporte pas IF NOT EXISTS sur ALTER TABLE)
+    try { db.exec('ALTER TABLE layouts ADD COLUMN thumbnail TEXT') } catch {}
+    try { db.exec('ALTER TABLE components ADD COLUMN thumbnail TEXT') } catch {}
   }
   return db;
 }
