@@ -56,6 +56,8 @@
               <code>{{ Object.keys(card.data || {}).length }}</code>
             </td>
             <td class="td-actions">
+              <button class="btn-icon" title="Aperçu" @click="openPreview(card)">👁</button>
+              <button class="btn-icon" title="Dupliquer" @click="duplicateCard(card)">⧉</button>
               <button class="btn-icon" title="Éditer les données" @click="editCard(card)">✎</button>
               <button class="btn-icon btn-danger" title="Supprimer" @click="deleteTarget = card">✕</button>
             </td>
@@ -129,6 +131,25 @@
       </div>
     </div>
 
+    <!-- Card Preview modal -->
+    <div class="modal-overlay preview-overlay" v-if="previewCard" @click.self="previewCard = null">
+      <div class="preview-modal">
+        <div class="preview-header">
+          <span class="preview-title">{{ previewCard.name }}</span>
+          <button class="btn-icon" @click="previewCard = null">×</button>
+        </div>
+        <div class="preview-body">
+          <div v-if="previewLoading" class="preview-loading">Chargement…</div>
+          <CardPreview
+            v-else-if="previewLayout"
+            :layout="previewLayout"
+            :data="previewCard.data || {}"
+            :zoom="previewZoom"
+          />
+        </div>
+      </div>
+    </div>
+
     <!-- Import Wizard -->
     <ImportWizard
       v-if="showImportWizard"
@@ -145,6 +166,7 @@ import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { getBindablePaths } from '@/utils/binding.js'
 import ImportWizard from '@/components/cards/ImportWizard.vue'
+import CardPreview from '@/components/cards/CardPreview.vue'
 
 const route = useRoute()
 
@@ -159,6 +181,10 @@ const deleteTarget = ref(null)
 const deleteJobTarget = ref(null)
 const showImportWizard = ref(false)
 const syncing = ref(null)
+const previewCard = ref(null)
+const previewLayout = ref(null)
+const previewLoading = ref(false)
+const previewZoom = ref(1)
 
 onMounted(async () => {
   layouts.value = await api.getLayouts()
@@ -231,6 +257,32 @@ async function saveEditingCard() {
   const idx = cards.value.findIndex(c => c.id === editingCard.value.id)
   if (idx > -1) cards.value[idx] = { ...editingCard.value }
   editingCard.value = null
+}
+
+async function openPreview(card) {
+  previewCard.value = card
+  previewLayout.value = null
+  previewLoading.value = true
+  try {
+    const layout = await api.getLayout(card.layout_id)
+    const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
+    previewLayout.value = { ...layout, definition: def }
+    // Fit card into ~340px height
+    previewZoom.value = Math.round((340 / ((layout.height_mm || 88) * 3.7795)) * 100) / 100
+  } catch {
+    previewLayout.value = null
+  } finally {
+    previewLoading.value = false
+  }
+}
+
+async function duplicateCard(card) {
+  const copy = await api.createCard({
+    layout_id: card.layout_id,
+    name: `${card.name} (copie)`,
+    data: { ...(card.data || {}) }
+  })
+  cards.value.push(copy)
 }
 
 async function confirmDelete() {
@@ -476,5 +528,42 @@ function exportCsv() {
   padding: 10px 16px;
   border-top: 1px solid var(--border-subtle);
   flex-shrink: 0;
+}
+
+/* Preview modal */
+.preview-overlay { align-items: center; }
+
+.preview-modal {
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  max-height: 90vh;
+  overflow: hidden;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+}
+.preview-title { font-size: 13px; font-weight: 600; }
+
+.preview-body {
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: auto;
+}
+
+.preview-loading {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 40px;
 }
 </style>
