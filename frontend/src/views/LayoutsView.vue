@@ -66,10 +66,11 @@
             <select
               class="verso-select"
               :value="l.back_layout_id || ''"
-              @change="linkVerso(l, $event.target.value)"
+              @change="onVersoSelectChange(l, $event.target.value)"
             >
               <option value="">— Aucun —</option>
               <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
+              <option value="__create__">+ Créer…</option>
             </select>
           </div>
           <div v-else class="tile-verso-badge">DOS</div>
@@ -85,11 +86,11 @@
     </div>
     <div v-else class="empty-state">
       <p v-if="search">Aucun layout correspondant à « {{ search }} ».</p>
-      <p v-else-if="faceTab === 'verso'">Aucun layout verso. Créez-en un en cochant « Dos de carte ».</p>
+      <p v-else-if="faceTab === 'verso'">Aucun layout verso. Créez-en un via le sélecteur "Verso" d'un layout recto.</p>
       <p v-else>Aucun layout. Créez-en un pour commencer à designer vos cartes.</p>
     </div>
 
-    <!-- Create Modal -->
+    <!-- Create Layout Modal -->
     <div class="modal-overlay" v-if="showCreate" @click.self="showCreate = false">
       <div class="modal">
         <h3>Nouveau layout</h3>
@@ -100,8 +101,16 @@
             <option v-for="t in cardTypes" :key="t.code" :value="t.code">{{ t.label }}</option>
           </select>
         </div>
-        <div class="field-row"><label>Largeur (mm)</label><input type="number" v-model.number="form.width_mm" min="10" max="500" /></div>
-        <div class="field-row"><label>Hauteur (mm)</label><input type="number" v-model.number="form.height_mm" min="10" max="500" /></div>
+        <div class="field-row">
+          <label>Dimensions</label>
+          <div class="dims-row">
+            <input type="number" v-model.number="form.width_mm" min="10" max="500" class="dim-input" placeholder="Larg." />
+            <span class="dim-sep">×</span>
+            <input type="number" v-model.number="form.height_mm" min="10" max="500" class="dim-input" placeholder="Haut." />
+            <span class="dim-unit">mm</span>
+            <button type="button" class="btn-swap" title="Échanger largeur / hauteur" @click="swapDims(form)">⇄</button>
+          </div>
+        </div>
         <div class="field-row">
           <label>Dos de carte</label>
           <input type="checkbox" v-model="form.is_back" style="width:auto;cursor:pointer" />
@@ -119,6 +128,35 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Verso Modal (from recto tile) -->
+    <div class="modal-overlay" v-if="versoCreateTarget" @click.self="cancelCreateVerso">
+      <div class="modal">
+        <h3>Nouveau verso</h3>
+        <p class="modal-hint">Le layout verso sera automatiquement lié à « {{ versoCreateTarget.name }} ».</p>
+        <div class="field-row"><label>Nom</label><input v-model="versoForm.name" autofocus /></div>
+        <div class="field-row">
+          <label>Type</label>
+          <select v-model="versoForm.card_type">
+            <option v-for="t in cardTypes" :key="t.code" :value="t.code">{{ t.label }}</option>
+          </select>
+        </div>
+        <div class="field-row">
+          <label>Dimensions</label>
+          <div class="dims-row">
+            <span class="dim-fixed">{{ versoForm.width_mm }}</span>
+            <span class="dim-sep">×</span>
+            <span class="dim-fixed">{{ versoForm.height_mm }}</span>
+            <span class="dim-unit">mm</span>
+            <button type="button" class="btn-swap" title="Échanger largeur / hauteur" @click="swapDims(versoForm)">⇄</button>
+          </div>
+        </div>
+        <div class="modal-actions">
+          <button class="btn-ghost" @click="cancelCreateVerso">Annuler</button>
+          <button class="btn-primary" @click="createVerso" :disabled="!versoForm.name">Créer et lier</button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -126,19 +164,19 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 
-const layouts   = ref([])
-const cardTypes = ref([])
+const layouts    = ref([])
+const cardTypes  = ref([])
 const showCreate = ref(false)
-const search    = ref('')
-const sortKey   = ref('name')
-const faceTab   = ref('recto')
+const search     = ref('')
+const sortKey    = ref('name')
+const faceTab    = ref('recto')
 
 const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null })
 
 const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
 const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
 
-// Inline rename
+// ── Inline rename ─────────────────────────────────────────────────────────────
 const renamingId  = ref(null)
 const renameValue = ref('')
 
@@ -156,6 +194,7 @@ async function commitRename(item) {
   item.name = name
 }
 
+// ── Filter / sort ─────────────────────────────────────────────────────────────
 const filtered = computed(() => {
   let list = faceTab.value === 'verso' ? versoLayouts.value : rectoLayouts.value
   if (search.value) {
@@ -175,12 +214,20 @@ onMounted(async () => {
   [layouts.value, cardTypes.value] = await Promise.all([api.getLayouts(), api.getCardTypes()])
 })
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function thumbStyle(l) {
   const MAX = 120
   const ratio = l.height_mm / l.width_mm
   return { width: `${MAX}px`, height: `${Math.round(MAX * ratio)}px` }
 }
 
+function swapDims(obj) {
+  const tmp = obj.width_mm
+  obj.width_mm = obj.height_mm
+  obj.height_mm = tmp
+}
+
+// ── Create layout (main modal) ────────────────────────────────────────────────
 async function create() {
   const layout = await api.createLayout({
     name: form.value.name,
@@ -195,11 +242,51 @@ async function create() {
   form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null }
 }
 
+// ── Verso link + quick-create ─────────────────────────────────────────────────
+const versoCreateTarget = ref(null) // the recto layout we're creating a verso for
+const versoForm = ref({ name: '', card_type: 'dos', width_mm: 63, height_mm: 88 })
+
+function onVersoSelectChange(l, value) {
+  if (value === '__create__') {
+    versoCreateTarget.value = l
+    versoForm.value = {
+      name: `${l.name} (dos)`,
+      card_type: l.card_type,
+      width_mm: l.width_mm,
+      height_mm: l.height_mm,
+    }
+  } else {
+    linkVerso(l, value)
+  }
+}
+
+function cancelCreateVerso() {
+  versoCreateTarget.value = null
+}
+
+async function createVerso() {
+  const recto = versoCreateTarget.value
+  const verso = await api.createLayout({
+    name: versoForm.value.name,
+    card_type: versoForm.value.card_type,
+    width_mm: versoForm.value.width_mm,
+    height_mm: versoForm.value.height_mm,
+    is_back: true,
+    back_layout_id: null,
+  })
+  layouts.value.push(verso)
+  // Link the recto to the new verso
+  await api.updateLayout(recto.id, { back_layout_id: verso.id })
+  recto.back_layout_id = verso.id
+  versoCreateTarget.value = null
+}
+
 async function linkVerso(l, versoId) {
   await api.updateLayout(l.id, { back_layout_id: versoId || null })
   l.back_layout_id = versoId || null
 }
 
+// ── Duplicate / delete ────────────────────────────────────────────────────────
 async function duplicate(l) {
   const dup = await api.duplicateLayout(l.id, { with_instances: true })
   layouts.value.push(dup)
@@ -251,12 +338,14 @@ async function confirmDelete(l) {
 }
 .face-tab.active .tab-count { background: rgba(108,122,255,0.15); color: var(--accent-primary); }
 
+/* Grid */
 .items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 }
 
+/* Tile */
 .item-tile {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
@@ -314,13 +403,10 @@ async function confirmDelete(l) {
 .tile-size { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 
 /* Verso config (recto tiles) */
-.tile-verso-config {
-  display: flex; align-items: center; gap: 5px; margin-top: 2px;
-}
+.tile-verso-config { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
 .verso-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
 .verso-select {
-  flex: 1; min-width: 0; font-size: 10px;
-  padding: 2px 4px;
+  flex: 1; min-width: 0; font-size: 10px; padding: 2px 4px;
   background: var(--bg-deep); border: 1px solid var(--border-subtle);
   border-radius: 3px; color: var(--text-secondary); cursor: pointer; outline: none;
 }
@@ -334,13 +420,7 @@ async function confirmDelete(l) {
 }
 
 /* Actions */
-.tile-actions {
-  position: absolute;
-  bottom: 8px;
-  right: 8px;
-  display: flex;
-  gap: 2px;
-}
+.tile-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 2px; }
 .act-btn {
   width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
@@ -350,6 +430,33 @@ async function confirmDelete(l) {
 }
 .act-btn:hover { color: var(--text-primary); border-color: var(--accent-primary); background: var(--bg-tertiary); }
 .act-del:hover { color: #ef4444; border-color: #ef4444; }
+
+/* Dimensions row (modals) */
+.dims-row { display: flex; align-items: center; gap: 5px; }
+.dim-input {
+  width: 58px; padding: 4px 6px; font-size: 12px; text-align: center;
+  background: var(--bg-deep); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); color: var(--text-primary); outline: none;
+}
+.dim-input:focus { border-color: var(--accent-primary); }
+.dim-fixed {
+  width: 40px; text-align: center; font-size: 12px;
+  font-family: var(--font-mono); color: var(--text-secondary);
+  background: var(--bg-deep); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); padding: 4px 6px;
+}
+.dim-sep { font-size: 12px; color: var(--text-muted); }
+.dim-unit { font-size: 11px; color: var(--text-muted); }
+.btn-swap {
+  padding: 3px 8px; font-size: 14px; line-height: 1;
+  background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); cursor: pointer; color: var(--text-secondary);
+  transition: color 80ms, border-color 80ms;
+}
+.btn-swap:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
+
+/* Modal hint */
+.modal-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 8px; line-height: 1.5; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 </style>
