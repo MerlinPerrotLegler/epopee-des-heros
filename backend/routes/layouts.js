@@ -10,9 +10,9 @@ router.get('/', (req, res) => {
   const { type } = req.query;
   let rows;
   if (type) {
-    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, thumbnail, created_at, updated_at FROM layouts WHERE card_type = ? ORDER BY name').all(type);
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, is_back, back_layout_id, thumbnail, created_at, updated_at FROM layouts WHERE card_type = ? ORDER BY name').all(type);
   } else {
-    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, back_layout_id, thumbnail, created_at, updated_at FROM layouts ORDER BY name').all();
+    rows = db.prepare('SELECT id, name, card_type, width_mm, height_mm, is_back, back_layout_id, thumbnail, created_at, updated_at FROM layouts ORDER BY name').all();
   }
   res.json(rows);
 });
@@ -29,7 +29,7 @@ router.get('/:id', (req, res) => {
 // Create layout
 router.post('/', (req, res) => {
   const db = getDb();
-  const { name, card_type, width_mm, height_mm, back_layout_id } = req.body;
+  const { name, card_type, width_mm, height_mm, back_layout_id, is_back } = req.body;
   if (!name || !card_type || !width_mm || !height_mm) {
     return res.status(400).json({ error: 'Missing required fields: name, card_type, width_mm, height_mm' });
   }
@@ -38,8 +38,8 @@ router.post('/', (req, res) => {
     layers: [{ id: randomUUID(), name: 'Fond', locked: false, visible: true, elements: [] }],
     dataSchema: {}
   };
-  db.prepare('INSERT INTO layouts (id, name, card_type, width_mm, height_mm, back_layout_id, definition) VALUES (?, ?, ?, ?, ?, ?, ?)').run(
-    id, name, card_type, width_mm, height_mm, back_layout_id || null, JSON.stringify(definition)
+  db.prepare('INSERT INTO layouts (id, name, card_type, width_mm, height_mm, is_back, back_layout_id, definition) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
+    id, name, card_type, width_mm, height_mm, is_back ? 1 : 0, back_layout_id || null, JSON.stringify(definition)
   );
   const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(id);
   row.definition = JSON.parse(row.definition);
@@ -52,16 +52,17 @@ router.patch('/:id', (req, res) => {
   const existing = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
-  const { name, card_type, width_mm, height_mm, back_layout_id } = req.body;
-  db.prepare(`UPDATE layouts SET 
+  const { name, card_type, width_mm, height_mm, back_layout_id, is_back } = req.body;
+  db.prepare(`UPDATE layouts SET
     name = COALESCE(?, name),
     card_type = COALESCE(?, card_type),
     width_mm = COALESCE(?, width_mm),
     height_mm = COALESCE(?, height_mm),
+    is_back = COALESCE(?, is_back),
     back_layout_id = ?,
     updated_at = datetime('now')
     WHERE id = ?`
-  ).run(name, card_type, width_mm, height_mm, back_layout_id ?? existing.back_layout_id, req.params.id);
+  ).run(name, card_type, width_mm, height_mm, is_back != null ? (is_back ? 1 : 0) : null, back_layout_id !== undefined ? (back_layout_id || null) : existing.back_layout_id, req.params.id);
   
   const row = db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
   row.definition = JSON.parse(row.definition);

@@ -21,6 +21,9 @@ export function getDb() {
     // Migrations (idempotent — SQLite ne supporte pas IF NOT EXISTS sur ALTER TABLE)
     try { db.exec('ALTER TABLE layouts ADD COLUMN thumbnail TEXT') } catch {}
     try { db.exec('ALTER TABLE components ADD COLUMN thumbnail TEXT') } catch {}
+    try { db.exec('ALTER TABLE layouts ADD COLUMN is_back INTEGER NOT NULL DEFAULT 0') } catch {}
+    // Migrate existing back layouts (card_type = 'dos') to is_back = 1
+    try { db.exec("UPDATE layouts SET is_back = 1 WHERE card_type = 'dos' AND is_back = 0") } catch {}
   }
   return db;
 }

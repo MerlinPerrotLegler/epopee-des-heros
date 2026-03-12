@@ -14,6 +14,18 @@
       </div>
     </header>
 
+    <!-- Recto / Verso tabs -->
+    <div class="face-tabs">
+      <button :class="['face-tab', { active: faceTab === 'recto' }]" @click="faceTab = 'recto'">
+        Recto
+        <span class="tab-count">{{ rectoLayouts.length }}</span>
+      </button>
+      <button :class="['face-tab', { active: faceTab === 'verso' }]" @click="faceTab = 'verso'">
+        Verso
+        <span class="tab-count">{{ versoLayouts.length }}</span>
+      </button>
+    </div>
+
     <div class="items-grid" v-if="filtered.length">
       <div
         v-for="l in filtered" :key="l.id"
@@ -36,8 +48,8 @@
             v-if="renamingId === l.id"
             class="tile-rename-input"
             v-model="renameValue"
-            @blur="commitRename(l, 'layout')"
-            @keyup.enter="commitRename(l, 'layout')"
+            @blur="commitRename(l)"
+            @keyup.enter="commitRename(l)"
             @keyup.escape="renamingId = null"
             @click.stop
             autofocus
@@ -47,9 +59,23 @@
             <span class="badge">{{ l.card_type }}</span>
             <span class="tile-size">{{ l.width_mm }}×{{ l.height_mm }} mm</span>
           </div>
+
+          <!-- Verso link config (recto tiles only) -->
+          <div v-if="!l.is_back" class="tile-verso-config" @click.stop>
+            <span class="verso-label">Verso :</span>
+            <select
+              class="verso-select"
+              :value="l.back_layout_id || ''"
+              @change="linkVerso(l, $event.target.value)"
+            >
+              <option value="">— Aucun —</option>
+              <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
+            </select>
+          </div>
+          <div v-else class="tile-verso-badge">DOS</div>
         </div>
 
-        <!-- Actions toujours visibles en bas à droite -->
+        <!-- Actions -->
         <div class="tile-actions" @click.stop>
           <button class="act-btn" title="Renommer" @click="startRename(l)">✎</button>
           <button class="act-btn" title="Dupliquer" @click="duplicate(l)">⧉</button>
@@ -59,6 +85,7 @@
     </div>
     <div v-else class="empty-state">
       <p v-if="search">Aucun layout correspondant à « {{ search }} ».</p>
+      <p v-else-if="faceTab === 'verso'">Aucun layout verso. Créez-en un en cochant « Dos de carte ».</p>
       <p v-else>Aucun layout. Créez-en un pour commencer à designer vos cartes.</p>
     </div>
 
@@ -76,10 +103,14 @@
         <div class="field-row"><label>Largeur (mm)</label><input type="number" v-model.number="form.width_mm" min="10" max="500" /></div>
         <div class="field-row"><label>Hauteur (mm)</label><input type="number" v-model.number="form.height_mm" min="10" max="500" /></div>
         <div class="field-row">
-          <label>Dos</label>
+          <label>Dos de carte</label>
+          <input type="checkbox" v-model="form.is_back" style="width:auto;cursor:pointer" />
+        </div>
+        <div v-if="!form.is_back" class="field-row">
+          <label>Verso lié</label>
           <select v-model="form.back_layout_id">
             <option :value="null">— Aucun —</option>
-            <option v-for="bl in backLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
+            <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
           </select>
         </div>
         <div class="modal-actions">
@@ -100,9 +131,12 @@ const cardTypes = ref([])
 const showCreate = ref(false)
 const search    = ref('')
 const sortKey   = ref('name')
+const faceTab   = ref('recto')
 
-const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, back_layout_id: null })
-const backLayouts = computed(() => layouts.value.filter(l => l.card_type === 'dos'))
+const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null })
+
+const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
+const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
 
 // Inline rename
 const renamingId  = ref(null)
@@ -113,7 +147,7 @@ function startRename(item) {
   renameValue.value = item.name
 }
 
-async function commitRename(item, kind) {
+async function commitRename(item) {
   if (!renamingId.value) return
   renamingId.value = null
   const name = renameValue.value.trim()
@@ -123,7 +157,7 @@ async function commitRename(item, kind) {
 }
 
 const filtered = computed(() => {
-  let list = layouts.value
+  let list = faceTab.value === 'verso' ? versoLayouts.value : rectoLayouts.value
   if (search.value) {
     const q = search.value.toLowerCase()
     list = list.filter(l => l.name.toLowerCase().includes(q) || l.card_type.toLowerCase().includes(q))
@@ -141,20 +175,29 @@ onMounted(async () => {
   [layouts.value, cardTypes.value] = await Promise.all([api.getLayouts(), api.getCardTypes()])
 })
 
-// Proportions de la carte : max 120px de large, fond blanc
 function thumbStyle(l) {
   const MAX = 120
   const ratio = l.height_mm / l.width_mm
-  const w = MAX
-  const h = Math.round(MAX * ratio)
-  return { width: `${w}px`, height: `${h}px` }
+  return { width: `${MAX}px`, height: `${Math.round(MAX * ratio)}px` }
 }
 
 async function create() {
-  const layout = await api.createLayout(form.value)
+  const layout = await api.createLayout({
+    name: form.value.name,
+    card_type: form.value.card_type,
+    width_mm: form.value.width_mm,
+    height_mm: form.value.height_mm,
+    is_back: form.value.is_back,
+    back_layout_id: form.value.is_back ? null : form.value.back_layout_id,
+  })
   layouts.value.push(layout)
   showCreate.value = false
-  form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, back_layout_id: null }
+  form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null }
+}
+
+async function linkVerso(l, versoId) {
+  await api.updateLayout(l.id, { back_layout_id: versoId || null })
+  l.back_layout_id = versoId || null
 }
 
 async function duplicate(l) {
@@ -173,7 +216,7 @@ async function confirmDelete(l) {
 <style scoped>
 .items-view { padding: 24px; overflow-y: auto; height: 100%; }
 
-.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .view-header h1 { font-size: 20px; font-weight: 600; }
 .header-controls { display: flex; gap: 8px; align-items: center; }
 
@@ -189,6 +232,24 @@ async function confirmDelete(l) {
   background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm); color: var(--text-primary); outline: none; cursor: pointer;
 }
+
+/* Recto / Verso tabs */
+.face-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
+.face-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; font-size: 12px; font-weight: 500;
+  background: var(--bg-tertiary); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm); color: var(--text-muted); cursor: pointer;
+  transition: color 100ms, border-color 100ms, background 100ms;
+}
+.face-tab:hover { color: var(--text-primary); border-color: var(--border-default); }
+.face-tab.active { color: var(--accent-primary); border-color: var(--accent-primary); background: rgba(108,122,255,0.08); }
+.tab-count {
+  font-size: 10px; font-family: var(--font-mono);
+  background: var(--bg-deep); border-radius: 10px;
+  padding: 1px 5px; color: var(--text-muted);
+}
+.face-tab.active .tab-count { background: rgba(108,122,255,0.15); color: var(--accent-primary); }
 
 .items-grid {
   display: grid;
@@ -237,14 +298,14 @@ async function confirmDelete(l) {
 .ph-hint { font-size: 8px; color: var(--text-muted); text-align: center; line-height: 1.3; }
 
 /* Info */
-.tile-info { flex: 1; min-width: 0; padding-top: 2px; padding-bottom: 24px; }
+.tile-info { flex: 1; min-width: 0; padding-top: 2px; padding-bottom: 28px; display: flex; flex-direction: column; gap: 4px; }
 .tile-name {
-  font-weight: 600; font-size: 13px; margin-bottom: 6px;
+  font-weight: 600; font-size: 13px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
   cursor: text;
 }
 .tile-rename-input {
-  font-size: 13px; font-weight: 600; width: 100%; margin-bottom: 6px;
+  font-size: 13px; font-weight: 600; width: 100%;
   background: var(--bg-deep); color: var(--text-primary);
   border: 1px solid var(--accent-primary); border-radius: 3px;
   padding: 1px 4px; outline: none;
@@ -252,7 +313,27 @@ async function confirmDelete(l) {
 .tile-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tile-size { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 
-/* Actions toujours visibles en bas à droite */
+/* Verso config (recto tiles) */
+.tile-verso-config {
+  display: flex; align-items: center; gap: 5px; margin-top: 2px;
+}
+.verso-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
+.verso-select {
+  flex: 1; min-width: 0; font-size: 10px;
+  padding: 2px 4px;
+  background: var(--bg-deep); border: 1px solid var(--border-subtle);
+  border-radius: 3px; color: var(--text-secondary); cursor: pointer; outline: none;
+}
+.verso-select:focus { border-color: var(--accent-primary); }
+
+/* Verso badge (verso tiles) */
+.tile-verso-badge {
+  font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
+  color: var(--accent-primary); font-family: var(--font-mono);
+  margin-top: 2px;
+}
+
+/* Actions */
 .tile-actions {
   position: absolute;
   bottom: 8px;
