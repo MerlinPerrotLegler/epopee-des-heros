@@ -279,11 +279,28 @@ watch(() => store.requestFit, handleFitRequest)
 
 // Cas ouverture : EditorCanvas monte APRÈS que loadLayout a posé requestFit
 // (EditorView a un v-if="!store.loading" qui cache le canvas pendant le chargement)
+// Arrow-key movement of selected layer / group
+function onKeyDown(e) {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+  const tag = document.activeElement?.tagName
+  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+  if (!store.selectedItemId) return
+  e.preventDefault()
+  const step = e.shiftKey ? 10 * store.snapGrid : store.snapGrid
+  const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
+  const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0
+  store.moveSelected(dx, dy)
+}
+
 onMounted(() => {
   handleFitRequest(store.requestFit)
   store.registerCaptureCallback(captureThumbnail)
+  window.addEventListener('keydown', onKeyDown)
 })
-onBeforeUnmount(() => store.unregisterCaptureCallback())
+onBeforeUnmount(() => {
+  store.unregisterCaptureCallback()
+  window.removeEventListener('keydown', onKeyDown)
+})
 
 let panning = false
 function startPan(e) {

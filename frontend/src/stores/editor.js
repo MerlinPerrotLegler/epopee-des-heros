@@ -512,6 +512,17 @@ export const useEditorStore = defineStore('editor', () => {
     return Math.round(value / snapGrid.value) * snapGrid.value
   }
 
+  // Move the currently selected item (element or group) by a delta in mm
+  function moveSelected(dx_mm, dy_mm) {
+    const item = selectedItem.value
+    if (!item || item.locked) return
+    if (item.kind === 'group') {
+      moveGroupBy(item.id, dx_mm, dy_mm)
+    } else {
+      updateElement(item.id, { x_mm: item.x_mm + dx_mm, y_mm: item.y_mm + dy_mm })
+    }
+  }
+
   // ── Backward-compat aliases ───────────────────────────────────────────────
   const selectedLayerId = selectedItemId // same ref
   const activeLayer     = selectedItem   // same computed (element OR group)
@@ -534,6 +545,8 @@ export const useEditorStore = defineStore('editor', () => {
     // Group/item ops
     addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
     moveItemToGroup, moveGroupBy, reorderItemAroundTarget,
+    // Move selected
+    moveSelected,
     // Element ops
     addElement, updateElement, removeElement, duplicateElement,
     // Data schema
