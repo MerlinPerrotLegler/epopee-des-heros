@@ -90,6 +90,17 @@ export const api = {
   getConfig: () => request('/config'),
   putConfig: (data) => request('/config', { method: 'PUT', body: data }),
 
+  // AI generation config
+  getAIConfig: () => request('/config/ai'),
+  putAIConfig: (data) => request('/config/ai', { method: 'PUT', body: data }),
+
+  // Missing media
+  getMissingMedia: (status) => request(status ? `/missing-media?status=${status}` : '/missing-media'),
+  patchMissingMedia: (id, data) => request(`/missing-media/${id}`, { method: 'PATCH', body: data }),
+  previewPrompt: (id) => request(`/missing-media/${id}/preview-prompt`, { method: 'POST' }),
+  generateMissingMedia: (id) => request(`/missing-media/${id}/generate`, { method: 'POST' }),
+  generateAllMissingMedia: (opts) => request('/missing-media/generate-all', { method: 'POST', body: opts || {} }),
+
   // Custom fonts
   getFonts: () => request('/fonts'),
   createFont: (data) => request('/fonts', { method: 'POST', body: data }),

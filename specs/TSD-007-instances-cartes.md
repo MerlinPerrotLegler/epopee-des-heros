@@ -456,6 +456,40 @@ type MappingEntry = {
 [ ↺ Sync import ]  →  recharge le CSV, upsert les instances liées au job
 ```
 
+### 7.5 Comment obtenir l'URL d'un Google Sheet
+
+L'option "URL Google Sheets" requiert une feuille **publiée en accès public au format CSV**. Voici la procédure :
+
+1. Ouvrir la feuille Google Sheets dans le navigateur
+2. Menu **Fichier → Partager → Publier sur le Web**
+3. Dans le panneau qui s'ouvre :
+   - Colonne de gauche : sélectionner **"Feuille 1"** (ou la feuille voulue)
+   - Colonne de droite : sélectionner **"Valeurs séparées par des virgules (.csv)"**
+4. Cliquer sur **"Publier"**, puis confirmer
+5. Copier l'URL générée (de la forme `https://docs.google.com/spreadsheets/d/…/pub?gid=0&single=true&output=csv`)
+6. Coller cette URL dans le champ Source du wizard
+
+> **Note :** si l'utilisateur colle une URL de type `/edit`, le système la normalise automatiquement (voir §11.6). La feuille doit néanmoins avoir été publiée au préalable pour être accessible sans authentification.
+
+> **Note :** pour importer un onglet spécifique, ajouter `&gid=XXXXXXXX` (visible dans l'URL de la feuille après `#gid=`). Exemple : `…/pub?gid=1234567890&single=true&output=csv`
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│  Google Sheets : Fichier → Publier sur le web                │
+│                                                              │
+│  Lien   Intégrer                                             │
+│  ┌──────────────────────┐  ┌────────────────────────────┐   │
+│  │ Feuille 1          ▾ │  │ Valeurs séparées par...  ▾ │   │
+│  └──────────────────────┘  └────────────────────────────┘   │
+│                                                              │
+│  [ Publier ]                                                 │
+│                                                              │
+│  URL publiée :                                               │
+│  https://docs.google.com/spreadsheets/d/…/pub?output=csv    │
+│  [Copier le lien]                                            │
+└──────────────────────────────────────────────────────────────┘
+```
+
 ---
 
 ## 8. API

@@ -24,7 +24,23 @@
             </button>
           </div>
           <div class="hint" v-if="sourceUrl.includes('docs.google.com')">
-            Coller l'URL normale ou publiée — normalisée automatiquement.
+            URL normale ou publiée acceptée — normalisée automatiquement.
+          </div>
+        </div>
+
+        <div class="gs-help">
+          <button class="gs-help-toggle" @click="showGsHelp = !showGsHelp">
+            {{ showGsHelp ? '▾' : '▸' }} Comment obtenir cette URL ?
+          </button>
+          <div v-if="showGsHelp" class="gs-help-body">
+            <ol class="gs-steps">
+              <li>Ouvrir la feuille Google Sheets dans le navigateur</li>
+              <li>Menu <strong>Fichier → Partager → Publier sur le Web</strong></li>
+              <li>Colonne gauche : choisir l'onglet voulu · Colonne droite : <strong>Valeurs séparées par des virgules (.csv)</strong></li>
+              <li>Cliquer sur <strong>Publier</strong>, puis confirmer</li>
+              <li>Copier l'URL générée et la coller ci-dessus</li>
+            </ol>
+            <div class="gs-note">Pour un onglet spécifique, l'URL contient <code>&gid=XXXXXXXX</code> — visible dans l'onglet du navigateur après <code>#gid=</code>.</div>
           </div>
         </div>
 
@@ -250,6 +266,7 @@ const confidences = ref({})
 const currentBindingPaths = ref([])
 const loadingPaths = ref(false)
 
+const showGsHelp = ref(false)
 const overwrite = ref(true)
 const importing = ref(false)
 const importResult = ref(null)
@@ -564,6 +581,52 @@ function finish() {
 
 .error-list { max-height: 120px; overflow-y: auto; background: rgba(220,50,50,0.05); border: 1px solid rgba(220,50,50,0.2); border-radius: var(--radius-sm); padding: 8px; }
 .error-item { font-size: 11px; color: var(--accent-danger); padding: 2px 0; }
+
+.gs-help {
+  margin-bottom: 12px;
+}
+
+.gs-help-toggle {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.gs-help-toggle:hover { color: var(--text-secondary); }
+
+.gs-help-body {
+  margin-top: 8px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+}
+
+.gs-steps {
+  margin: 0 0 8px 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  line-height: 1.8;
+}
+.gs-steps strong { color: var(--text-primary); }
+
+.gs-note {
+  font-size: 10px;
+  color: var(--text-muted);
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+.gs-note code {
+  font-family: var(--font-mono);
+  background: var(--bg-primary);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
 
 .wizard-footer {
   display: flex;

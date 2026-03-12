@@ -82,7 +82,7 @@ router.post('/upload', upload.array('files', 20), (req, res) => {
     // Dedup by id=filename
     const existing = selectStmt.get(filename);
     if (existing) {
-      results.push(existing);
+      results.push({ ...existing, duplicate: true });
       continue;
     }
 

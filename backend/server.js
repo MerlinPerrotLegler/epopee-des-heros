@@ -18,6 +18,7 @@ import exportRouter from './routes/export.js';
 import configRouter from './routes/config.js';
 import fontsRouter from './routes/fonts.js';
 import importJobsRouter from './routes/importJobs.js';
+import missingMediaRouter from './routes/missingMedia.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -54,6 +55,7 @@ app.use('/api/export', exportRouter);
 app.use('/api/config', configRouter);
 app.use('/api/fonts', fontsRouter);
 app.use('/api/import-jobs', importJobsRouter);
+app.use('/api/missing-media', missingMediaRouter);
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {

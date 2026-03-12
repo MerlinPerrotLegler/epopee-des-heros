@@ -163,15 +163,19 @@
         <span class="unit">{{ el.params.posY ?? 50 }}%</span>
       </div>
 
-      <div class="panel-section-title" style="margin-top:10px">IA — Génération (TSD-012)</div>
+      <div class="panel-section-title" style="margin-top:10px">IA — Génération</div>
+
+      <!-- Warning if AI not configured -->
+      <div v-if="!aiConfigured" class="ai-warning">
+        ⚠ Provider IA non configuré.
+        <a href="/config" class="ai-warning-link">Config &gt; IA Provider →</a>
+      </div>
+
       <div class="field-row">
         <label>Type</label>
-        <select :value="el.params.ai_media_type || 'illustration'"
+        <select :value="el.params.ai_media_type || aiMediaTypes[0]?.type || 'illustration'"
           @change="updateParam('ai_media_type', $event.target.value)" style="flex:1">
-          <option value="illustration">Illustration</option>
-          <option value="icone">Icône</option>
-          <option value="fond">Fond</option>
-          <option value="autre">Autre</option>
+          <option v-for="mt in aiMediaTypes" :key="mt.type" :value="mt.type">{{ mt.label }}</option>
         </select>
       </div>
       <div class="param-block">
@@ -185,6 +189,10 @@
           placeholder="Illustration d'un {{card_name.text}}, carte {{card_type}}, style médiéval"
           style="width:100%;height:56px;resize:vertical;font-size:10px;font-family:var(--font-mono);background:var(--bg-secondary);border:1px solid var(--border-subtle);color:var(--text-primary);padding:4px 6px;border-radius:var(--radius-sm)"
         ></textarea>
+        <!-- Warning if prompt template is empty -->
+        <div v-if="!el.params.ai_prompt_template" class="ai-warning" style="margin-top:4px">
+          ⚠ Prompt vide — la génération sera désactivée pour cet élément.
+        </div>
       </div>
     </div>
   </div>
@@ -231,7 +239,7 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useFontsStore } from '@/stores/fonts.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
@@ -239,6 +247,24 @@ import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import GradientStopEditor from './GradientStopEditor.vue'
 import MediaPicker from './MediaPicker.vue'
 import ColorPickerAlpha from './ColorPickerAlpha.vue'
+import { api } from '@/utils/api.js'
+
+// ── AI config (media types + configured state) ──────────────────────────────
+const aiMediaTypes = ref([
+  { type: 'illustration', label: 'Illustration' },
+  { type: 'icon',         label: 'Icône' },
+  { type: 'fond',         label: 'Fond' },
+  { type: 'texte_graphique', label: 'Texte graphique' },
+])
+const aiConfigured = ref(false)
+
+onMounted(async () => {
+  try {
+    const cfg = await api.getAIConfig()
+    if (cfg.media_type_presets?.length) aiMediaTypes.value = cfg.media_type_presets
+    aiConfigured.value = cfg.api_key_set && !!cfg.global_prompt
+  } catch {}
+})
 
 const store = useEditorStore()
 const el = computed(() => store.selectedElement)
@@ -489,4 +515,15 @@ function getEnumOptions(key) {
   color: var(--text-muted);
   font-size: 12px;
 }
+
+.ai-warning {
+  font-size: 9px;
+  color: #ca8a04;
+  background: rgba(234, 179, 8, 0.1);
+  border: 1px solid rgba(234, 179, 8, 0.3);
+  border-radius: 3px;
+  padding: 3px 6px;
+  line-height: 1.4;
+}
+.ai-warning-link { color: inherit; font-weight: 600; text-decoration: underline; }
 </style>

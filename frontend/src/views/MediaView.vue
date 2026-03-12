@@ -21,15 +21,26 @@
     </div>
 
     <header class="view-header">
-      <h1>Bibliothèque média</h1>
-      <div style="display:flex; gap:8px">
+      <div class="header-left">
+        <h1>Bibliothèque média</h1>
+        <div class="tab-bar">
+          <button class="tab-btn" :class="{ active: activeTab === 'library' }" @click="activeTab = 'library'">Médias</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'missing' }" @click="activeTab = 'missing'">Manquants</button>
+        </div>
+      </div>
+      <div v-if="activeTab === 'library'" style="display:flex; gap:8px">
         <button class="btn-ghost" @click="showNewFolder = true">+ Dossier</button>
         <button class="btn-primary" @click="fileInput.click()">⤒ Upload</button>
         <input ref="fileInput" type="file" multiple accept="image/*" style="display:none" @change="upload" />
       </div>
     </header>
 
-    <div class="media-layout">
+    <!-- Missing media tab -->
+    <div v-if="activeTab === 'missing'" class="missing-tab">
+      <MissingMediaList />
+    </div>
+
+    <div v-if="activeTab === 'library'" class="media-layout">
       <!-- Folders -->
       <div class="folder-tree">
         <div
@@ -148,7 +159,9 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
+import MissingMediaList from '@/components/media/MissingMediaList.vue'
 
+const activeTab     = ref('library')
 const folders       = ref([])
 const media         = ref([])
 const currentFolder = ref('root')
@@ -204,7 +217,16 @@ async function upload(e) {
   fd.append('folder_id', currentFolder.value === 'root' ? 'default' : currentFolder.value)
   try {
     const results = await api.uploadMedia(fd)
-    if (Array.isArray(results)) media.value.push(...results)
+    if (Array.isArray(results)) {
+      const existingIds = new Set(media.value.map(m => m.id))
+      const newFiles = results.filter(r => !r.duplicate && !existingIds.has(r.id))
+      const duplicates = results.filter(r => r.duplicate)
+      media.value.push(...newFiles)
+      if (duplicates.length) {
+        const names = duplicates.map(r => r.original_name).join(', ')
+        showToast(`Déjà présent : ${names}`, 'info')
+      }
+    }
   } catch (e) { console.error('Upload failed', e) }
   finally { if (fileInput.value) fileInput.value.value = '' }
 }
@@ -306,8 +328,16 @@ async function onDropToFolder(targetFolderId) {
 
 <style scoped>
 .media-view { padding: 24px; height: 100%; overflow-y: auto; }
-.view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
-.view-header h1 { font-size: 20px; font-weight: 600; }
+.view-header { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 16px; }
+.header-left { display: flex; flex-direction: column; gap: 8px; }
+.view-header h1 { font-size: 20px; font-weight: 600; margin: 0; }
+
+.tab-bar { display: flex; gap: 2px; border-bottom: 1px solid var(--border-subtle); }
+.tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 5px 12px; margin-bottom: -1px; }
+.tab-btn:hover { color: var(--text-primary); }
+.tab-btn.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); font-weight: 600; }
+
+.missing-tab { padding: 8px 0; }
 .media-layout { display: flex; gap: 16px; }
 
 /* Model download banner */
@@ -328,6 +358,7 @@ async function onDropToFolder(targetFolderId) {
 .toast { background: var(--bg-tertiary); border: 1px solid var(--border-default); border-radius: var(--radius-sm); padding: 10px 16px; font-size: 12px; color: var(--text-primary); box-shadow: 0 4px 12px rgba(0,0,0,0.3); pointer-events: auto; }
 .toast.success { border-color: #22c55e; color: #22c55e; }
 .toast.error   { border-color: #ef4444; color: #ef4444; }
+.toast.info    { border-color: #f59e0b; color: #f59e0b; }
 .toast-enter-active, .toast-leave-active { transition: opacity 250ms, transform 250ms; }
 .toast-enter-from { opacity: 0; transform: translateX(20px); }
 .toast-leave-to   { opacity: 0; transform: translateX(20px); }

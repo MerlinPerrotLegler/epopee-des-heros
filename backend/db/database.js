@@ -58,6 +58,27 @@ export function getDb() {
     )`) } catch {}
     try { db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_missing_media_uniq ON missing_media(card_instance_id, binding_path)') } catch {}
     try { db.exec('CREATE INDEX IF NOT EXISTS idx_missing_media_status ON missing_media(status)') } catch {}
+    // TSD-012: ai_generation_config table
+    try { db.exec(`CREATE TABLE IF NOT EXISTS ai_generation_config (
+      id TEXT PRIMARY KEY DEFAULT 'singleton',
+      provider TEXT NOT NULL DEFAULT 'openai',
+      api_key TEXT,
+      global_prompt TEXT NOT NULL DEFAULT '',
+      media_type_presets TEXT NOT NULL DEFAULT '[]',
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )`) } catch {}
+    // Seed built-in media types (illustration, icon, fond, texte_graphique)
+    try {
+      const builtinPresets = JSON.stringify([
+        { type: 'illustration', label: 'Illustration', resolution: '1024x1024', style_preset: 'vivid', provider: 'openai', negative_prompt: '' },
+        { type: 'icon', label: 'Icône', resolution: '512x512', style_preset: 'natural', provider: 'openai', negative_prompt: 'photorealistic, photo' },
+        { type: 'fond', label: 'Fond', resolution: '1024x1792', style_preset: 'natural', provider: 'openai', negative_prompt: '' },
+        { type: 'texte_graphique', label: 'Texte graphique', resolution: '1024x512', style_preset: 'natural', provider: 'openai', negative_prompt: '' },
+      ])
+      db.prepare("INSERT OR IGNORE INTO ai_generation_config (id, media_type_presets) VALUES ('singleton', ?)").run(builtinPresets)
+    } catch {}
+    // Reset any 'generating' entries stuck from previous crash
+    try { db.exec("UPDATE missing_media SET status = 'pending' WHERE status = 'generating'") } catch {}
   }
   return db;
 }
