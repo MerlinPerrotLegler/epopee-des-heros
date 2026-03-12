@@ -115,7 +115,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -246,14 +246,21 @@ function applyFit(mode) {
   }
 }
 
-watch(() => store.requestFit, (val) => {
+function handleFitRequest(val) {
   if (!val) return
-  // nextTick pour que le container soit rendu si layout vient de changer
-  requestAnimationFrame(() => {
+  // double RAF : premier pour que le DOM soit peint, second pour les dimensions finales
+  requestAnimationFrame(() => requestAnimationFrame(() => {
     applyFit(val)
     store.requestFit = null
-  })
-})
+  }))
+}
+
+// Cas normal : fit demandé après le montage (boutons toolbar)
+watch(() => store.requestFit, handleFitRequest)
+
+// Cas ouverture : EditorCanvas monte APRÈS que loadLayout a posé requestFit
+// (EditorView a un v-if="!store.loading" qui cache le canvas pendant le chargement)
+onMounted(() => handleFitRequest(store.requestFit))
 
 let panning = false
 function startPan(e) {
