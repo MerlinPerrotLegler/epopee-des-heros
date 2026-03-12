@@ -51,7 +51,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] Icônes d'action alignées en bas à droite
 - [x] Images affichées sans crop (object-fit: contain)
 - [x] Fond damier Photoshop pour transparence (tuiles, preview)
-- [ ] Suppression de médias avec confirmation
+- [x] Suppression de médias avec confirmation
 - [x] Suppression du fond d'une image (TSD-011 — @imgly/background-removal v1.7.0)
 - [ ] Prévisualisation d'une font avant utilisation
 - [ ] Gestion des doublons (même fichier uploadé deux fois)
