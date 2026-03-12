@@ -46,7 +46,22 @@
             <span v-else class="svg-icon">SVG</span>
           </div>
           <div class="media-info">
-            <span class="media-name" :title="m.original_name">{{ m.original_name }}</span>
+            <input
+              v-if="renamingId === m.id"
+              class="media-name-input"
+              v-model="renameValue"
+              @blur="commitRename(m)"
+              @keyup.enter="commitRename(m)"
+              @keyup.escape="renamingId = null"
+              @click.stop
+              autofocus
+            />
+            <span
+              v-else
+              class="media-name"
+              :title="m.original_name + ' — double-clic pour renommer'"
+              @dblclick.stop="startRename(m)"
+            >{{ m.original_name }}</span>
             <code class="media-id">{{ m.id }}</code>
           </div>
           <div class="media-actions">
@@ -103,6 +118,25 @@ const filteredMedia = computed(() => {
   if (currentFolder.value === 'root') return media.value
   return media.value.filter(m => m.folder_id === currentFolder.value)
 })
+
+// Inline rename
+const renamingId  = ref(null)
+const renameValue = ref('')
+
+function startRename(m) {
+  renamingId.value  = m.id
+  renameValue.value = m.original_name
+}
+
+async function commitRename(m) {
+  if (!renamingId.value) return
+  renamingId.value = null
+  const name = renameValue.value.trim()
+  if (!name || name === m.original_name) return
+  const updated = await api.updateMedia(m.id, { original_name: name })
+  const idx = media.value.findIndex(x => x.id === m.id)
+  if (idx !== -1) media.value[idx] = updated
+}
 
 function isImage(m) {
   return m.mime_type?.startsWith('image/')
@@ -206,7 +240,13 @@ async function onDropToFolder(targetFolderId) {
 .media-thumb img { width: 100%; height: 100%; object-fit: cover; }
 .svg-icon { color: var(--accent-primary); font-weight: 700; font-size: 18px; }
 .media-info { padding: 8px; }
-.media-name { font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.media-name { font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: text; }
+.media-name-input {
+  font-size: 11px; display: block; width: 100%; box-sizing: border-box;
+  background: var(--bg-deep); color: var(--text-primary);
+  border: 1px solid var(--accent-primary); border-radius: 3px;
+  padding: 1px 4px; outline: none;
+}
 .media-id { font-size: 9px; color: var(--text-muted); display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .media-actions { display: flex; gap: 4px; padding: 0 8px 8px; }
 .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted); }

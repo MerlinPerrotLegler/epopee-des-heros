@@ -1,5 +1,5 @@
 <template>
-  <div class="atom-render">
+  <div class="atom-render" :class="{ 'atom-render--overflow': atomType === 'die8' || atomType === 'die12' }">
     <component
       v-if="atomComponent"
       :is="atomComponent"
@@ -102,6 +102,9 @@ const resolvedParams = computed(() => {
   overflow: hidden;
   pointer-events: none;
   user-select: none;
+}
+.atom-render--overflow {
+  overflow: visible;
 }
 
 .atom-unknown {

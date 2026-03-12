@@ -140,20 +140,30 @@ export const ATOM_TYPES = {
     label: 'Dé 8',
     icon: 'D8',
     defaultParams: {
-      value: '3',
-      textColor: '#ffffff',
-      fontSize: 3.5,
+      value:       '3',
+      textColor:   '#1a1a2e',
+      fontSize:    3.5,      // mm — taille du nombre (indépendant de la forme)
+      fontFamily:  null,
+      penColor:    null,     // null → reprend textColor dans le composant
+      penWidth:    0.5,      // épaisseur max des fuseaux (mm)
+      penSeed:     8,
+      penPoolSize: 4,
     },
-    defaultSize: { width_mm: 8, height_mm: 7 }
+    defaultSize: { width_mm: 8, height_mm: 8 }
   },
 
   die12: {
     label: 'Dé 12',
     icon: 'D12',
     defaultParams: {
-      value: '8',
-      textColor: '#ffffff',
-      fontSize: 3,
+      value:       '8',
+      textColor:   '#1a1a2e',
+      fontSize:    3,        // mm — taille du nombre (indépendant de la forme)
+      fontFamily:  null,
+      penColor:    null,
+      penWidth:    0.5,
+      penSeed:     12,
+      penPoolSize: 4,
     },
     defaultSize: { width_mm: 9, height_mm: 9 }
   },
