@@ -57,6 +57,7 @@
           <div v-else class="tile-name" @dblclick.stop="startRename(l)">{{ l.name }}</div>
           <div class="tile-meta">
             <span class="badge">{{ l.card_type }}</span>
+            <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
             <span class="tile-size">{{ l.width_mm }}×{{ l.height_mm }} mm</span>
           </div>
 
@@ -102,13 +103,18 @@
           </select>
         </div>
         <div class="field-row">
+          <label>Forme hexagonale</label>
+          <input type="checkbox" v-model="form.is_hexagonal" style="width:auto;cursor:pointer" />
+        </div>
+        <div class="field-row">
           <label>Dimensions</label>
           <div class="dims-row">
             <input type="number" v-model.number="form.width_mm" min="10" max="500" class="dim-input" placeholder="Larg." />
             <span class="dim-sep">×</span>
-            <input type="number" v-model.number="form.height_mm" min="10" max="500" class="dim-input" placeholder="Haut." />
+            <input v-if="form.is_hexagonal" type="text" :value="form.height_mm" readonly class="dim-input dim-input-readonly" title="Calculé automatiquement (ratio hexagonal)" />
+            <input v-else type="number" v-model.number="form.height_mm" min="10" max="500" class="dim-input" placeholder="Haut." />
             <span class="dim-unit">mm</span>
-            <button type="button" class="btn-swap" title="Échanger largeur / hauteur" @click="swapDims(form)">⇄</button>
+            <button v-if="!form.is_hexagonal" type="button" class="btn-swap" title="Échanger largeur / hauteur" @click="swapDims(form)">⇄</button>
           </div>
         </div>
         <div class="field-row">
@@ -161,8 +167,9 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { api } from '@/utils/api.js'
+import { hexHeightFromWidth, isHexLayout } from '@/utils/hexGeometry.js'
 
 const layouts    = ref([])
 const cardTypes  = ref([])
@@ -171,7 +178,12 @@ const search     = ref('')
 const sortKey    = ref('name')
 const faceTab    = ref('recto')
 
-const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null })
+const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false })
+
+// Auto-compute hex height when toggling or changing width
+watch(() => [form.value.is_hexagonal, form.value.width_mm], ([isHex, w]) => {
+  if (isHex) form.value.height_mm = hexHeightFromWidth(w)
+})
 
 const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
 const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
@@ -236,10 +248,11 @@ async function create() {
     height_mm: form.value.height_mm,
     is_back: form.value.is_back,
     back_layout_id: form.value.is_back ? null : form.value.back_layout_id,
+    shape: form.value.is_hexagonal ? 'hexagon' : 'rectangle',
   })
   layouts.value.push(layout)
   showCreate.value = false
-  form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null }
+  form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false }
 }
 
 // ── Verso link + quick-create ─────────────────────────────────────────────────
@@ -439,6 +452,7 @@ async function confirmDelete(l) {
   border-radius: var(--radius-sm); color: var(--text-primary); outline: none;
 }
 .dim-input:focus { border-color: var(--accent-primary); }
+.dim-input-readonly { opacity: 0.55; cursor: not-allowed; }
 .dim-fixed {
   width: 40px; text-align: center; font-size: 12px;
   font-family: var(--font-mono); color: var(--text-secondary);

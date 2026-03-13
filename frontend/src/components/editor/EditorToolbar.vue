@@ -7,6 +7,7 @@
       <span class="badge" v-if="store.mode === 'component'">Composant</span>
       <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }}×{{ store.layout.height_mm }}mm</span>
+      <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>
       <span class="save-indicator" v-if="store.dirty">● non sauvegardé</span>
     </div>
     <div class="toolbar-center">

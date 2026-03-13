@@ -198,6 +198,10 @@ button {
   background: var(--bg-tertiary);
   color: var(--text-secondary);
 }
+.badge-hex {
+  background: rgba(108,122,255,0.15);
+  color: var(--accent-primary);
+}
 
 /* Modal overlay */
 .modal-overlay {

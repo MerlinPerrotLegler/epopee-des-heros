@@ -7,6 +7,29 @@
   >
     <!-- Pannable/zoomable viewport -->
     <div class="canvas-viewport" :style="viewportStyle">
+      <!-- Hex inactive-zone overlay: semi-transparent mask outside the hexagon (evenodd SVG) -->
+      <svg
+        v-if="isHex"
+        class="hex-inactive-overlay"
+        :width="mmToPx(cardW)"
+        :height="mmToPx(cardH)"
+        style="pointer-events:none; position:absolute; top:0; left:0; z-index:5"
+      >
+        <path
+          :d="`
+            M0,0 H${mmToPx(cardW)} V${mmToPx(cardH)} H0 Z
+            M${mmToPx(cardW)*0.5},0
+            L${mmToPx(cardW)},${mmToPx(cardH)*0.25}
+            L${mmToPx(cardW)},${mmToPx(cardH)*0.75}
+            L${mmToPx(cardW)*0.5},${mmToPx(cardH)}
+            L0,${mmToPx(cardH)*0.75}
+            L0,${mmToPx(cardH)*0.25} Z
+          `"
+          fill="rgba(0,0,0,0.38)"
+          fill-rule="evenodd"
+        />
+      </svg>
+
       <!-- Card boundary -->
       <div class="card-boundary" ref="cardBoundaryRef" :style="cardStyle">
         <!-- Grid overlay -->
@@ -119,6 +142,7 @@ import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
+import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 
 const store = useEditorStore()
 const containerRef = ref(null)
@@ -152,9 +176,13 @@ const viewportStyle = computed(() => ({
   transform: `translate(${store.panX}px, ${store.panY}px)`
 }))
 
+const isHex = computed(() => isHexLayout(store.layout))
+const hexClip = hexClipPathCss()
+
 const cardStyle = computed(() => ({
   width: `${mmToPx(cardW.value)}px`,
   height: `${mmToPx(cardH.value)}px`,
+  clipPath: isHex.value ? hexClip : undefined,
 }))
 
 function elementStyle(el) {

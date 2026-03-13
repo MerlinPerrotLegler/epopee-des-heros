@@ -79,6 +79,8 @@ export function getDb() {
     } catch {}
     // Reset any 'generating' entries stuck from previous crash
     try { db.exec("UPDATE missing_media SET status = 'pending' WHERE status = 'generating'") } catch {}
+    // TSD-013: hexagonal layout shape
+    try { db.exec("ALTER TABLE layouts ADD COLUMN shape TEXT NOT NULL DEFAULT 'rectangle'") } catch {}
   }
   return db;
 }
