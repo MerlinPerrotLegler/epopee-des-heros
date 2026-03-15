@@ -8,6 +8,7 @@
       :height_mm="height_mm"
       :zoom="zoom"
       :selected="selected"
+      v-bind="extraProps"
     />
     <div v-else class="atom-unknown">{{ atomType }}</div>
   </div>
@@ -41,6 +42,8 @@ import AtomLine                from '@/atoms/components/AtomLine.vue'
 import AtomTrak                from '@/atoms/components/AtomTrak.vue'
 import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
+import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
+import AtomDrawing             from '@/atoms/components/AtomDrawing.vue'
 
 const ATOM_COMPONENTS = {
   backgroundTexture:        AtomBackgroundTexture,
@@ -67,20 +70,28 @@ const ATOM_COMPONENTS = {
   trak:                AtomTrak,
   trakCorner:          AtomTrakCorner,
   cardTrack:           AtomCardTrack,
+  separator:           AtomSeparator,
+  drawing:             AtomDrawing,
 }
 
 const props = defineProps({
-  atomType: String,
-  params:   { type: Object, default: () => ({}) },
-  width_mm: Number,
-  height_mm: Number,
-  zoom:     { type: Number, default: 1 },
-  selected: { type: Boolean, default: false }
+  atomType:   String,
+  params:     { type: Object, default: () => ({}) },
+  width_mm:   Number,
+  height_mm:  Number,
+  zoom:       { type: Number, default: 1 },
+  selected:   { type: Boolean, default: false },
+  liveStroke: { type: Object, default: null },   // only used by AtomDrawing
 })
 
 const configStore = useConfigStore()
 
 const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
+
+// Extra props passed only to specific atom types (avoids spurious $attrs warnings)
+const extraProps = computed(() =>
+  props.atomType === 'drawing' ? { liveStroke: props.liveStroke } : {}
+)
 
 // Merge params with global config: null values in params are replaced by the config value
 const resolvedParams = computed(() => {

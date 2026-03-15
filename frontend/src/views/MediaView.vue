@@ -246,7 +246,12 @@ async function removeBgFor(m) {
   downloadProgress.value = null
   try {
     const { removeBg } = await import('@/utils/removeBackground.js')
-    const blob = await removeBg(`/uploads/${m.filename}`, {
+    // Fetch the image as a blob in the main thread first — relative URLs
+    // (/uploads/…) don't resolve from within the Web Worker that the library uses.
+    const imgResp = await fetch(`/uploads/${m.filename}`)
+    if (!imgResp.ok) throw new Error(`Cannot fetch image: ${imgResp.status}`)
+    const imgBlob = await imgResp.blob()
+    const blob = await removeBg(imgBlob, {
       onProgress(key, current, total) {
         if (key.includes('fetch') && total > 0) {
           downloadProgress.value = { current, total }

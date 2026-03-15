@@ -89,10 +89,10 @@
     <!-- Type-specific params -->
     <div class="panel-section" v-if="el.params">
       <div class="panel-section-title">Paramètres — {{ typeLabel }}</div>
-      <!-- cellOverrides, stops et params IA (gérés par sections dédiées) sont cachés -->
+      <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type'"
+        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked'))"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -132,6 +132,17 @@
           <MediaPicker :model-value="value" @update:model-value="updateParam(key, $event)" />
         </template>
 
+        <!-- Multiline text (textarea) -->
+        <template v-else-if="typeof value === 'string' && MULTILINE_PARAMS.has(key)">
+          <textarea
+            :value="value"
+            @input="updateParam(key, $event.target.value)"
+            :data-param-key="key"
+            rows="4"
+            style="flex:1; resize:vertical; font-size:11px; font-family:inherit; background:var(--bg-secondary); border:1px solid var(--border-subtle); color:var(--text-primary); padding:4px 6px; border-radius:var(--radius-sm)"
+          />
+        </template>
+
         <!-- Text (supports {{binding}} syntax) -->
         <template v-else-if="typeof value === 'string'">
           <input :value="value" @input="updateParam(key, $event.target.value)" :data-param-key="key" />
@@ -143,6 +154,72 @@
         </template>
         </div><!-- /.field-row -->
       </div><!-- /.param-block -->
+    </div>
+
+    <!-- ── Section drawing : édition des 5 plumes ──────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'drawing'">
+      <div class="panel-section-title">Plumes (double-clic pour dessiner)</div>
+      <div
+        v-for="(pen, i) in (el.params.pens || [])"
+        :key="i"
+        class="pen-editor"
+      >
+        <div class="pen-editor-header">
+          <span class="pen-editor-idx">{{ i + 1 }}</span>
+          <input
+            :value="pen.name"
+            @input="updatePen(i, 'name', $event.target.value)"
+            style="flex:1; font-size:10px; font-weight:600"
+            placeholder="Nom"
+          />
+          <ColorPickerAlpha
+            :model-value="pen.color"
+            @update:model-value="updatePen(i, 'color', $event)"
+          />
+        </div>
+        <div class="pen-editor-row">
+          <label>Opacité</label>
+          <input type="range" min="0" max="1" step="0.05"
+            :value="pen.opacity ?? 1"
+            @input="updatePen(i, 'opacity', +$event.target.value)" style="flex:1" />
+          <span class="unit">{{ Math.round((pen.opacity ?? 1) * 100) }}%</span>
+        </div>
+        <div class="pen-editor-row">
+          <label>Largeur</label>
+          <input type="number" min="0.1" max="10" step="0.1"
+            :value="pen.nibWidth ?? 1"
+            @input="updatePen(i, 'nibWidth', +$event.target.value)" style="width:52px" />
+          <span class="unit">mm</span>
+        </div>
+        <div class="pen-editor-row">
+          <label>Angle bec</label>
+          <input type="range" min="0" max="90" step="1"
+            :value="pen.nibAngle ?? 45"
+            @input="updatePen(i, 'nibAngle', +$event.target.value)" style="flex:1" />
+          <span class="unit">{{ pen.nibAngle ?? 45 }}°</span>
+        </div>
+        <div class="pen-editor-row">
+          <label>Pression</label>
+          <input type="range" min="0" max="1" step="0.05"
+            :value="pen.pressureScale ?? 0.5"
+            @input="updatePen(i, 'pressureScale', +$event.target.value)" style="flex:1" />
+          <span class="unit">{{ pen.pressureScale ?? 0.5 }}</span>
+        </div>
+        <div class="pen-editor-row">
+          <label>Lissage</label>
+          <input type="range" min="0" max="1" step="0.05"
+            :value="pen.smoothing ?? 0.5"
+            @input="updatePen(i, 'smoothing', +$event.target.value)" style="flex:1" />
+          <span class="unit">{{ pen.smoothing ?? 0.5 }}</span>
+        </div>
+      </div>
+      <div class="field-row" style="margin-top:8px">
+        <label>Traits</label>
+        <span style="flex:1; color:var(--text-muted); font-family:var(--font-mono)">{{ (el.params.strokes || []).length }}</span>
+        <button class="clear-btn" @click="updateParam('strokes', [])" :disabled="!(el.params.strokes || []).length">
+          🗑 Tout effacer
+        </button>
+      </div>
     </div>
 
     <!-- ── Section image : cadrage + IA prompt ──────────────────────────── -->
@@ -181,7 +258,7 @@
       <div class="param-block">
         <div class="param-header">
           <label class="param-label">Prompt template</label>
-          <span class="param-help">Variables : {{card_name.text}}, {{card_type}}…</span>
+          <span class="param-help" v-pre>Variables : {{card_name.text}}, {{card_type}}…</span>
         </div>
         <textarea
           :value="el.params.ai_prompt_template || ''"
@@ -267,7 +344,11 @@ onMounted(async () => {
 })
 
 const store = useEditorStore()
-const el = computed(() => store.selectedElement)
+const el = computed(() => {
+  if (store.selectedElement) return store.selectedElement
+  const item = store.selectedItem
+  return item && item.kind !== 'group' ? item : null
+})
 const selectedGroup = computed(() => {
   const item = store.selectedItem
   return item?.kind === 'group' ? item : null
@@ -332,6 +413,13 @@ function setCellProp(prop, value) {
   updateParam('cellOverrides', overrides)
 }
 
+// ── Gestion des plumes (AtomDrawing) ──────────────────────────────────────
+function updatePen(penIdx, prop, value) {
+  const pens = [...(el.value.params.pens || [])]
+  pens[penIdx] = { ...pens[penIdx], [prop]: value }
+  updateParam('pens', pens)
+}
+
 function clearCellOverride() {
   const overrides = { ...(el.value.params.cellOverrides || {}) }
   delete overrides[store.activeCellIdx]
@@ -356,6 +444,7 @@ function isColorParam(key, value) {
 
 // Params whose value is always a media ID
 const MEDIA_PARAMS = new Set(['mediaId', 'svgMediaId', 'iconMediaId', 'textureMediaId', 'overlayMediaId'])
+const MULTILINE_PARAMS = new Set(['text', 'description', 'content', 'body', 'notes'])
 
 function isMediaParam(key) {
   return MEDIA_PARAMS.has(key)
@@ -390,6 +479,7 @@ const ENUM_MAPS = {
   direction:       ['horizontal', 'vertical'],
   stat:            ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
   svgPosition:     ['front', 'behind'],
+  tier:            ['basic', 'rare', 'epic', 'mythique', 'legendaire'],
 }
 
 function getEnumOptions(key) {
@@ -514,6 +604,51 @@ function getEnumOptions(key) {
   text-align: center;
   color: var(--text-muted);
   font-size: 12px;
+}
+
+.pen-editor {
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 6px;
+  background: var(--bg-primary);
+}
+
+.pen-editor-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 5px;
+}
+
+.pen-editor-idx {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--accent-primary, #6c7aff);
+  color: #fff;
+  font-size: 9px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.pen-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-bottom: 3px;
+  font-size: 10px;
+  color: var(--text-secondary);
+}
+
+.pen-editor-row label {
+  width: 52px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  font-size: 9px;
 }
 
 .ai-warning {

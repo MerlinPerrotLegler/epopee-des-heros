@@ -64,9 +64,11 @@
             selected: store.selectedElementId === el.id,
             locked: el._layerLocked,
             'is-background': BACKGROUND_ATOM_TYPES.has(el.atomType),
+            'drawing-active': drawingMode.active.value && drawingMode.drawingElementId.value === el.id,
           }"
           :style="elementStyle(el)"
           @mousedown="onElementMouseDown($event, el)"
+          @dblclick.stop="onElementDblClick($event, el)"
         >
           <!-- Atom renderer -->
           <AtomRenderer
@@ -77,6 +79,7 @@
             :height_mm="el.height_mm"
             :zoom="store.zoom"
             :selected="store.selectedElementId === el.id"
+            :live-stroke="(drawingMode.active.value && drawingMode.drawingElementId.value === el.id) ? drawingMode.liveStroke.value : null"
           />
 
           <!-- Component renderer -->
@@ -88,9 +91,51 @@
             :zoom="store.zoom"
           />
 
-          <!-- Floating toolbar : pas de duplication pour le fond -->
+          <!-- Icône verrou déplacement — atome drawing sélectionné, hors mode dessin -->
+          <button
+            v-if="el.type === 'atom' && el.atomType === 'drawing' && store.selectedElementId === el.id && !drawingMode.active.value"
+            class="drawing-lock-btn"
+            :class="{ locked: el.params?.moveLocked }"
+            :title="el.params?.moveLocked ? 'Déplacement verrouillé — cliquer pour déverrouiller' : 'Déplacement libre — cliquer pour verrouiller'"
+            @mousedown.stop
+            @click.stop="store.updateElement(el.id, { params: { ...el.params, moveLocked: !el.params?.moveLocked } })"
+          >
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor">
+              <template v-if="el.params?.moveLocked">
+                <!-- cadenas fermé -->
+                <path d="M18 8h-1V6A5 5 0 007 6v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zm-6 9a2 2 0 110-4 2 2 0 010 4zm3.1-9H8.9V6a3.1 3.1 0 016.2 0v2z"/>
+              </template>
+              <template v-else>
+                <!-- cadenas ouvert -->
+                <path d="M18 8h-1V6A5 5 0 007 6v2H6a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V10a2 2 0 00-2-2zm-6 9a2 2 0 110-4 2 2 0 010 4zM8.9 8V6a3.1 3.1 0 016.2 0v2"/>
+              </template>
+            </svg>
+          </button>
+
+          <!-- Drawing toolbar (mode dessin actif) -->
+          <DrawingToolbar
+            v-if="drawingMode.active.value && drawingMode.drawingElementId.value === el.id"
+            :pens="drawingMode.pens.value"
+            :active-pen-idx="drawingMode.activePenIdx.value"
+            @select-pen="drawingMode.selectPen"
+            @erase-last="drawingMode.deleteLastStroke"
+            @done="drawingMode.exit"
+          />
+
+          <!-- Drawing overlay : capture pointer events during drawing mode -->
+          <!-- @mousedown.stop empêche le bubble vers onElementMouseDown qui déclencherait un drag -->
           <div
-            v-if="store.selectedElementId === el.id && !el._layerLocked"
+            v-if="drawingMode.active.value && drawingMode.drawingElementId.value === el.id"
+            class="drawing-overlay"
+            @mousedown.stop
+            @pointerdown.stop="drawingMode.onPointerDown($event, cardBoundaryRef)"
+            @pointermove.stop="drawingMode.onPointerMove($event, cardBoundaryRef)"
+            @pointerup.stop="drawingMode.onPointerUp($event, cardBoundaryRef)"
+          />
+
+          <!-- Floating toolbar : pas de duplication pour le fond ni en mode dessin -->
+          <div
+            v-if="store.selectedElementId === el.id && !el._layerLocked && !drawingMode.active.value"
             class="element-toolbar"
             @mousedown.stop
           >
@@ -98,8 +143,8 @@
             <button class="el-btn el-btn-del" title="Supprimer" @click.stop="store.removeElement(el.id)">🗑</button>
           </div>
 
-          <!-- Resize handles : pas pour le fond ni pour les composants -->
-          <template v-if="store.selectedElementId === el.id && !el._layerLocked && el.type !== 'component' && !BACKGROUND_ATOM_TYPES.has(el.atomType)">
+          <!-- Resize handles : pas pour le fond ni pour les composants ni en mode dessin -->
+          <template v-if="store.selectedElementId === el.id && !el._layerLocked && el.type !== 'component' && !BACKGROUND_ATOM_TYPES.has(el.atomType) && !drawingMode.active.value">
             <div
               v-for="handle in resizeHandles" :key="handle"
               class="resize-handle"
@@ -141,12 +186,16 @@ import { resolveElementParams } from '@/utils/binding.js'
 import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
+import DrawingToolbar from './DrawingToolbar.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
+import { useDrawingMode } from '@/composables/useDrawingMode.js'
 
 const store = useEditorStore()
-const containerRef = ref(null)
+const containerRef    = ref(null)
 const cardBoundaryRef = ref(null)
+
+const drawingMode = useDrawingMode(store, () => store.zoom)
 
 const zoom = computed(() => store.zoom)
 const { mmToPx, pxToMm } = useMmScale(zoom)
@@ -203,7 +252,17 @@ function resolvedParams(el) {
   return el.params || {}
 }
 
+function onElementDblClick(_e, el) {
+  if (el.type === 'atom' && el.atomType === 'drawing' && !el._layerLocked) {
+    drawingMode.enter(el.id)
+  }
+}
+
 function onElementMouseDown(e, el) {
+  // In drawing mode, clicks outside the active drawing element exit drawing mode
+  if (drawingMode.active.value && drawingMode.drawingElementId.value !== el.id) {
+    drawingMode.exit()
+  }
   const wasAlreadySelected = store.selectedElementId === el.id
   store.selectedElementId = el.id
 
@@ -222,14 +281,16 @@ function onElementMouseDown(e, el) {
     }
   }
 
-  // Le fond de carte n'est pas déplaçable
-  if (!el._layerLocked && !BACKGROUND_ATOM_TYPES.has(el.atomType)) {
+  // Le fond de carte n'est pas déplaçable, pas de drag en mode dessin, ni si moveLocked
+  const isMoveLocked = el.type === 'atom' && el.atomType === 'drawing' && el.params?.moveLocked
+  if (!el._layerLocked && !BACKGROUND_ATOM_TYPES.has(el.atomType) && !drawingMode.active.value && !isMoveLocked) {
     dragDrop.startDrag(e, el.id)
   }
 }
 
 function onCanvasBgClick(e) {
   if (e.target === containerRef.value || e.target.classList.contains('card-boundary') || e.target.classList.contains('canvas-viewport')) {
+    if (drawingMode.active.value) { drawingMode.exit(); return }
     store.selectedElementId = null
   }
   // Pan with middle mouse or if clicking on background
@@ -304,9 +365,19 @@ watch(() => store.requestFit, handleFitRequest)
 // (EditorView a un v-if="!store.loading" qui cache le canvas pendant le chargement)
 // Arrow-key movement of selected layer / group
 function onKeyDown(e) {
-  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
   const tag = document.activeElement?.tagName
-  if (tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable) return
+  const inInput = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement?.isContentEditable
+
+  // Drawing mode shortcuts
+  if (drawingMode.active.value) {
+    if (e.key === 'Escape') { e.preventDefault(); drawingMode.exit(); return }
+    if (e.key === 'z' && (e.ctrlKey || e.metaKey) && !inInput) {
+      e.preventDefault(); drawingMode.deleteLastStroke(); return
+    }
+  }
+
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+  if (inInput) return
   if (!store.selectedItemId) return
   e.preventDefault()
   const step = e.shiftKey ? 10 * store.snapGrid : store.snapGrid
@@ -445,6 +516,46 @@ function startPan(e) {
 .component-ph {
   background: rgba(108, 122, 255, 0.05);
   border-color: rgba(108, 122, 255, 0.3);
+}
+
+/* Drawing atom — icône verrou déplacement */
+.drawing-lock-btn {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  z-index: 60;
+  width: 18px;
+  height: 18px;
+  border-radius: 3px;
+  border: 1px solid var(--border-default, #2a3050);
+  background: var(--bg-secondary, #1e2235);
+  color: var(--text-muted, #6b7280);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  opacity: 0.75;
+  transition: opacity 80ms, color 80ms, border-color 80ms;
+}
+.drawing-lock-btn:hover          { opacity: 1; color: var(--text-primary, #e8eaf0); }
+.drawing-lock-btn.locked         { color: #f97316; border-color: rgba(249,115,22,0.4); opacity: 1; }
+.drawing-lock-btn.locked:hover   { color: #fb923c; }
+
+/* Drawing mode */
+.canvas-element.drawing-active {
+  outline: 1.5px dashed #4ade80;
+  outline-offset: 2px;
+  cursor: crosshair;
+}
+
+.drawing-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 50;
+  cursor: crosshair;
+  touch-action: none;
+  pointer-events: all;
 }
 
 /* Floating element toolbar (delete/duplicate) */

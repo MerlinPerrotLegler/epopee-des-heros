@@ -384,6 +384,36 @@ export const ATOM_TYPES = {
     defaultSize: { width_mm: 63, height_mm: 88 }
   },
 
+  separator: {
+    label: 'Séparateur',
+    icon: '—',
+    defaultParams: {
+      tier:      'basic',       // 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
+      color:     '#2a1a0a',     // couleur encre (brun sombre par défaut)
+      seed:      42,            // seed pour la variation déterministe
+      direction: 'horizontal',  // 'horizontal' | 'vertical'
+    },
+    defaultSize: { width_mm: 40, height_mm: 2 }
+  },
+
+  drawing: {
+    label: 'Dessin calligraphique',
+    icon: '✒',
+    defaultParams: {
+      strokes: [],        // [{d, color, opacity, penIdx}]
+      activePenIdx: 0,
+      moveLocked: false,  // true = déplacement désactivé (icône cadenas en haut à droite)
+      pens: [
+        { name: 'Sergent-major', color: '#2a1a0a', opacity: 1.0,  nibWidth: 1.5, nibAngle: 45, pressureScale: 0.6, smoothing: 0.5 },
+        { name: 'Plume fine',    color: '#2a1a0a', opacity: 0.85, nibWidth: 0.5, nibAngle: 0,  pressureScale: 0.3, smoothing: 0.7 },
+        { name: 'Pinceau large', color: '#2a1a0a', opacity: 0.75, nibWidth: 3.0, nibAngle: 30, pressureScale: 0.8, smoothing: 0.4 },
+        { name: 'Plume 4',       color: '#2a1a0a', opacity: 0.9,  nibWidth: 1.0, nibAngle: 20, pressureScale: 0.5, smoothing: 0.6 },
+        { name: 'Plume 5',       color: '#2a1a0a', opacity: 0.8,  nibWidth: 2.0, nibAngle: 60, pressureScale: 0.7, smoothing: 0.45 },
+      ],
+    },
+    defaultSize: { width_mm: 40, height_mm: 30 }
+  },
+
   caracteristique: {
     label: 'Caractéristique',
     icon: '△',

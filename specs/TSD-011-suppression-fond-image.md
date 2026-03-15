@@ -161,7 +161,7 @@ Si Option B ou C est retenue :
 
 | # | Description | Status | Found on |
 |---|-------------|--------|----------|
-| 1 | — | — | — |
+| 1 | Suppression du fond silencieusement échouée sur certaines images — `@imgly/background-removal` s'exécute dans un Web Worker et les URLs relatives (`/uploads/…`) ne se résolvent pas depuis ce contexte. | fixed in 2026-03-13 — fetch de l'image en Blob dans le thread principal avant de la passer à la librairie | 2026-03-13 |
 
 ---
 
