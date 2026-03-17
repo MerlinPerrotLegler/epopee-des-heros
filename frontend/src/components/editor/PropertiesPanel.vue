@@ -92,7 +92,7 @@
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked'))"
+        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content')"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -220,6 +220,23 @@
           🗑 Tout effacer
         </button>
       </div>
+    </div>
+
+    <!-- ── Section richText : éditeur de contenu ────────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'richText'">
+      <div class="panel-section-title">Contenu</div>
+      <div class="rt-syntax-hint">
+        **gras** *italique* __souligné__ ~~barré~~<br>
+        /D8{6} /D12{4} /R{or,3} /FOR{+1} /INI<br>
+        /SVG{fichier} $$expr$$ $$$bloc$$$
+      </div>
+      <textarea
+        :value="el.params.content || ''"
+        @input="updateParam('content', $event.target.value)"
+        rows="8"
+        class="rt-textarea"
+        placeholder="Texte avec **gras**, /D8{6}, /R{or,2}…"
+      />
     </div>
 
     <!-- ── Section image : cadrage + IA prompt ──────────────────────────── -->
@@ -649,6 +666,31 @@ function getEnumOptions(key) {
   flex-shrink: 0;
   color: var(--text-muted);
   font-size: 9px;
+}
+
+.rt-syntax-hint {
+  font-size: 9px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  line-height: 1.6;
+  padding: 4px 6px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  margin-bottom: 6px;
+}
+
+.rt-textarea {
+  width: 100%;
+  resize: vertical;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  padding: 5px 7px;
+  border-radius: var(--radius-sm);
+  line-height: 1.5;
 }
 
 .ai-warning {

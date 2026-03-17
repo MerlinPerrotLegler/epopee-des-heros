@@ -44,6 +44,7 @@ import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
 import AtomDrawing             from '@/atoms/components/AtomDrawing.vue'
+import AtomRichText            from '@/atoms/components/AtomRichText.vue'
 
 const ATOM_COMPONENTS = {
   backgroundTexture:        AtomBackgroundTexture,
@@ -72,6 +73,7 @@ const ATOM_COMPONENTS = {
   cardTrack:           AtomCardTrack,
   separator:           AtomSeparator,
   drawing:             AtomDrawing,
+  richText:            AtomRichText,
 }
 
 const props = defineProps({

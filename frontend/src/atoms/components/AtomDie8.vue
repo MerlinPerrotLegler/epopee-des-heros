@@ -20,7 +20,7 @@
     />
     <!-- Valeur (au-dessus des traits) -->
     <text
-      :x="cx" :y="cy"
+      :x="cx * 0.9" :y="cy"
       text-anchor="middle"
       dominant-baseline="central"
       :fill="p.textColor || '#1a1a2e'"
@@ -47,10 +47,10 @@ const SCALE = 10
 const W     = computed(() => (props.width_mm  || 8) * SCALE)
 const H     = computed(() => (props.height_mm || 8) * SCALE)
 const cx    = computed(() => W.value / 2)
-const cy    = computed(() => H.value / 2)
+const cy    = computed(() => H.value / 2 * 1.15)
 
 // Rayon du triangle — piloté par les dimensions de l'élément
-const R      = computed(() => Math.min(W.value, H.value) / 2 * 0.85)
+const R      = computed(() => Math.min(W.value, H.value) / 2 * 1.12)
 // Taille du texte — indépendante de la forme
 const textSz = computed(() => (p.value.fontSize || 3.5) * SCALE)
 

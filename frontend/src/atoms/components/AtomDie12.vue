@@ -20,7 +20,8 @@
     />
     <!-- Valeur (au-dessus des traits) -->
     <text
-      :x="cx" :y="cy"
+      :x="cx" :y="textCy"
+      :dx="textDx"
       text-anchor="middle"
       dominant-baseline="central"
       :fill="p.textColor || '#1a1a2e'"
@@ -53,6 +54,14 @@ const cy    = computed(() => H.value / 2)
 const R      = computed(() => Math.min(W.value, H.value) / 2 * 0.85)
 // Taille du texte — indépendante de la forme
 const textSz = computed(() => (p.value.fontSize || 3) * SCALE)
+// Décalage vertical du texte : -5% de H (monte vers le centre optique du pentagone)
+const textCy = computed(() => cy.value - H.value * -0.05)
+// Correction horizontale pour les polices à chasse décalée (Jim Nightshade)
+const textDx = computed(() => {
+  const ff = (p.value.fontFamily || '').toLowerCase()
+  if (ff.includes('jim nightshade') || ff.includes('jimnightshade')) return -H.value * 0.04
+  return 0
+})
 
 // Pentagone régulier pointant vers le haut : sommets à -90° + 72°×i
 const vertices = computed(() =>

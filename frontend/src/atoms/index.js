@@ -82,8 +82,8 @@ export const ATOM_TYPES = {
       text: 'Titre',
       fontSize: 4, // mm
       fontWeight: 700,
-      fontFamily: 'Outfit',
-      color: '#000000',
+      fontFamily: null,       // null → config globale
+      color: null,            // null → config globale
       textAlign: 'center',
       letterSpacing: 0,
       textTransform: 'none', // none | uppercase | capitalize
@@ -98,8 +98,8 @@ export const ATOM_TYPES = {
       text: 'Lorem ipsum',
       fontSize: 2.5,
       fontWeight: 400,
-      fontFamily: 'Outfit',
-      color: '#333333',
+      fontFamily: null,       // null → config globale
+      color: null,            // null → config globale
       textAlign: 'center',
       lineHeight: 1.3,
       overflow: 'hidden', // hidden | visible | ellipsis
@@ -115,7 +115,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       mediaId: null, // reference to media library
       svgContent: '', // inline SVG fallback
-      color: '#000000',
+      color: null,            // null → config globale
       opacity: 1,
     },
     defaultSize: { width_mm: 6, height_mm: 6 }
@@ -126,12 +126,12 @@ export const ATOM_TYPES = {
     icon: '●',
     defaultParams: {
       text: '',
-      bgColor: '#6c7aff',
-      textColor: '#ffffff',
+      bgColor: null,          // null → config globale
+      textColor: null,        // null → config globale
       fontSize: 2.5,
       borderRadius: 50, // percentage
       borderWidth: 0,
-      borderColor: '#000000',
+      borderColor: null,      // null → config globale
     },
     defaultSize: { width_mm: 8, height_mm: 8 }
   },
@@ -141,7 +141,7 @@ export const ATOM_TYPES = {
     icon: 'D8',
     defaultParams: {
       value:       '3',
-      textColor:   '#1a1a2e',
+      textColor:   null,      // null → config globale
       fontSize:    3.5,      // mm — taille du nombre (indépendant de la forme)
       fontFamily:  null,
       penColor:    null,     // null → reprend textColor dans le composant
@@ -157,7 +157,7 @@ export const ATOM_TYPES = {
     icon: 'D12',
     defaultParams: {
       value:       '8',
-      textColor:   '#1a1a2e',
+      textColor:   null,      // null → config globale
       fontSize:    3,        // mm — taille du nombre (indépendant de la forme)
       fontFamily:  null,
       penColor:    null,
@@ -174,12 +174,12 @@ export const ATOM_TYPES = {
     defaultParams: {
       cardType:      'equipement',
       label:         'Carte',
-      bgColor:       'rgba(108, 122, 255, 0.1)',
-      borderColor:   '#6c7aff',
+      bgColor:       null,        // null → config globale
+      borderColor:   null,        // null → config globale
       borderStyle:   'dashed',
       borderWidth:   0.4,         // mm
       borderRadius:  4,           // px
-      textColor:     '#6c7aff',
+      textColor:     null,        // null → config globale
       fontSize:      2.5,         // mm
       iconMediaId:   null,        // SVG/image au-dessus du label
       iconSize:      6,           // mm
@@ -193,8 +193,8 @@ export const ATOM_TYPES = {
     defaultParams: {
       resourceType: '', // will be bound
       label: 'Ressource',
-      bgColor: 'rgba(255, 107, 107, 0.1)',
-      borderColor: '#ff6b6b',
+      bgColor: null,          // null → config globale
+      borderColor: null,      // null → config globale
       borderStyle: 'dashed',
     },
     defaultSize: { width_mm: 8, height_mm: 8 }
@@ -208,7 +208,7 @@ export const ATOM_TYPES = {
       value: '',
       iconSize: 4,
       fontSize: 2.5,
-      color: '#000000',
+      color: null,            // null → config globale
       showLabel: false,
     },
     defaultSize: { width_mm: 12, height_mm: 6 }
@@ -235,8 +235,8 @@ export const ATOM_TYPES = {
       showIcon: true,
       showLabel: true,
       fontSize: 2,
-      color: '#ffffff',
-      bgColor: '#6c7aff',
+      color: null,            // null → config globale
+      bgColor: null,          // null → config globale
     },
     defaultSize: { width_mm: 20, height_mm: 5 }
   },
@@ -248,8 +248,8 @@ export const ATOM_TYPES = {
       prefix: '#',
       value: '',
       fontSize: 2,
-      fontFamily: 'JetBrains Mono',
-      color: '#666666',
+      fontFamily: null,       // null → config globale
+      color: null,            // null → config globale
     },
     defaultSize: { width_mm: 15, height_mm: 4 }
   },
@@ -258,12 +258,12 @@ export const ATOM_TYPES = {
     label: 'Tuile hexagonale',
     icon: '⬡',
     defaultParams: {
-      bgColor: '#2a3050',
-      borderColor: '#6c7aff',
+      bgColor: null,          // null → config globale
+      borderColor: null,      // null → config globale
       borderWidth: 0.3,
       text: '',
       fontSize: 2.5,
-      textColor: '#ffffff',
+      textColor: null,        // null → config globale
     },
     defaultSize: { width_mm: 10, height_mm: 11.5 }
   },
@@ -289,7 +289,7 @@ export const ATOM_TYPES = {
     label: 'Rectangle',
     icon: '▬',
     defaultParams: {
-      bgColor: '#2a3050',
+      bgColor: null,          // null → config globale
       borderColor: 'transparent',
       borderWidth: 0,
       borderRadius: 0,
@@ -302,7 +302,7 @@ export const ATOM_TYPES = {
     label: 'Ligne',
     icon: '─',
     defaultParams: {
-      color: '#363d5c',
+      color: null,            // null → config globale
       thickness: 0.3,
       style: 'solid', // solid | dashed | dotted
     },
@@ -314,10 +314,10 @@ export const ATOM_TYPES = {
     icon: '◇',
     defaultParams: {
       n:           0,
-      bgColor:     '#2a3050',
-      textColor:   '#ffffff',
+      bgColor:     null,      // null → config globale
+      textColor:   null,      // null → config globale
       fontSize:    2.5,
-      borderColor: '#6c7aff',
+      borderColor: null,      // null → config globale
       borderWidth: 0.2,
       svgMediaId:  null,     // SVG décoratif optionnel
       textRotation: 45,      // rotation du chiffre en degrés
@@ -333,11 +333,11 @@ export const ATOM_TYPES = {
       n_end:       10,
       direction:   'horizontal', // 'horizontal' | 'vertical'
       cellSize_mm: 5,
-      bgColor:     '#2a3050',
-      textColor:   '#ffffff',
+      bgColor:     null,      // null → config globale
+      textColor:   null,      // null → config globale
       fontSize:    2.5,
-      fontFamily:  null,          // null → utilise la police globale ou 'Outfit'
-      borderColor: '#6c7aff',
+      fontFamily:  null,
+      borderColor: null,      // null → config globale
       borderWidth: 0.2,
       caps:        false, // triangles rectangles aux extrémités
     },
@@ -365,10 +365,10 @@ export const ATOM_TYPES = {
       cornerTextAngle:  45,           // utilisé quand cornerTextMode === 'custom'
       // ── Apparence globale ─────────────────────────────────────────
       bgColor:      'transparent',
-      textColor:    '#000000',
+      textColor:    null,         // null → config globale
       fontSize:     2.5,
-      fontFamily:   null,         // null → utilise la police globale ou 'Outfit'
-      borderColor:  '#6c7aff',
+      fontFamily:   null,
+      borderColor:  null,         // null → config globale
       borderWidth:  0.2,
       svgMediaId:   null,         // SVG décoratif dans tous les coins
       // ── Surcharges par case ────────────────────────────────────────
@@ -389,11 +389,27 @@ export const ATOM_TYPES = {
     icon: '—',
     defaultParams: {
       tier:      'basic',       // 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
-      color:     '#2a1a0a',     // couleur encre (brun sombre par défaut)
+      color:     null,          // null → config globale
       seed:      42,            // seed pour la variation déterministe
       direction: 'horizontal',  // 'horizontal' | 'vertical'
     },
     defaultSize: { width_mm: 40, height_mm: 2 }
+  },
+
+  richText: {
+    label: 'Texte riche',
+    icon: '✦',
+    defaultParams: {
+      content:    '',         // source — markdown + /D8{N} /D12{N} /R{type,amt} /FOR{mod} /SVG{name} $$fml$$
+      fontFamily: null,
+      fontSize:   3.5,        // mm
+      color:      null,       // null → config globale
+      align:      'left',     // left | center | right
+      lineHeight: 1.5,
+      diceScale:  1.4,        // multiplicateur taille dé vs fontSize (em)
+      padding:    0,          // mm
+    },
+    defaultSize: { width_mm: 50, height_mm: 20 }
   },
 
   drawing: {
@@ -423,7 +439,7 @@ export const ATOM_TYPES = {
       threshold: '',        // optional number after '>' : '5' | ''
       svgMediaId: null,     // media ID of SVG overlay (null = none)
       svgPosition: 'front', // 'front' | 'behind'
-      textColor: '#ffffff',
+      textColor: null,      // null → config globale
       fontSize: 3,
     },
     defaultSize: { width_mm: 12, height_mm: 11 }
@@ -439,6 +455,7 @@ export const STAT_TYPES = {
   MAG: { label: 'Magie',     color: '#a855f7' },
   DEV: { label: 'Déviation', color: '#f97316' },
   VIE: { label: 'Vie',       color: '#dc2626' },
+  DEF: { label: 'Défense',   color: '#64748b' },
 }
 
 // Resource types with colors and icons

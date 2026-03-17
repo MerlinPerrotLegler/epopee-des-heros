@@ -21,8 +21,11 @@ L'atome `text` existant ne supporte qu'un texte brut monochrome. Pour les descri
 ### In scope
 - Nouvel atome `richText` avec params `content` (string source) + options visuelles (font, size, color, align, lineHeight)
 - **Markdown léger** : `**gras**`, `*italique*`, `__souligné__`, `~~barré~~`, `` `code` ``
-- **Dés inline** : `/D8{N}` et `/D12{N}` — rendu du dé correspondant (AtomDie8 / AtomDie12) avec la valeur N, taille proportionnelle à la taille de texte courante
-- **Formules mathématiques** : délimitées par `$$…$$`, syntaxe FML (Formula Markup Language — voir §3.3), convertie en KaTeX au rendu
+- **Dés inline** : `/D8{N}` et `/D12{N}` — rendu du dé correspondant avec valeur N, taille proportionnelle
+- **Ressource inline** : `/R{type,quantité}` — icône colorée + quantité (ex: `/R{or,42}`)
+- **Caractéristique inline** : `/FOR{+1}`, `/INI`, `/DEX{-1}` — badge coloré avec modificateur optionnel
+- **SVG média inline** : `/SVG{nom_fichier}` — image SVG du dossier uploads
+- **Formules mathématiques** : délimitées par `$$…$$`, syntaxe FML (Formula Markup Language — voir §3.4), convertie en KaTeX au rendu
 - Rendu HTML dans une `<div>` (pas SVG pur — le text-wrapping SVG est trop limité)
 - Édition du `content` dans PropertiesPanel via un `<textarea>` live-preview
 - Le rendu HTML est encapsulé dans un `<foreignObject>` SVG **ou** dans un `<div>` overlay positionné par-dessus le canvas-element (décision §10)
@@ -69,7 +72,23 @@ Pas de titres (`#`), listes (`-`), tableaux — hors scope pour un atome inline 
 
 ---
 
-### 3.3 — Dés inline : syntaxe `/D8{N}` et `/D12{N}`
+### 3.3 — Inline atoms : syntaxe complète
+
+| Syntaxe | Rendu | Notes |
+|---------|-------|-------|
+| `/D8{6}` | Dé D8 avec "6" à l'intérieur | N = entier, `?`, ou `{varName}` |
+| `/D12{3}` | Dé D12 avec "3" à l'intérieur | — |
+| `/R{or,42}` | ● 42 (icône or + quantité) | types: or, essence, pierre, mithril, cristaux, fragment |
+| `/R{or}` | ● or (sans quantité) | — |
+| `/FOR{+1}` | Badge rouge "FOR +1" | modificateur optionnel |
+| `/INI` | Badge cyan "INI" | sans accolades = pas de modificateur |
+| `/DEX{-1}` | Badge vert "DEX -1" | — |
+| `/MAG{*2}` | Badge violet "MAG ×2" | — |
+| `/SVG{epee.svg}` | `<img src="/uploads/epee.svg">` | nom du fichier dans uploads |
+
+---
+
+### 3.3b — Dés inline : détails `/D8{N}` et `/D12{N}`
 
 - **`/D8{N}`** — rend un AtomDie8 SVG avec la valeur N (entier 1–8 ou `?`)
 - **`/D12{N}`** — rend un AtomDie12 SVG avec la valeur N (entier 1–12 ou `?`)
