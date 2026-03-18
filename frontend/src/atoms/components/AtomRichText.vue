@@ -18,7 +18,7 @@
           class="rt-die"
           :style="dieSpanStyle"
         >
-          <AtomDie8
+          <AtomDice8
             :params="diePenParams(token.value)"
             :width_mm="dieSize"
             :height_mm="dieSize"
@@ -31,7 +31,7 @@
           class="rt-die"
           :style="dieSpanStyle"
         >
-          <AtomDie12
+          <AtomDice12
             :params="diePenParams(token.value)"
             :width_mm="dieSize"
             :height_mm="dieSize"
@@ -79,8 +79,8 @@ import { computed, ref } from 'vue'
 import { tokenize, parseFML }    from '@/utils/richTextParser.js'
 import { RESOURCE_TYPES, STAT_TYPES } from '@/atoms/index.js'
 import { useAtomScale }           from './useAtomScale.js'
-import AtomDie8  from './AtomDie8.vue'
-import AtomDie12 from './AtomDie12.vue'
+import AtomDice8  from './AtomDice8.vue'
+import AtomDice12 from './AtomDice12.vue'
 
 const MM_TO_PX = 3.7795275591
 

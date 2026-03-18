@@ -81,7 +81,7 @@ export const PARAM_HELP = {
   // ── AtomPastille ───────────────────────────────────────────────────────────
   // (text, bgColor, textColor, fontSize, borderRadius, borderWidth, borderColor)
 
-  // ── AtomDie8 / AtomDie12 ──────────────────────────────────────────────────
+  // ── AtomDice8 / AtomDice12 ─────────────────────────────────────────────────
   value:         'Valeur numérique affichée sur le dé',
 
   // ── AtomCaracteristique ────────────────────────────────────────────────────

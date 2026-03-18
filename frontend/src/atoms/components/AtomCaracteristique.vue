@@ -20,7 +20,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
-import { STAT_TYPES } from '@/atoms/index.js'
+import { STAT_TYPES, FONT_FAMILY } from '@/atoms/index.js'
 
 const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
 const { mmToPx } = useAtomScale(props)
@@ -31,6 +31,7 @@ const rectStyle = computed(() => ({
   background: STAT_TYPES[props.params.stat]?.color || '#6c7aff',
   color: props.params.textColor || '#fff',
   fontSize: `${mmToPx(props.params.fontSize || 3)}px`,
+  fontFamily: FONT_FAMILY,
 }))
 </script>
 
@@ -48,7 +49,6 @@ const rectStyle = computed(() => ({
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  font-family: 'Outfit', sans-serif;
   font-weight: 700;
   letter-spacing: 0.05em;
   user-select: none;

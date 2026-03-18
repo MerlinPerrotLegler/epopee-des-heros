@@ -26,8 +26,8 @@ import AtomTitle               from '@/atoms/components/AtomTitle.vue'
 import AtomText                from '@/atoms/components/AtomText.vue'
 import AtomIcon                from '@/atoms/components/AtomIcon.vue'
 import AtomPastille            from '@/atoms/components/AtomPastille.vue'
-import AtomDie8                from '@/atoms/components/AtomDie8.vue'
-import AtomDie12               from '@/atoms/components/AtomDie12.vue'
+import AtomDice8                from '@/atoms/components/AtomDice8.vue'
+import AtomDice12               from '@/atoms/components/AtomDice12.vue'
 import AtomCaracteristique     from '@/atoms/components/AtomCaracteristique.vue'
 import AtomCardPlaceholder     from '@/atoms/components/AtomCardPlaceholder.vue'
 import AtomResourcePlaceholder from '@/atoms/components/AtomResourcePlaceholder.vue'
@@ -55,8 +55,8 @@ const ATOM_COMPONENTS = {
   text:                AtomText,
   icon:                AtomIcon,
   pastille:            AtomPastille,
-  die8:                AtomDie8,
-  die12:               AtomDie12,
+  die8:                AtomDice8,
+  die12:               AtomDice12,
   caracteristique:     AtomCaracteristique,
   cardPlaceholder:     AtomCardPlaceholder,
   resourcePlaceholder: AtomResourcePlaceholder,

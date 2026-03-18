@@ -3,6 +3,9 @@
 // Each atom type defines its default params and metadata
 // ============================================
 
+// Police imposée pour dés, caractéristiques et ressources (Jim Nightshade)
+export const FONT_FAMILY = 'Jim Nightshade'
+
 // ── Constante partagée : les 4 types "fond de carte" ──────────────────────
 export const BACKGROUND_ATOM_TYPES = new Set([
   'backgroundTexture',
@@ -143,7 +146,7 @@ export const ATOM_TYPES = {
       value:       '3',
       textColor:   null,      // null → config globale
       fontSize:    3.5,      // mm — taille du nombre (indépendant de la forme)
-      fontFamily:  null,
+      fontFamily:  FONT_FAMILY,
       penColor:    null,     // null → reprend textColor dans le composant
       penWidth:    0.5,      // épaisseur max des fuseaux (mm)
       penSeed:     8,
@@ -159,7 +162,7 @@ export const ATOM_TYPES = {
       value:       '8',
       textColor:   null,      // null → config globale
       fontSize:    3,        // mm — taille du nombre (indépendant de la forme)
-      fontFamily:  null,
+      fontFamily:  FONT_FAMILY,
       penColor:    null,
       penWidth:    0.5,
       penSeed:     12,
@@ -208,6 +211,7 @@ export const ATOM_TYPES = {
       value: '',
       iconSize: 4,
       fontSize: 2.5,
+      fontFamily: FONT_FAMILY,
       color: null,            // null → config globale
       showLabel: false,
     },
@@ -441,6 +445,7 @@ export const ATOM_TYPES = {
       svgPosition: 'front', // 'front' | 'behind'
       textColor: null,      // null → config globale
       fontSize: 3,
+      fontFamily: FONT_FAMILY,
     },
     defaultSize: { width_mm: 12, height_mm: 11 }
   },

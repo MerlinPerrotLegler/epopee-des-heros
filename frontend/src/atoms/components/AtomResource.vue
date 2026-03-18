@@ -1,5 +1,5 @@
 <template>
-  <div style="display:flex;align-items:center;gap:2px;width:100%;height:100%;" :style="{ color: params.color, fontSize: `${mmToPx(params.fontSize || 2.5)}px` }">
+  <div style="display:flex;align-items:center;gap:2px;width:100%;height:100%;" :style="containerStyle">
     <span :style="{ color: RESOURCE_TYPES[params.resourceType]?.color, fontSize: '1.2em' }">
       {{ RESOURCE_TYPES[params.resourceType]?.icon || '●' }}
     </span>
@@ -9,8 +9,14 @@
 </template>
 
 <script setup>
+import { computed } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
-import { RESOURCE_TYPES } from '@/atoms/index.js'
+import { RESOURCE_TYPES, FONT_FAMILY } from '@/atoms/index.js'
 const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
 const { mmToPx } = useAtomScale(props)
+const containerStyle = computed(() => ({
+  color: props.params.color,
+  fontSize: `${mmToPx(props.params.fontSize || 2.5)}px`,
+  fontFamily: FONT_FAMILY,
+}))
 </script>
