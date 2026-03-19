@@ -14,6 +14,8 @@ export const CONFIG_KEYS = [
   { key: 'borderRadius', label: 'Rayon bordure (px)', type: 'number', step: 1 },
 ]
 
+export const ATOM_PARAM_RULES_KEY = 'atomParamRules'
+
 export const useConfigStore = defineStore('config', () => {
   const config = ref({})
   const loading = ref(false)
@@ -37,5 +39,22 @@ export const useConfigStore = defineStore('config', () => {
     config.value = await api.putConfig(updated)
   }
 
-  return { config, loading, load, set }
+  function getAtomParamRule(atomType, paramKey) {
+    const allRules = config.value?.[ATOM_PARAM_RULES_KEY] || {}
+    const atomRules = allRules[atomType] || {}
+    return atomRules[paramKey] || { hidden: false, fixedEnabled: false }
+  }
+
+  async function setAtomParamRule(atomType, paramKey, patch) {
+    const updated = { ...config.value }
+    const allRules = { ...(updated[ATOM_PARAM_RULES_KEY] || {}) }
+    const atomRules = { ...(allRules[atomType] || {}) }
+    const prevRule = atomRules[paramKey] || { hidden: false, fixedEnabled: false }
+    atomRules[paramKey] = { ...prevRule, ...patch }
+    allRules[atomType] = atomRules
+    updated[ATOM_PARAM_RULES_KEY] = allRules
+    config.value = await api.putConfig(updated)
+  }
+
+  return { config, loading, load, set, getAtomParamRule, setAtomParamRule }
 })

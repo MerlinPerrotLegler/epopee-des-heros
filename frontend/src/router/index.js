@@ -52,6 +52,11 @@ const routes = [
     path: '/config',
     name: 'Config',
     component: () => import('@/views/ConfigView.vue')
+  },
+  {
+    path: '/atoms-config',
+    name: 'AtomsConfig',
+    component: () => import('@/views/AtomsConfigView.vue')
   }
 ]
 

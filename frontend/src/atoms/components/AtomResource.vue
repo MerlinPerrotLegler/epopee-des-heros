@@ -17,6 +17,6 @@ const { mmToPx } = useAtomScale(props)
 const containerStyle = computed(() => ({
   color: props.params.color,
   fontSize: `${mmToPx(props.params.fontSize || 2.5)}px`,
-  fontFamily: FONT_FAMILY,
+  fontFamily: props.params.fontFamily || FONT_FAMILY,
 }))
 </script>

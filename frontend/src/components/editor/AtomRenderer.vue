@@ -16,7 +16,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useConfigStore } from '@/stores/config.js'
+import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 
 import AtomBackgroundTexture        from '@/atoms/components/AtomBackgroundTexture.vue'
 import AtomBackgroundGradientLinear from '@/atoms/components/AtomBackgroundGradientLinear.vue'
@@ -104,6 +104,14 @@ const resolvedParams = computed(() => {
       resolved[key] = cfgVal
     }
   }
+
+  const atomRules = cfg?.[ATOM_PARAM_RULES_KEY]?.[props.atomType] || {}
+  for (const [paramKey, rule] of Object.entries(atomRules)) {
+    if (rule?.fixedEnabled && Object.prototype.hasOwnProperty.call(rule || {}, 'fixedValue')) {
+      resolved[paramKey] = rule.fixedValue
+    }
+  }
+
   return resolved
 })
 </script>

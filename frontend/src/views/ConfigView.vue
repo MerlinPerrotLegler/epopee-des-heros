@@ -30,6 +30,7 @@
       <p class="config-desc">Provider IA, clé API et presets par type de média pour la génération automatique d'images.</p>
       <AIProviderPanel />
     </div>
+
   </div>
 </template>
 
@@ -50,7 +51,7 @@ const tabs = [
 <style scoped>
 .config-view {
   padding: 24px;
-  max-width: 680px;
+  max-width: 1280px;
   font-size: 12px;
   display: flex;
   flex-direction: column;

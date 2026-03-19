@@ -19,7 +19,7 @@
           :style="dieSpanStyle"
         >
           <AtomDice8
-            :params="diePenParams(token.value)"
+            :params="diePenParams(token.value, 8)"
             :width_mm="dieSize"
             :height_mm="dieSize"
             :zoom="zoom"
@@ -32,7 +32,7 @@
           :style="dieSpanStyle"
         >
           <AtomDice12
-            :params="diePenParams(token.value)"
+            :params="diePenParams(token.value, 12)"
             :width_mm="dieSize"
             :height_mm="dieSize"
             :zoom="zoom"
@@ -40,7 +40,7 @@
         </span>
 
         <!-- ── Ressource ──────────────────────────────────────────────── -->
-        <span v-else-if="token.type === 'resource'" class="rt-resource" :style="inlineTagStyle">
+        <span v-else-if="token.type === 'resource'" class="rt-resource" :style="[inlineTagStyle, resourceStyle()]">
           <span :style="{ color: resourceColor(token.resource) }">
             {{ resourceIcon(token.resource) }}
           </span>
@@ -78,6 +78,7 @@
 import { computed, ref } from 'vue'
 import { tokenize, parseFML }    from '@/utils/richTextParser.js'
 import { RESOURCE_TYPES, STAT_TYPES } from '@/atoms/index.js'
+import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useAtomScale }           from './useAtomScale.js'
 import AtomDice8  from './AtomDice8.vue'
 import AtomDice12 from './AtomDice12.vue'
@@ -93,6 +94,7 @@ const props = defineProps({
 })
 
 const { mmToPx } = useAtomScale(props)
+const configStore = useConfigStore()
 
 // ── KaTeX (chargement dynamique — fallback texte si non installé) ──────────────
 const katex = ref(null)
@@ -147,19 +149,41 @@ const inlineTagStyle = computed(() => ({
 }))
 
 // ── Die params ────────────────────────────────────────────────────────────────
-function diePenParams(value) {
+function getFixedAtomParam(atomType, paramKey, fallback) {
+  const allRules = configStore.config?.[ATOM_PARAM_RULES_KEY] || {}
+  const atomRules = allRules[atomType] || {}
+  const rule = atomRules[paramKey]
+  if (rule?.fixedEnabled && Object.prototype.hasOwnProperty.call(rule, 'fixedValue')) {
+    return rule.fixedValue
+  }
+  return fallback
+}
+
+function diePenParams(value, sides) {
+  const atomType = sides === 12 ? 'die12' : 'die8'
   return {
     value,
-    fontSize:   fontSize_mm.value,   // texte interne = même taille que le texte autour
-    fontFamily: p.value.fontFamily,  // hérite de la police du richText
-    textColor:  color.value,
-    penColor:   color.value,
+    fontSize:   getFixedAtomParam(atomType, 'fontSize', fontSize_mm.value),
+    fontFamily: getFixedAtomParam(atomType, 'fontFamily', p.value.fontFamily),
+    textColor:  getFixedAtomParam(atomType, 'textColor', color.value),
+    penColor:   getFixedAtomParam(atomType, 'penColor', color.value),
+    penWidth:   getFixedAtomParam(atomType, 'penWidth', undefined),
+    penSeed:    getFixedAtomParam(atomType, 'penSeed', undefined),
+    penPoolSize:getFixedAtomParam(atomType, 'penPoolSize', undefined),
   }
 }
 
 // ── Resource helpers ──────────────────────────────────────────────────────────
-function resourceColor(type) { return RESOURCE_TYPES[type]?.color || '#888' }
+function resourceColor(type) {
+  return getFixedAtomParam('resource', 'color', RESOURCE_TYPES[type]?.color || '#888')
+}
 function resourceIcon(type)  { return RESOURCE_TYPES[type]?.icon  || '●'   }
+function resourceStyle() {
+  return {
+    fontFamily: getFixedAtomParam('resource', 'fontFamily', fontFamily.value),
+    fontSize: `${mmToPx(getFixedAtomParam('resource', 'fontSize', fontSize_mm.value))}px`,
+  }
+}
 
 // ── Stat style ────────────────────────────────────────────────────────────────
 function statStyle(stat) {
@@ -170,11 +194,12 @@ function statStyle(stat) {
     gap:           '0.1em',
     verticalAlign: 'baseline',
     background:    bg,
-    color:         '#fff',
+    color:         getFixedAtomParam('caracteristique', 'textColor', '#fff'),
     borderRadius:  '3px',
     padding:       '0 0.3em',
     fontWeight:    '700',
-    fontSize:      '0.9em',
+    fontSize:      `${mmToPx(getFixedAtomParam('caracteristique', 'fontSize', 3))}px`,
+    fontFamily:    getFixedAtomParam('caracteristique', 'fontFamily', fontFamily.value),
     letterSpacing: '0.04em',
     lineHeight:    '1.3em',
   }
@@ -236,16 +261,6 @@ function renderMath(expr, block) {
   /* dieSpanStyle via :style binding */
   position: relative;
   overflow: visible;
-}
-
-/* Resource */
-.rt-resource {
-  /* inlineTagStyle via :style binding */
-}
-
-/* Stat */
-.rt-stat {
-  /* statStyle via :style binding */
 }
 
 .rt-stat-mod {

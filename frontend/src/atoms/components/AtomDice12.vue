@@ -26,7 +26,7 @@
       dominant-baseline="central"
       :fill="p.textColor || '#1a1a2e'"
       :font-size="textSz"
-      :font-family="FONT_FAMILY"
+      :font-family="p.fontFamily || FONT_FAMILY"
       font-weight="700"
     >{{ p.value || '8' }}</text>
   </svg>
@@ -57,8 +57,12 @@ const R      = computed(() => Math.min(W.value, H.value) / 2 * 0.85)
 const textSz = computed(() => (p.value.fontSize || 3) * SCALE)
 // Décalage vertical du texte : -5% de H (monte vers le centre optique du pentagone)
 const textCy = computed(() => cy.value - H.value * -0.05)
-// Correction horizontale pour Jim Nightshade (chasse décalée)
-const textDx = computed(() => -H.value * 0.04)
+// Correction horizontale uniquement pour Jim Nightshade (chasse décalée)
+const textDx = computed(() => {
+  const ff = String(p.value.fontFamily || FONT_FAMILY).toLowerCase()
+  if (ff.includes('jim nightshade') || ff.includes('jimnightshade')) return -H.value * 0.04
+  return 0
+})
 
 // Pentagone régulier pointant vers le haut : sommets à -90° + 72°×i
 const vertices = computed(() =>

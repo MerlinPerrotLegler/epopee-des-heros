@@ -26,6 +26,10 @@
           <span class="nav-icon">⤓</span>
           <span class="nav-label">Export</span>
         </router-link>
+        <router-link to="/atoms-config" class="nav-item" :class="{ active: route.path === '/atoms-config' }">
+          <span class="nav-icon">⚛</span>
+          <span class="nav-label">Atomes</span>
+        </router-link>
       </div>
       <div class="nav-bottom">
         <router-link to="/config" class="nav-item" :class="{ active: route.path === '/config' }">

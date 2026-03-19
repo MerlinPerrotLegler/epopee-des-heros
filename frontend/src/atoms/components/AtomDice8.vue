@@ -25,7 +25,7 @@
       dominant-baseline="central"
       :fill="p.textColor || '#1a1a2e'"
       :font-size="textSz"
-      :font-family="FONT_FAMILY"
+      :font-family="p.fontFamily || FONT_FAMILY"
       font-weight="700"
     >{{ p.value || '3' }}</text>
   </svg>

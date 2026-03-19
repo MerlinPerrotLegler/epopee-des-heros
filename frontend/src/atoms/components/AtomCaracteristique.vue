@@ -31,7 +31,8 @@ const rectStyle = computed(() => ({
   background: STAT_TYPES[props.params.stat]?.color || '#6c7aff',
   color: props.params.textColor || '#fff',
   fontSize: `${mmToPx(props.params.fontSize || 3)}px`,
-  fontFamily: FONT_FAMILY,
+  fontFamily: props.params.fontFamily || FONT_FAMILY,
+  fontWeight: props.params.fontWeight || 700,
 }))
 </script>
 

@@ -92,10 +92,11 @@
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content')"
+        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !isParamHidden(key)"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
+          <span v-if="isParamFixed(key)" class="param-help">Paramètre fixé dans Config &gt; Atomes</span>
           <span v-if="PARAM_HELP[key]" class="param-help">{{ PARAM_HELP[key] }}</span>
         </div>
         <div class="field-row">
@@ -111,25 +112,25 @@
 
         <!-- Number -->
         <template v-else-if="typeof value === 'number'">
-          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" :data-param-key="key" />
+          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
 
         <!-- Boolean -->
         <template v-else-if="typeof value === 'boolean'">
-          <input type="checkbox" :checked="value" @change="updateParam(key, $event.target.checked)" :data-param-key="key" />
+          <input type="checkbox" :checked="value" @change="updateParam(key, $event.target.checked)" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
 
         <!-- Select for known enums -->
         <template v-else-if="getEnumOptions(key)">
-          <select :value="value" @change="updateParam(key, $event.target.value)" :data-param-key="key">
+          <select :value="value" @change="updateParam(key, $event.target.value)" :data-param-key="key" :disabled="isParamFixed(key)">
             <option v-for="opt in getEnumOptions(key)" :key="opt" :value="opt">{{ opt }}</option>
           </select>
         </template>
 
         <!-- Media ID param — text + picker button -->
         <template v-else-if="isMediaParam(key)">
-          <input :value="value || ''" @input="updateParam(key, $event.target.value || null)" :data-param-key="key" style="flex:1; font-family:var(--font-mono); font-size:10px" placeholder="ID media" />
-          <MediaPicker :model-value="value" @update:model-value="updateParam(key, $event)" />
+          <input :value="value || ''" @input="updateParam(key, $event.target.value || null)" :data-param-key="key" style="flex:1; font-family:var(--font-mono); font-size:10px" placeholder="ID media" :disabled="isParamFixed(key)" />
+          <MediaPicker v-if="!isParamFixed(key)" :model-value="value" @update:model-value="updateParam(key, $event)" />
         </template>
 
         <!-- Multiline text (textarea) -->
@@ -138,6 +139,7 @@
             :value="value"
             @input="updateParam(key, $event.target.value)"
             :data-param-key="key"
+            :disabled="isParamFixed(key)"
             rows="4"
             style="flex:1; resize:vertical; font-size:11px; font-family:inherit; background:var(--bg-secondary); border:1px solid var(--border-subtle); color:var(--text-primary); padding:4px 6px; border-radius:var(--radius-sm)"
           />
@@ -145,12 +147,12 @@
 
         <!-- Text (supports {{binding}} syntax) -->
         <template v-else-if="typeof value === 'string'">
-          <input :value="value" @input="updateParam(key, $event.target.value)" :data-param-key="key" />
+          <input :value="value" @input="updateParam(key, $event.target.value)" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
 
         <!-- Object / other (JSON editor) — hidden if it's the stops array shown above -->
         <template v-else>
-          <input :value="JSON.stringify(value)" @change="updateParamJson(key, $event.target.value)" class="json-input" :data-param-key="key" />
+          <input :value="JSON.stringify(value)" @change="updateParamJson(key, $event.target.value)" class="json-input" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
         </div><!-- /.field-row -->
       </div><!-- /.param-block -->
@@ -335,6 +337,7 @@
 <script setup>
 import { computed, ref, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
@@ -361,6 +364,7 @@ onMounted(async () => {
 })
 
 const store = useEditorStore()
+const configStore = useConfigStore()
 const el = computed(() => {
   if (store.selectedElement) return store.selectedElement
   const item = store.selectedItem
@@ -504,6 +508,22 @@ function getEnumOptions(key) {
     return [...ENUM_MAPS.fontFamily, ...fontsStore.familyNames]
   }
   return ENUM_MAPS[key] || null
+}
+
+function atomParamRule(paramKey) {
+  if (!el.value || el.value.type !== 'atom') return { hidden: false, fixedEnabled: false }
+  const allRules = configStore.config?.[ATOM_PARAM_RULES_KEY] || {}
+  const atomRules = allRules[el.value.atomType] || {}
+  return atomRules[paramKey] || { hidden: false, fixedEnabled: false }
+}
+
+function isParamHidden(paramKey) {
+  return !!atomParamRule(paramKey).hidden
+}
+
+function isParamFixed(paramKey) {
+  const rule = atomParamRule(paramKey)
+  return !!(rule.fixedEnabled && Object.prototype.hasOwnProperty.call(rule || {}, 'fixedValue'))
 }
 </script>
 
