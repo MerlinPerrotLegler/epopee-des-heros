@@ -87,11 +87,26 @@ app.use('/api/missing-media', missingMediaRouter);
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {
-  app.use(express.static(DIST_DIR));
-  app.get('*', (req, res) => {
-    if (!req.path.startsWith('/api/') && !req.path.startsWith('/uploads/')) {
-      res.sendFile(join(DIST_DIR, 'index.html'));
+  app.use(express.static(DIST_DIR, {
+    // index.html toujours à jour (références vers les bons hashes de chunks)
+    // fichiers sous /assets/ : noms hashés → cache long
+    setHeaders: (res, filepath) => {
+      if (filepath.endsWith('index.html')) {
+        res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+      } else if (/[/\\]assets[/\\]/.test(filepath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
+  app.get('*', (req, res, next) => {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+      return next();
     }
+    // Chunk JS/CSS manquant : ne pas envoyer index.html (sinon erreur MIME / import dynamique)
+    if (req.path.startsWith('/assets/')) {
+      return res.status(404).type('text/plain').send('Asset not found');
+    }
+    res.sendFile(join(DIST_DIR, 'index.html'));
   });
 }
 

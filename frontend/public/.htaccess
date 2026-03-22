@@ -1,0 +1,14 @@
+# Hostinger / Apache — évite de servir index.html pour les chunks JS manquants
+# (sinon le navigateur reçoit du HTML à la place du module → "Failed to fetch dynamically imported module")
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+  # Fichiers et dossiers qui existent réellement
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+  # Chunk / asset absent : 404 explicite, pas de fallback SPA
+  RewriteRule ^assets/ - [R=404,L]
+  # Fallback SPA pour le reste
+  RewriteRule . /index.html [L]
+</IfModule>
