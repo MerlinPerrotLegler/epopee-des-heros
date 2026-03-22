@@ -1,23 +1,30 @@
 const BASE = '/api'
 
-const AUTH_HEADER = 'Basic ' + btoa(
-  `${import.meta.env.VITE_AUTH_USER || 'admin'}:${import.meta.env.VITE_AUTH_PASS || 'changeme'}`
-)
-
 async function request(path, options = {}) {
   const url = `${BASE}${path}`
   const config = {
-    headers: { 'Content-Type': 'application/json', 'Authorization': AUTH_HEADER },
-    ...options
+    credentials: 'include',
+    headers: { 'Content-Type': 'application/json', ...options.headers },
+    ...options,
   }
   if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
     config.body = JSON.stringify(config.body)
   }
   if (config.body instanceof FormData) {
-    delete config.headers['Content-Type'] // let browser set multipart boundary
+    delete config.headers['Content-Type']
   }
 
   const res = await fetch(url, config)
+
+  if (res.status === 401 && !path.startsWith('/auth/')) {
+    const loc = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : ''
+    if (!loc.startsWith('/login')) {
+      window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+    }
+    const err = await res.json().catch(() => ({ error: 'Non authentifié' }))
+    throw new Error(err.error || `API error ${res.status}`)
+  }
+
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error || `API error ${res.status}`)
@@ -26,6 +33,12 @@ async function request(path, options = {}) {
 }
 
 export const api = {
+  // Auth (utilisé rarement depuis api.js — préférer le store auth)
+  login: (username, password) =>
+    request('/auth/login', { method: 'POST', body: { username, password } }),
+  logout: () => request('/auth/logout', { method: 'POST' }),
+  me: () => request('/auth/me'),
+
   // Layouts
   getLayouts: (type) => request(type ? `/layouts?type=${type}` : '/layouts'),
   getLayout: (id) => request(`/layouts/${id}`),
@@ -68,7 +81,24 @@ export const api = {
   updateFolder: (id, data) => request(`/media/folders/${id}`, { method: 'PATCH', body: data }),
   deleteFolder: (id) => request(`/media/folders/${id}`, { method: 'DELETE' }),
   uploadMedia: (formData) => {
-    return fetch(`${BASE}/media/upload`, { method: 'POST', body: formData, headers: { 'Authorization': AUTH_HEADER } }).then(r => r.json())
+    return fetch(`${BASE}/media/upload`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    }).then(async (r) => {
+      if (r.status === 401) {
+        const loc = `${window.location.pathname}${window.location.search}`
+        if (!loc.startsWith('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+        }
+        throw new Error('Non authentifié')
+      }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }))
+        throw new Error(err.error || `API error ${r.status}`)
+      }
+      return r.json()
+    })
   },
   updateMedia: (id, data) => request(`/media/${id}`, { method: 'PATCH', body: data }),
   deleteMedia: (id) => request(`/media/${id}`, { method: 'DELETE' }),

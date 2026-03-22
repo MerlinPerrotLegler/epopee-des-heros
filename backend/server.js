@@ -1,13 +1,15 @@
 import express from 'express';
 import cors from 'cors';
+import session from 'express-session';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 
-import { basicAuth } from './middleware/auth.js';
+import { requireAuth } from './middleware/sessionAuth.js';
 import { closeDb, getDb } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
 
+import authRouter from './routes/auth.js';
 import layoutsRouter from './routes/layouts.js';
 import componentsRouter from './routes/components.js';
 import cardsRouter from './routes/cards.js';
@@ -36,15 +38,37 @@ seedBuiltins()
 
 const app = express();
 
+const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-session-secret-change-in-production';
+
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: true,
+  credentials: true,
+}));
 app.use(express.json({ limit: '50mb' }));
 
-// Serve uploaded media files (pas d'auth — les <img> du navigateur n'envoient pas d'en-tête)
+app.use(session({
+  name: 'cardDesigner.sid',
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 jours
+    path: '/',
+  },
+}));
+
+// Serve uploaded media files (pas d'auth — les <img> du navigateur n'envoient pas de session)
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-// Auth + API routes
-app.use('/api', basicAuth);
+// Routes publiques
+app.use('/api/auth', authRouter);
+
+// API protégée par session
+app.use('/api', requireAuth);
 app.use('/api/layouts', layoutsRouter);
 app.use('/api/components', componentsRouter);
 app.use('/api/cards', cardsRouter);
@@ -79,5 +103,6 @@ process.on('SIGTERM', () => { closeDb(); process.exit(0); });
 
 app.listen(PORT, () => {
   console.log(`Card Designer API running on http://localhost:${PORT}`);
-  console.log(`Auth: ${process.env.AUTH_USER || 'admin'} / ${process.env.AUTH_PASS ? '****' : 'changeme'}`);
+  const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
+  console.log(`Auth: session login (admin: ${admin})`);
 });

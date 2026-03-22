@@ -1,5 +1,9 @@
 <template>
-  <div class="app-shell">
+  <!-- Page de login : plein écran sans barre latérale -->
+  <div v-if="route.meta.public" class="login-only">
+    <router-view />
+  </div>
+  <div v-else class="app-shell">
     <nav class="app-nav">
       <div class="app-logo">
         <span class="logo-icon">⬡</span>
@@ -40,6 +44,10 @@
           <span class="nav-icon">⟲</span>
           <span class="nav-label">Versions</span>
         </router-link>
+        <button type="button" class="nav-item nav-logout" title="Déconnexion" @click="onLogout">
+          <span class="nav-icon">⎋</span>
+          <span class="nav-label">Sortir</span>
+        </button>
       </div>
     </nav>
     <main class="app-main">
@@ -50,12 +58,15 @@
 
 <script setup>
 import { onMounted, onUnmounted } from 'vue'
-import { useRoute } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import { useEditorStore } from '@/stores/editor.js'
 import { useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
+import { useAuthStore } from '@/stores/auth.js'
 
 const route = useRoute()
+const router = useRouter()
+const auth = useAuthStore()
 const editorStore = useEditorStore()
 const configStore = useConfigStore()
 const fontsStore = useFontsStore()
@@ -70,6 +81,11 @@ function onKeyDown(e) {
   }
 }
 
+async function onLogout() {
+  await auth.logout()
+  await router.push('/login')
+}
+
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
   configStore.load()
@@ -79,6 +95,11 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>
 
 <style scoped>
+.login-only {
+  min-height: 100vh;
+  width: 100%;
+}
+
 .app-shell {
   display: flex;
   height: 100vh;
@@ -159,6 +180,17 @@ onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 .nav-item.active {
   background: var(--bg-tertiary);
   color: var(--accent-primary);
+}
+
+button.nav-item {
+  border: none;
+  background: transparent;
+  width: 100%;
+  font: inherit;
+}
+
+.nav-logout:hover {
+  color: #f87171;
 }
 
 .nav-icon {

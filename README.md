@@ -43,7 +43,8 @@ card-designer/
 │   │   ├── snapshots.js       # Versioning (snapshot/restore DB)
 │   │   ├── cardTypes.js       # Types de cartes (enum)
 │   │   └── export.js          # Préparation export PDF
-│   └── middleware/auth.js     # HTTP Basic Auth
+│   ├── middleware/sessionAuth.js  # Session (cookie) pour /api
+│   └── routes/auth.js         # POST /login, /logout, GET /me
 │
 ├── frontend/
 │   └── src/
@@ -136,7 +137,7 @@ Les layouts de type "dos" sont disponibles dans la bibliothèque de dos.
 
 ## API
 
-Toutes les routes sont sous `/api/` et protégées par HTTP Basic Auth.
+Toutes les routes sous `/api/` (sauf `/api/auth/login`) sont protégées par **session** (cookie httpOnly après connexion sur la page `/login`). Variables serveur : `ADMIN_USER`, `ADMIN_PASSWORD`, `SESSION_SECRET`.
 
 | Méthode | Route | Description |
 |---------|-------|------------|
