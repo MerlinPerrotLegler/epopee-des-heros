@@ -2,6 +2,7 @@
   "name": "card-designer",
   "version": "1.0.0",
   "private": true,
+  "type": "module",
   "workspaces": ["backend", "frontend"],
   "scripts": {
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
