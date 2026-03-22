@@ -187,16 +187,17 @@ function resourceStyle() {
 
 // ── Stat style ────────────────────────────────────────────────────────────────
 function statStyle(stat) {
-  const bg = STAT_TYPES[stat]?.color || '#6c7aff'
+  const statColor = STAT_TYPES[stat]?.color || '#6c7aff'
+  const explicit = getFixedAtomParam('caracteristique', 'textColor', null)
   return {
     display:       'inline-flex',
     alignItems:    'center',
     gap:           '0.1em',
     verticalAlign: 'baseline',
-    background:    bg,
-    color:         getFixedAtomParam('caracteristique', 'textColor', '#fff'),
-    borderRadius:  '3px',
-    padding:       '0 0.3em',
+    background:    'transparent',
+    color:         explicit != null && explicit !== '' ? explicit : statColor,
+    borderRadius:  '0',
+    padding:       '0',
     fontWeight:    '700',
     fontSize:      `${mmToPx(getFixedAtomParam('caracteristique', 'fontSize', 3))}px`,
     fontFamily:    getFixedAtomParam('caracteristique', 'fontFamily', fontFamily.value),

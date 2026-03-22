@@ -4,7 +4,7 @@
     <img v-if="params.svgMediaId && params.svgPosition === 'behind'"
       :src="`/uploads/${params.svgMediaId}`" class="carac-overlay" />
 
-    <!-- Rectangle coloré -->
+    <!-- Texte (sans fond coloré — couleur du type de stat ou textColor) -->
     <div class="carac-rect" :style="rectStyle">
       <span v-if="params.modifier" class="carac-modifier">{{ params.modifier }}&nbsp;</span>
       <span class="carac-stat">{{ stat }}</span>
@@ -28,8 +28,8 @@ const { mmToPx } = useAtomScale(props)
 const stat = computed(() => (props.params.stat || 'FOR').toUpperCase().slice(0, 3))
 
 const rectStyle = computed(() => ({
-  background: STAT_TYPES[props.params.stat]?.color || '#6c7aff',
-  color: props.params.textColor || '#fff',
+  background: 'transparent',
+  color: props.params.textColor ?? STAT_TYPES[props.params.stat]?.color ?? '#1a1a2e',
   fontSize: `${mmToPx(props.params.fontSize || 3)}px`,
   fontFamily: props.params.fontFamily || FONT_FAMILY,
   fontWeight: props.params.fontWeight || 700,
@@ -46,13 +46,16 @@ const rectStyle = computed(() => ({
 .carac-rect {
   width: 100%;
   height: 100%;
+  min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
   font-weight: 700;
   letter-spacing: 0.05em;
+  line-height: 1.1;
   user-select: none;
+  box-sizing: border-box;
 }
 
 .carac-modifier {

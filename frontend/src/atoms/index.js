@@ -448,7 +448,8 @@ export const ATOM_TYPES = {
       fontFamily: FONT_FAMILY,
       fontWeight: 700,
     },
-    defaultSize: { width_mm: 12, height_mm: 11 }
+    // Même hauteur par défaut que l’atome « Texte » (bloc une ligne)
+    defaultSize: { width_mm: 12, height_mm: 10 }
   },
 }
 
