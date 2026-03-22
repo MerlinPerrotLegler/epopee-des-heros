@@ -23,6 +23,8 @@
             v-for="(atom, type) in ATOM_TYPES" :key="type"
             class="atom-btn"
             @click="addAtom(type)"
+            draggable="true"
+            @dragstart="onAtomDragStart($event, type)"
             :title="atom.label"
           >
             <span class="atom-icon">{{ atom.icon }}</span>
@@ -38,6 +40,8 @@
             v-for="comp in components" :key="comp.id"
             class="component-btn"
             @click="addComponent(comp)"
+            draggable="true"
+            @dragstart="onComponentDragStart($event, comp)"
           >
             <span>◧</span>
             <span>{{ comp.name }}</span>
@@ -110,6 +114,24 @@ function addComponent(comp) {
     height_mm: comp.height_mm || 20,
     params: {}
   })
+}
+
+function onAtomDragStart(e, type) {
+  e.dataTransfer.effectAllowed = 'copy'
+  e.dataTransfer.setData('application/x-card-designer-add', JSON.stringify({
+    kind: 'atom',
+    atomType: type,
+  }))
+}
+
+function onComponentDragStart(e, comp) {
+  e.dataTransfer.effectAllowed = 'copy'
+  e.dataTransfer.setData('application/x-card-designer-add', JSON.stringify({
+    kind: 'component',
+    componentId: comp.id,
+    width_mm: comp.width_mm || 30,
+    height_mm: comp.height_mm || 20,
+  }))
 }
 
 </script>

@@ -446,6 +446,7 @@ export const ATOM_TYPES = {
       textColor: null,      // null → config globale
       fontSize: 3,
       fontFamily: FONT_FAMILY,
+      fontWeight: 700,
     },
     defaultSize: { width_mm: 12, height_mm: 11 }
   },

@@ -40,6 +40,7 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 2. Ajouter le rendu dans `AtomRenderer.vue`
 3. Si besoin, ajouter les options enum dans `PropertiesPanel.vue` (ENUM_MAPS)
 4. Toujours refléter la modification dans la configuration des atomes (`/atoms-config`, `AtomConfigPanel`) : valeur fixable, visibilité (oeil), et application runtime
+5. Tout nouveau paramètre utilisé dans un composant d'atome doit exister dans `defaultParams` (`atoms/index.js`) pour être exposé dans la config atomes
 
 ## Quand tu ajoutes une route API
 1. Créer/modifier le fichier dans `backend/routes/`

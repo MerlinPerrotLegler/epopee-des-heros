@@ -31,7 +31,13 @@
       </svg>
 
       <!-- Card boundary -->
-      <div class="card-boundary" ref="cardBoundaryRef" :style="cardStyle">
+      <div
+        class="card-boundary"
+        ref="cardBoundaryRef"
+        :style="cardStyle"
+        @dragover.prevent="onDropDragOver"
+        @drop="onDropAdd"
+      >
         <!-- Grid overlay -->
         <svg
           v-if="store.showGrid"
@@ -306,6 +312,59 @@ function onWheel(e) {
     store.panX -= e.deltaX
     store.panY -= e.deltaY
   }
+}
+
+function onDropDragOver(e) {
+  const types = Array.from(e.dataTransfer?.types || [])
+  const hasPayload = types.includes('application/x-card-designer-add')
+  if (hasPayload) e.dataTransfer.dropEffect = 'copy'
+}
+
+function onDropAdd(e) {
+  const raw = e.dataTransfer?.getData('application/x-card-designer-add')
+  if (!raw) return
+
+  let payload = null
+  try {
+    payload = JSON.parse(raw)
+  } catch {
+    return
+  }
+  if (!payload || !cardBoundaryRef.value) return
+
+  // Position de drop en mm dans la carte (coordonnées relatives au card-boundary)
+  const rect = cardBoundaryRef.value.getBoundingClientRect()
+  const dropXmm = pxToMm(e.clientX - rect.left)
+  const dropYmm = pxToMm(e.clientY - rect.top)
+
+  let element = null
+  if (payload.kind === 'atom' && payload.atomType) {
+    element = {
+      type: 'atom',
+      atomType: payload.atomType,
+    }
+  } else if (payload.kind === 'component' && payload.componentId) {
+    element = {
+      type: 'component',
+      componentId: payload.componentId,
+      width_mm: payload.width_mm || 30,
+      height_mm: payload.height_mm || 20,
+      params: {},
+    }
+  }
+  if (!element) return
+
+  // Ajout puis repositionnement proche du point de lâcher (centré sous le curseur)
+  const created = store.addElement(element)
+  if (!created) return
+  if (created.type === 'atom' && BACKGROUND_ATOM_TYPES.has(created.atomType)) return
+
+  const w = created.width_mm || 0
+  const h = created.height_mm || 0
+  const x = store.snap(dropXmm - w / 2)
+  const y = store.snap(dropYmm - h / 2)
+
+  store.updateElement(created.id, { x_mm: x, y_mm: y }, { noHistory: true })
 }
 
 const PX_PER_MM  = 3.7795
