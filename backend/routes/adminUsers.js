@@ -52,13 +52,30 @@ router.post('/users', (req, res) => {
 })
 
 router.patch('/users/:id', (req, res) => {
-  const { password, role } = req.body || {}
-  if (password === undefined && role === undefined) {
+  const { username, password, role } = req.body || {}
+  if (username === undefined && password === undefined && role === undefined) {
     return res.status(400).json({ error: 'Rien à modifier' })
   }
   const db = getDb()
   const existing = db.prepare('SELECT * FROM users WHERE id = ?').get(req.params.id)
   if (!existing) return res.status(404).json({ error: 'Utilisateur introuvable' })
+
+  if (username !== undefined) {
+    if (typeof username !== 'string' || !username.trim()) {
+      return res.status(400).json({ error: 'Identifiant invalide' })
+    }
+    const trimmed = username.trim()
+    if (trimmed !== existing.username) {
+      try {
+        db.prepare('UPDATE users SET username = ?, updated_at = datetime(\'now\') WHERE id = ?').run(trimmed, req.params.id)
+      } catch (e) {
+        if (String(e.message).includes('UNIQUE')) {
+          return res.status(409).json({ error: 'Ce nom d’utilisateur existe déjà' })
+        }
+        throw e
+      }
+    }
+  }
 
   if (role !== undefined) {
     if (role !== 'admin' && role !== 'user') {
