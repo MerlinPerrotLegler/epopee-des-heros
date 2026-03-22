@@ -25,6 +25,18 @@ npm start
 # → Tout sur http://localhost:3001
 ```
 
+### Base SQLite et déploiement
+
+La base (`card-designer.db`) et les **uploads** sont dans le dossier **`DATA_DIR`** (par défaut `backend/data/`, ignoré par Git).
+
+Sur beaucoup d’hébergeurs, **chaque déploiement utilise un système de fichiers neuf** : l’ancienne base n’y est plus, l’app en crée une **vide** au démarrage — ce n’est pas un bug du code, c’est l’absence de **stockage persistant**.
+
+**À faire en production :** monter un volume disque (ou un dossier persistant fourni par l’hébergeur) et définir dans l’environnement :
+
+`DATA_DIR=/chemin/vers/ce/dossier/persistant`
+
+(même valeur d’un déploiement à l’autre, **en dehors** du répertoire recréé à chaque build).
+
 ## Architecture
 
 ```

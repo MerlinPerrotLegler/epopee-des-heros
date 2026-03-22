@@ -1,12 +1,14 @@
 import Database from 'better-sqlite3';
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync, mkdirSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { randomUUID } from 'crypto';
 import bcrypt from 'bcryptjs';
+import { DATA_DIR } from '../paths.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const DB_PATH = join(__dirname, '..', 'data', 'card-designer.db');
+if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
+const DB_PATH = join(DATA_DIR, 'card-designer.db');
 
 let db;
 

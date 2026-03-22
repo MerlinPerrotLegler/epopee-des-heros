@@ -4,8 +4,8 @@
  * Seede les assets visuels par défaut dans la médiathèque au démarrage.
  *
  * Convention :
- *  - Les fichiers sources vivent dans  backend/data/seeds/
- *  - Ils sont copiés dans               backend/data/uploads/  avec un nom fixe "builtin-<fichier>"
+ *  - Les fichiers sources vivent dans  <DATA_DIR>/seeds/
+ *  - Ils sont copiés dans               <DATA_DIR>/uploads/  avec un nom fixe "builtin-<fichier>"
  *  - Un enregistrement est créé dans la table `media` avec l'ID fixe "builtin-<nomSansExt>"
  *  - Un dossier spécial "Ressources intégrées" (id='builtin') regroupe ces assets
  *
@@ -15,9 +15,10 @@
 import { existsSync, copyFileSync, readdirSync } from 'fs'
 import { join, extname } from 'path'
 import { getDb } from './database.js'
+import { DATA_DIR } from '../paths.js'
 
-const SEEDS_DIR  = join(import.meta.dirname, '..', 'data', 'seeds')
-const UPLOADS_DIR = join(import.meta.dirname, '..', 'data', 'uploads')
+const SEEDS_DIR = join(DATA_DIR, 'seeds')
+const UPLOADS_DIR = join(DATA_DIR, 'uploads')
 
 const MIME_MAP = {
   '.jpg':  'image/jpeg',
