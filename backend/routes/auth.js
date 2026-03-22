@@ -13,7 +13,11 @@ router.post('/login', (req, res) => {
 
   if (username === user && password === pass) {
     req.session.user = { name: user }
-    return res.json({ ok: true, user: { name: user } })
+    // Garantit l’écriture du cookie avant la réponse (évite course avec le 1er GET /api/*)
+    return req.session.save((err) => {
+      if (err) return res.status(500).json({ error: 'Erreur session' })
+      return res.json({ ok: true, user: { name: user } })
+    })
   }
 
   return res.status(401).json({ error: 'Identifiant ou mot de passe incorrect' })

@@ -2,10 +2,14 @@ const BASE = '/api'
 
 async function request(path, options = {}) {
   const url = `${BASE}${path}`
+  // `...options` en premier pour que credentials / headers fusionnés ne soient jamais écrasés
   const config = {
-    credentials: 'include',
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...options.headers,
+    },
+    credentials: 'include',
   }
   if (config.body && typeof config.body === 'object' && !(config.body instanceof FormData)) {
     config.body = JSON.stringify(config.body)

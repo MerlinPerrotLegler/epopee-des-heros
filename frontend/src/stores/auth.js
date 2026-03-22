@@ -35,7 +35,11 @@ export const useAuthStore = defineStore('auth', () => {
     if (!r.ok) {
       throw new Error(d.error || 'Connexion impossible')
     }
-    user.value = d.user || { name: username }
+    // Relecture serveur : confirme que le cookie est bien pris en compte avant navigation
+    await fetchMe()
+    if (!user.value) {
+      throw new Error('Session non enregistrée — vérifie que le backend tourne et les cookies ne sont pas bloqués.')
+    }
   }
 
   async function logout() {

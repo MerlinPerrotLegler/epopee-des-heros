@@ -38,6 +38,9 @@ seedBuiltins()
 
 const app = express();
 
+// Derrière le proxy Vite (dev) ou un reverse proxy : cookies / X-Forwarded-* corrects
+app.set('trust proxy', 1);
+
 const SESSION_SECRET = process.env.SESSION_SECRET || 'dev-session-secret-change-in-production';
 
 // Middleware
@@ -52,6 +55,7 @@ app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  proxy: true,
   cookie: {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
