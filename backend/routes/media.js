@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { getDb } from '../db/database.js';
 import multer from 'multer';
-import { extname } from 'path';
+import { join, extname } from 'path';
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { createHash, randomUUID } from 'crypto';
 import { insertOrIgnoreInto } from '../db/sqlDialect.js';

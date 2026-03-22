@@ -3,6 +3,7 @@
  * Handles prompt construction, OpenAI call, image download/save, DB resolution.
  */
 import { createHash, randomUUID } from 'crypto'
+import { join } from 'path'
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { insertOrIgnoreInto, parseJsonColumn } from '../db/sqlDialect.js'
 import { UPLOADS_DIR } from '../paths.js'
