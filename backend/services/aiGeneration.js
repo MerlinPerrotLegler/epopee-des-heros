@@ -4,12 +4,8 @@
  */
 import { createHash, randomUUID } from 'crypto'
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
-import { join, dirname } from 'path'
-import { fileURLToPath } from 'url'
 import { insertOrIgnoreInto, parseJsonColumn } from '../db/sqlDialect.js'
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
-const UPLOADS_DIR = join(__dirname, '..', 'data', 'uploads')
+import { UPLOADS_DIR } from '../paths.js'
 
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true })
 

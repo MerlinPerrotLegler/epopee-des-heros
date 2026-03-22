@@ -1,14 +1,11 @@
 import { Router } from 'express';
 import { getDb } from '../db/database.js';
 import multer from 'multer';
-import { join, dirname, extname } from 'path';
-import { fileURLToPath } from 'url';
+import { extname } from 'path';
 import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { createHash, randomUUID } from 'crypto';
 import { insertOrIgnoreInto } from '../db/sqlDialect.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const UPLOADS_DIR = join(__dirname, '..', 'data', 'uploads');
+import { UPLOADS_DIR } from '../paths.js';
 
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 

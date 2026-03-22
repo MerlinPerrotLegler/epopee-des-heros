@@ -5,7 +5,7 @@ import session from 'express-session';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
-import { DATA_DIR } from './paths.js';
+import { DATA_DIR, UPLOADS_DIR } from './paths.js';
 
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
 import { closeDb, initDatabase } from './db/database.js';
@@ -29,8 +29,6 @@ import adminUsersRouter from './routes/adminUsers.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 const DIST_DIR = join(__dirname, '..', 'frontend', 'dist');
-const UPLOADS_DIR = join(DATA_DIR, 'uploads');
-
 // Ensure data directories exist
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
