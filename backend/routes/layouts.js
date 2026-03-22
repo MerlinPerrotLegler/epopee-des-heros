@@ -4,6 +4,26 @@ import { randomUUID } from 'crypto';
 
 const router = Router();
 
+function requireLayoutEditLock(req, res, next) {
+  const db = getDb();
+  const layoutId = req.params.id;
+  const row = db.prepare('SELECT * FROM layout_locks WHERE layout_id = ?').get(layoutId);
+  const now = Date.now();
+  if (!row) {
+    return res.status(423).json({
+      error: 'Édition non verrouillée pour votre session — ouvrez l’éditeur pour prendre le verrou.',
+    });
+  }
+  if (row.expires_at < now) {
+    db.prepare('DELETE FROM layout_locks WHERE layout_id = ?').run(layoutId);
+    return res.status(423).json({ error: 'Verrou expiré — rechargez la page.' });
+  }
+  if (row.user_id !== req.session.user.id || row.session_id !== req.sessionID) {
+    return res.status(423).json({ error: `Édition verrouillée par ${row.holder_username}` });
+  }
+  next();
+}
+
 // List all layouts
 router.get('/', (req, res) => {
   const db = getDb();
@@ -73,7 +93,7 @@ router.patch('/:id', (req, res) => {
 });
 
 // Update layout definition (the visual structure) + optional thumbnail
-router.put('/:id/definition', (req, res) => {
+router.put('/:id/definition', requireLayoutEditLock, (req, res) => {
   const db = getDb();
   const existing = db.prepare('SELECT id FROM layouts WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });

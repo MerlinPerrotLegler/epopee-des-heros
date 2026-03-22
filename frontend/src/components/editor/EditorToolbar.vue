@@ -1,5 +1,11 @@
 <template>
-  <div class="toolbar">
+  <div class="toolbar-stack">
+    <div class="lock-banner" v-if="store.readOnly && store.layoutLockHolder">
+      <span class="lock-icon">🔒</span>
+      Lecture seule — <strong>{{ store.layoutLockHolder.username }}</strong> édite ce layout.
+      <span v-if="!store.layoutLockHeld" class="lock-hint">Vous pourrez éditer dès que le verrou est libéré.</span>
+    </div>
+    <div class="toolbar">
     <div class="toolbar-left">
       <router-link :to="store.mode === 'component' ? '/components' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
       <span class="toolbar-divider"></span>
@@ -28,9 +34,14 @@
       </label>
     </div>
     <div class="toolbar-right">
-      <button class="btn-ghost btn-sm" @click="store.saveDefinition()" :disabled="!store.dirty || store.saving">
+      <button
+        class="btn-ghost btn-sm"
+        @click="store.saveDefinition()"
+        :disabled="!store.dirty || store.saving || store.readOnly || (store.mode === 'layout' && !store.layoutLockHeld)"
+      >
         {{ store.saving ? 'Sauvegarde…' : 'Sauvegarder' }}
       </button>
+    </div>
     </div>
   </div>
 </template>
@@ -41,6 +52,30 @@ const store = useEditorStore()
 </script>
 
 <style scoped>
+.toolbar-stack {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+.lock-banner {
+  flex-shrink: 0;
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.15);
+  border-bottom: 1px solid var(--border-subtle);
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.lock-banner strong {
+  color: var(--text-primary);
+}
+.lock-hint {
+  margin-left: 8px;
+  opacity: 0.85;
+}
+.lock-icon {
+  margin-right: 6px;
+}
+
 .toolbar {
   height: var(--toolbar-height);
   background: var(--bg-secondary);

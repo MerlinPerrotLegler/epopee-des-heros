@@ -44,6 +44,15 @@
           <span class="nav-icon">⟲</span>
           <span class="nav-label">Versions</span>
         </router-link>
+        <router-link
+          v-if="auth.isAdmin"
+          to="/users"
+          class="nav-item"
+          :class="{ active: route.path === '/users' }"
+        >
+          <span class="nav-icon">👤</span>
+          <span class="nav-label">Comptes</span>
+        </router-link>
         <button type="button" class="nav-item nav-logout" title="Déconnexion" @click="onLogout">
           <span class="nav-icon">⎋</span>
           <span class="nav-label">Sortir</span>

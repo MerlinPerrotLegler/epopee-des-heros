@@ -7,6 +7,7 @@ export const useAuthStore = defineStore('auth', () => {
   const ready = ref(false)
 
   const isAuthenticated = computed(() => !!user.value)
+  const isAdmin = computed(() => user.value?.role === 'admin')
 
   async function fetchMe() {
     try {
@@ -50,5 +51,5 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  return { user, ready, isAuthenticated, fetchMe, login, logout }
+  return { user, ready, isAuthenticated, isAdmin, fetchMe, login, logout }
 })

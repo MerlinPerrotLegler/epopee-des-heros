@@ -5,7 +5,7 @@ import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
 
-import { requireAuth } from './middleware/sessionAuth.js';
+import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
 import { closeDb, getDb } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
 
@@ -21,6 +21,8 @@ import configRouter from './routes/config.js';
 import fontsRouter from './routes/fonts.js';
 import importJobsRouter from './routes/importJobs.js';
 import missingMediaRouter from './routes/missingMedia.js';
+import locksRouter from './routes/locks.js';
+import adminUsersRouter from './routes/adminUsers.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -70,6 +72,10 @@ app.use('/uploads', express.static(UPLOADS_DIR));
 
 // Routes publiques
 app.use('/api/auth', authRouter);
+
+// Sous-routes API (avant le préfixe /api générique)
+app.use('/api/locks', requireAuth, locksRouter);
+app.use('/api/admin', requireAuth, requireAdmin, adminUsersRouter);
 
 // API protégée par session
 app.use('/api', requireAuth);

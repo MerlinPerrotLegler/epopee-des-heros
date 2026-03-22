@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
-import { api } from '@/utils/api.js'
+import { api, acquireLayoutLock } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
 const MAX_HISTORY = 0
@@ -12,6 +12,30 @@ export const useEditorStore = defineStore('editor', () => {
   const dirty = ref(false)
   const saving = ref(false)
   const mode = ref('layout') // 'layout' | 'component'
+
+  /** Édition layout verrouillée par un autre utilisateur (lecture seule) */
+  const readOnly = ref(false)
+  /** Qui détient le verrou si lecture seule */
+  const layoutLockHolder = ref(null)
+  /** true si cette session a le verrou (sauvegarde autorisée côté client) */
+  const layoutLockHeld = ref(false)
+  let lockHeartbeatId = null
+  let lockPollId = null
+
+  function assertEditable() {
+    return !readOnly.value
+  }
+
+  function stopLockTimers() {
+    if (lockHeartbeatId) {
+      clearInterval(lockHeartbeatId)
+      lockHeartbeatId = null
+    }
+    if (lockPollId) {
+      clearInterval(lockPollId)
+      lockPollId = null
+    }
+  }
 
   // === Undo history ===
   const history = ref([])
@@ -189,12 +213,83 @@ export const useEditorStore = defineStore('editor', () => {
   const canUndo = computed(() => history.value.length > 0)
 
   function undo() {
+    if (!assertEditable()) return
     if (!history.value.length || !layout.value) return
     layout.value.definition = history.value.pop()
     dirty.value = true
   }
 
   // ── Load / Save ───────────────────────────────────────────────────────────
+
+  async function enterLayoutEditor(layoutId) {
+    stopLockTimers()
+    readOnly.value = false
+    layoutLockHolder.value = null
+    layoutLockHeld.value = false
+
+    let ac
+    try {
+      ac = await acquireLayoutLock(layoutId)
+    } catch (e) {
+      console.warn('[editor] acquire lock', e)
+      readOnly.value = true
+      layoutLockHolder.value = null
+      await loadLayout(layoutId)
+      return
+    }
+
+    if (ac.acquired) {
+      layoutLockHeld.value = true
+      readOnly.value = false
+      lockHeartbeatId = window.setInterval(() => {
+        api.heartbeatLayoutLock(layoutId).catch(() => {})
+      }, 20_000)
+    } else {
+      readOnly.value = true
+      layoutLockHolder.value = ac.lockedBy || null
+      lockPollId = window.setInterval(async () => {
+        try {
+          const st = await api.getLayoutLock(layoutId)
+          if (!st.locked) {
+            const again = await acquireLayoutLock(layoutId)
+            if (again.acquired) {
+              readOnly.value = false
+              layoutLockHeld.value = true
+              layoutLockHolder.value = null
+              if (lockPollId) {
+                clearInterval(lockPollId)
+                lockPollId = null
+              }
+              lockHeartbeatId = window.setInterval(() => {
+                api.heartbeatLayoutLock(layoutId).catch(() => {})
+              }, 20_000)
+            }
+          } else if (st.holder) {
+            layoutLockHolder.value = st.holder
+          }
+        } catch {
+          /* ignore */
+        }
+      }, 8_000)
+    }
+
+    await loadLayout(layoutId)
+  }
+
+
+  async function leaveLayoutEditor(layoutId) {
+    stopLockTimers()
+    if (layoutId && layoutLockHeld.value) {
+      try {
+        await api.releaseLayoutLock(layoutId)
+      } catch {
+        /* ignore */
+      }
+    }
+    readOnly.value = false
+    layoutLockHolder.value = null
+    layoutLockHeld.value = false
+  }
 
   async function loadLayout(id) {
     loading.value = true
@@ -228,6 +323,10 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function loadComponent(id) {
+    stopLockTimers()
+    readOnly.value = false
+    layoutLockHolder.value = null
+    layoutLockHeld.value = false
     loading.value = true
     mode.value = 'component'
     try {
@@ -271,6 +370,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   async function saveDefinition() {
     if (!layout.value || !dirty.value) return
+    if (mode.value === 'layout' && (readOnly.value || !layoutLockHeld.value)) return
     saving.value = true
     try {
       const thumbnail = captureCallback ? await captureCallback() : null
@@ -295,11 +395,15 @@ export const useEditorStore = defineStore('editor', () => {
 
   watch(selectedElementId, () => { activeCellIdx.value = null })
 
-  function markDirty() { dirty.value = true }
+  function markDirty() {
+    if (!assertEditable()) return
+    dirty.value = true
+  }
 
   // ── Item operations (groups & elements) ──────────────────────────────────
 
   function addGroup(name) {
+    if (!assertEditable()) return
     if (!layout.value) return
     _snapshot()
     const id = crypto.randomUUID()
@@ -315,6 +419,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function updateItem(id, updates) {
+    if (!assertEditable()) return
     const item = _findItem(definition.value.layers, id)
     if (!item) return
     _snapshot()
@@ -323,6 +428,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function removeItem(id) {
+    if (!assertEditable()) return
     const parentArr = _findParentArray(definition.value.layers, id)
     if (!parentArr) return
     const idx = parentArr.findIndex(i => i.id === id)
@@ -336,6 +442,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Move itemId before/after targetId in potentially different containers
   function reorderItemAroundTarget(srcId, targetId, position /* 'before'|'after' */) {
+    if (!assertEditable()) return
     if (srcId === targetId) return
     const srcParent = _findParentArray(definition.value.layers, srcId)
     if (!srcParent) return
@@ -358,6 +465,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Move itemId into a group's children (or to top-level if groupId===null)
   function moveItemToGroup(itemId, groupId) {
+    if (!assertEditable()) return
     if (itemId === groupId) return
     const parentArr = _findParentArray(definition.value.layers, itemId)
     if (!parentArr) return
@@ -383,6 +491,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Move all elements inside a group by a delta
   function moveGroupBy(groupId, dx_mm, dy_mm) {
+    if (!assertEditable()) return
     const group = _findItem(definition.value.layers, groupId)
     if (!group || group.kind !== 'group') return
     _snapshot()
@@ -399,6 +508,7 @@ export const useEditorStore = defineStore('editor', () => {
   // ── Element operations ────────────────────────────────────────────────────
 
   function addElement(element, targetGroupId = null) {
+    if (!assertEditable()) return
     if (!layout.value) return
     _snapshot()
 
@@ -454,6 +564,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function updateElement(elementId, updates, { noHistory = false } = {}) {
+    if (!assertEditable()) return
     const item = _findItem(definition.value.layers || [], elementId)
     if (!item || item.kind === 'group') return
     if (!noHistory) _snapshot()
@@ -462,6 +573,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function removeElement(elementId) {
+    if (!assertEditable()) return
     const parentArr = _findParentArray(definition.value.layers, elementId)
     if (!parentArr) return
     const idx = parentArr.findIndex(i => i.id === elementId)
@@ -474,6 +586,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function duplicateElement(elementId) {
+    if (!assertEditable()) return
     const parentArr = _findParentArray(definition.value.layers, elementId)
     if (!parentArr) return
     const el = parentArr.find(i => i.id === elementId)
@@ -495,6 +608,7 @@ export const useEditorStore = defineStore('editor', () => {
   // ── Data schema ───────────────────────────────────────────────────────────
 
   function addSchemaField(name, type = 'string') {
+    if (!assertEditable()) return
     _snapshot()
     if (!layout.value.definition.dataSchema) layout.value.definition.dataSchema = {}
     layout.value.definition.dataSchema[name] = { type, default: '' }
@@ -502,6 +616,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function removeSchemaField(name) {
+    if (!assertEditable()) return
     _snapshot()
     delete layout.value.definition.dataSchema[name]
     markDirty()
@@ -514,6 +629,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Move the currently selected item (element or group) by a delta in mm
   function moveSelected(dx_mm, dy_mm) {
+    if (!assertEditable()) return
     const item = selectedItem.value
     if (!item || item.locked) return
     if (item.kind === 'group') {
@@ -540,6 +656,8 @@ export const useEditorStore = defineStore('editor', () => {
     definition, layers, selectedItem, activeLayer,
     selectedElement, allElements, dataSchema, bindingNames,
     mode,
+    readOnly, layoutLockHolder, layoutLockHeld,
+    enterLayoutEditor, leaveLayoutEditor,
     history, canUndo, undo, _snapshot,
     loadLayout, loadComponent, saveDefinition, markDirty,
     // Group/item ops

@@ -32,10 +32,6 @@ const props = defineProps({ id: String })
 const store = useEditorStore()
 const panelWidth = ref(320)
 
-onMounted(() => {
-  store.loadLayout(props.id)
-})
-
 function isInputFocused() {
   const tag = document.activeElement?.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
@@ -45,7 +41,9 @@ function isInputFocused() {
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
-    store.saveDefinition()
+    if (!store.readOnly && (store.mode !== 'layout' || store.layoutLockHeld)) {
+      store.saveDefinition()
+    }
   }
 
   // Delete selected element (not when typing in an input)
@@ -64,8 +62,14 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => document.addEventListener('keydown', onKeyDown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeyDown))
+onMounted(() => {
+  store.enterLayoutEditor(props.id)
+  document.addEventListener('keydown', onKeyDown)
+})
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onKeyDown)
+  store.leaveLayoutEditor(props.id)
+})
 
 // Panel resize
 let resizing = false

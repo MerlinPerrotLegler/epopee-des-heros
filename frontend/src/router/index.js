@@ -64,6 +64,12 @@ const routes = [
     path: '/atoms-config',
     name: 'AtomsConfig',
     component: () => import('@/views/AtomsConfigView.vue')
+  },
+  {
+    path: '/users',
+    name: 'Users',
+    meta: { adminOnly: true },
+    component: () => import('@/views/UsersView.vue')
   }
 ]
 
@@ -85,6 +91,9 @@ router.beforeEach(async (to) => {
   }
   if (!auth.user) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  if (to.meta.adminOnly && auth.user?.role !== 'admin') {
+    return { path: '/layouts' }
   }
   return true
 })

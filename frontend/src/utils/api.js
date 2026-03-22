@@ -36,12 +36,45 @@ async function request(path, options = {}) {
   return res.json()
 }
 
+/** Verrou layout : 409 = déjà pris (ne pas throw) */
+export async function acquireLayoutLock(layoutId) {
+  const res = await fetch(`${BASE}/locks/layouts/${layoutId}/acquire`, {
+    method: 'POST',
+    credentials: 'include',
+  })
+  const d = await res.json().catch(() => ({}))
+  if (res.status === 409) {
+    return { acquired: false, lockedBy: d.lockedBy }
+  }
+  if (res.status === 401) {
+    const loc = typeof window !== 'undefined' ? `${window.location.pathname}${window.location.search}` : ''
+    if (!loc.startsWith('/login')) {
+      window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+    }
+    throw new Error(d.error || 'Non authentifié')
+  }
+  if (!res.ok) throw new Error(d.error || `Verrou ${res.status}`)
+  return { acquired: true, holder: d.holder }
+}
+
 export const api = {
   // Auth (utilisé rarement depuis api.js — préférer le store auth)
   login: (username, password) =>
     request('/auth/login', { method: 'POST', body: { username, password } }),
   logout: () => request('/auth/logout', { method: 'POST' }),
   me: () => request('/auth/me'),
+
+  getLayoutLock: (layoutId) => request(`/locks/layouts/${layoutId}`),
+  heartbeatLayoutLock: (layoutId) =>
+    request(`/locks/layouts/${layoutId}/heartbeat`, { method: 'POST' }),
+  releaseLayoutLock: (layoutId) =>
+    request(`/locks/layouts/${layoutId}`, { method: 'DELETE' }),
+
+  // Admin — comptes
+  getUsers: () => request('/admin/users'),
+  createUser: (body) => request('/admin/users', { method: 'POST', body }),
+  patchUser: (id, body) => request(`/admin/users/${id}`, { method: 'PATCH', body }),
+  deleteUser: (id) => request(`/admin/users/${id}`, { method: 'DELETE' }),
 
   // Layouts
   getLayouts: (type) => request(type ? `/layouts?type=${type}` : '/layouts'),

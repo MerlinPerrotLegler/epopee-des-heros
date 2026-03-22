@@ -6,7 +6,7 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 ## Stack
 - **Frontend** : Vue 3 (Composition API + `<script setup>`), Pinia, Vue Router, Vite
 - **Backend** : Express (ESM), better-sqlite3, multer
-- **Auth** : page `/login` + session Express (cookie), identifiants `ADMIN_USER` / `ADMIN_PASSWORD` côté serveur
+- **Auth** : page `/login` + session Express ; comptes en DB (`users`, bcrypt) ; premier admin seed depuis `ADMIN_USER` / `ADMIN_PASSWORD` si la table est vide ; verrou exclusif par layout (`layout_locks`) pour l’éditeur canvas
 - **Pas de TypeScript** (JS pur, ESM partout)
 - **Pas de Tailwind** (CSS custom avec variables CSS)
 

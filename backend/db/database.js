@@ -2,6 +2,8 @@ import Database from 'better-sqlite3';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
+import { randomUUID } from 'crypto';
+import bcrypt from 'bcryptjs';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const DB_PATH = join(__dirname, '..', 'data', 'card-designer.db');
@@ -81,14 +83,50 @@ export function getDb() {
     try { db.exec("UPDATE missing_media SET status = 'pending' WHERE status = 'generating'") } catch {}
     // TSD-013: hexagonal layout shape
     try { db.exec("ALTER TABLE layouts ADD COLUMN shape TEXT NOT NULL DEFAULT 'rectangle'") } catch {}
+    // Multi-utilisateurs + verrous layout
+    try {
+      db.exec(`CREATE TABLE IF NOT EXISTS users (
+        id TEXT PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+        created_at TEXT DEFAULT (datetime('now')),
+        updated_at TEXT DEFAULT (datetime('now'))
+      )`)
+    } catch {}
+    try {
+      db.exec(`CREATE TABLE IF NOT EXISTS layout_locks (
+        layout_id TEXT NOT NULL PRIMARY KEY REFERENCES layouts(id) ON DELETE CASCADE,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        session_id TEXT NOT NULL,
+        holder_username TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+      )`)
+    } catch {}
+    seedInitialAdminIfNeeded(db)
   }
   return db;
+}
+
+function seedInitialAdminIfNeeded(db) {
+  try {
+    const n = db.prepare('SELECT COUNT(*) AS c FROM users').get()
+    if (n && n.c > 0) return
+    const adminUser = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin'
+    const adminPass = process.env.ADMIN_PASSWORD || process.env.AUTH_PASS || 'changeme'
+    const id = randomUUID()
+    const hash = bcrypt.hashSync(adminPass, 10)
+    db.prepare('INSERT INTO users (id, username, password_hash, role) VALUES (?, ?, ?, ?)').run(id, adminUser, hash, 'admin')
+    console.log('[db] Compte admin initial créé (login:', adminUser + ')')
+  } catch (e) {
+    console.warn('[db] seed admin:', e.message)
+  }
 }
 
 // Create a full snapshot of the database
 export function createSnapshot(label, codeVersion) {
   const db = getDb();
-  const tables = ['card_types', 'media_folders', 'media', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings'];
+  const tables = ['card_types', 'media_folders', 'media', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings', 'users'];
   const dump = {};
   
   for (const table of tables) {
@@ -110,7 +148,7 @@ export function restoreSnapshot(snapshotId) {
   if (!snapshot) throw new Error('Snapshot not found');
   
   const dump = JSON.parse(snapshot.dump);
-  const tables = ['card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media', 'media_folders', 'card_types'];
+  const tables = ['layout_locks', 'card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media', 'media_folders', 'card_types', 'users'];
   
   const restore = db.transaction(() => {
     // Delete in reverse dependency order

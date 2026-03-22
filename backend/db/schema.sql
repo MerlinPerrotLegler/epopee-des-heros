@@ -2,6 +2,16 @@
 -- Card Designer - Database Schema
 -- ============================================
 
+-- Users (auth — mots de passe hashés bcrypt)
+CREATE TABLE IF NOT EXISTS users (
+  id TEXT PRIMARY KEY,
+  username TEXT NOT NULL UNIQUE,
+  password_hash TEXT NOT NULL,
+  role TEXT NOT NULL DEFAULT 'user' CHECK(role IN ('admin', 'user')),
+  created_at TEXT DEFAULT (datetime('now')),
+  updated_at TEXT DEFAULT (datetime('now'))
+);
+
 -- Card types enum table
 CREATE TABLE IF NOT EXISTS card_types (
   code TEXT PRIMARY KEY,
@@ -89,6 +99,15 @@ CREATE TABLE IF NOT EXISTS layouts (
   definition JSON NOT NULL DEFAULT '{"layers":[{"id":"default","name":"Fond","locked":false,"visible":true,"elements":[]}],"dataSchema":{}}',
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
+);
+
+-- Verrou d’édition exclusif par layout (session Express = session_id)
+CREATE TABLE IF NOT EXISTS layout_locks (
+  layout_id TEXT NOT NULL PRIMARY KEY REFERENCES layouts(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  holder_username TEXT NOT NULL,
+  expires_at INTEGER NOT NULL
 );
 
 -- ============================================
