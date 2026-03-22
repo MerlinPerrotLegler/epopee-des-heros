@@ -6,6 +6,7 @@ import { createHash, randomUUID } from 'crypto'
 import { writeFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { insertOrIgnoreInto, parseJsonColumn } from '../db/sqlDialect.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const UPLOADS_DIR = join(__dirname, '..', 'data', 'uploads')
@@ -43,25 +44,24 @@ function findImageElement(layers, nameInLayout) {
  * Build the final prompt for a missing_media entry.
  * Returns { prompt, template, globalPrompt } or throws.
  */
-export function buildPrompt(entry, db) {
-  const instance = db.prepare('SELECT * FROM card_instances WHERE id = ?').get(entry.card_instance_id)
+export async function buildPrompt(entry, db) {
+  const instance = await db.prepare('SELECT * FROM card_instances WHERE id = ?').get(entry.card_instance_id)
   if (!instance) throw new Error('Card instance not found')
-  const data = JSON.parse(instance.data || '{}')
+  const data = parseJsonColumn(instance.data || '{}')
 
-  const layout = db.prepare('SELECT * FROM layouts WHERE id = ?').get(instance.layout_id)
+  const layout = await db.prepare('SELECT * FROM layouts WHERE id = ?').get(instance.layout_id)
   if (!layout) throw new Error('Layout not found')
-  const def = JSON.parse(layout.definition || '{}')
+  const def = parseJsonColumn(layout.definition || '{}')
 
-  // nameInLayout is the prefix of binding_path (e.g. "card_illustration" from "card_illustration.mediaId")
   const nameInLayout = entry.binding_path.split('.')[0]
   const element = findImageElement(def.layers || [], nameInLayout)
   const template = element?.params?.ai_prompt_template || ''
 
-  const config = db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
+  const config = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
   const globalPrompt = config?.global_prompt || ''
 
   const interpolated = template ? interpolateTemplate(template, data) : ''
-  const parts = [globalPrompt, interpolated].filter(s => s.trim())
+  const parts = [globalPrompt, interpolated].filter((s) => s.trim())
 
   return {
     prompt: parts.join('\n\n'),
@@ -100,7 +100,6 @@ export async function callOpenAI(apiKey, prompt, resolution, stylePreset) {
   const data = await res.json()
   const imageUrl = data.data[0].url
 
-  // Download the generated image from OpenAI's CDN
   const imgRes = await fetch(imageUrl)
   if (!imgRes.ok) throw new Error('Failed to download generated image from OpenAI')
   return Buffer.from(await imgRes.arrayBuffer())
@@ -112,7 +111,7 @@ export async function callOpenAI(apiKey, prompt, resolution, stylePreset) {
  * Save buffer to uploads dir, create media record in DB.
  * Returns the media id (= filename, sha1-based, compatible with params.mediaId).
  */
-export function saveGeneratedImage(buffer, label, db) {
+export async function saveGeneratedImage(buffer, label, db) {
   const sha1 = createHash('sha1').update(buffer).digest('hex')
   const filename = `${sha1}.png`
   const filepath = join(UPLOADS_DIR, filename)
@@ -121,12 +120,10 @@ export function saveGeneratedImage(buffer, label, db) {
     writeFileSync(filepath, buffer)
   }
 
-  // id = filename so /uploads/${mediaId} works in atoms
-  const existing = db.prepare('SELECT id FROM media WHERE id = ?').get(filename)
+  const existing = await db.prepare('SELECT id FROM media WHERE id = ?').get(filename)
   if (!existing) {
-    db.prepare(
-      'INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, folder_id) VALUES (?, ?, ?, ?, ?)'
-    ).run(filename, filename, `${label}_ai_generated.png`, 'image/png', 'default')
+    const sql = `${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, folder_id) VALUES (?, ?, ?, ?, ?)`
+    await db.prepare(sql).run(filename, filename, `${label}_ai_generated.png`, 'image/png', 'default')
   }
 
   return filename // = media.id
@@ -139,42 +136,41 @@ export function saveGeneratedImage(buffer, label, db) {
  * Updates DB status throughout.
  */
 export async function generateOne(entryId, db) {
-  const entry = db.prepare('SELECT * FROM missing_media WHERE id = ?').get(entryId)
+  const entry = await db.prepare('SELECT * FROM missing_media WHERE id = ?').get(entryId)
   if (!entry) throw new Error('Entry not found')
   if (entry.status === 'resolved') return // already done
 
-  // Get AI config
-  const config = db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
+  const config = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
   if (!config?.api_key) {
-    db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
+    await db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
       .run('Clé API non configurée — rendez-vous dans Config > IA Provider', entryId)
     throw new Error('API key not configured')
   }
 
-  // Build prompt
   let promptData
   try {
-    promptData = buildPrompt(entry, db)
+    promptData = await buildPrompt(entry, db)
   } catch (e) {
-    db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?").run(e.message, entryId)
+    await db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?").run(e.message, entryId)
     throw e
   }
 
   if (!promptData.prompt.trim()) {
-    db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
+    await db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
       .run('Prompt vide — configurez ai_prompt_template sur l\'élément image dans le layout', entryId)
     throw new Error('Empty prompt')
   }
 
-  // Get preset for media type
-  const presets = JSON.parse(config.media_type_presets || '[]')
-  const preset = presets.find(p => p.type === entry.media_type) || presets[0] || {}
+  const presetsRaw = config.media_type_presets
+  const presets = Array.isArray(presetsRaw)
+    ? presetsRaw
+    : parseJsonColumn(config.media_type_presets || '[]')
+  const preset = presets.find((p) => p.type === entry.media_type) || presets[0] || {}
   const provider = preset.provider || config.provider || 'openai'
   const resolution = preset.resolution || '1024x1024'
   const stylePreset = preset.style_preset || 'vivid'
 
-  // Mark as generating
-  db.prepare("UPDATE missing_media SET status='generating', generation_prompt=? WHERE id=?")
+  await db.prepare("UPDATE missing_media SET status='generating', generation_prompt=? WHERE id=?")
     .run(promptData.prompt, entryId)
 
   try {
@@ -185,28 +181,25 @@ export async function generateOne(entryId, db) {
       throw new Error(`Provider '${provider}' not yet implemented`)
     }
 
-    // Save image and create media record
-    const instance = db.prepare('SELECT name FROM card_instances WHERE id = ?').get(entry.card_instance_id)
+    const instance = await db.prepare('SELECT name FROM card_instances WHERE id = ?').get(entry.card_instance_id)
     const label = instance?.name || 'generated'
-    const mediaId = saveGeneratedImage(buffer, label, db)
+    const mediaId = await saveGeneratedImage(buffer, label, db)
 
-    // Resolve the entry
-    db.prepare(`UPDATE missing_media SET
-      status='resolved', resolved_media_id=?, resolved_at=datetime('now'), error_message=NULL
+    await db.prepare(`UPDATE missing_media SET
+      status='resolved', resolved_media_id=?, resolved_at=CURRENT_TIMESTAMP, error_message=NULL
       WHERE id=?`).run(mediaId, entryId)
 
-    // Update the card instance data so the atom displays the new image
-    const cardInstance = db.prepare('SELECT * FROM card_instances WHERE id = ?').get(entry.card_instance_id)
+    const cardInstance = await db.prepare('SELECT * FROM card_instances WHERE id = ?').get(entry.card_instance_id)
     if (cardInstance) {
-      const data = JSON.parse(cardInstance.data || '{}')
+      const data = parseJsonColumn(cardInstance.data || '{}')
       data[entry.binding_path] = mediaId
-      db.prepare("UPDATE card_instances SET data=?, updated_at=datetime('now') WHERE id=?")
+      await db.prepare('UPDATE card_instances SET data=?, updated_at=CURRENT_TIMESTAMP WHERE id=?')
         .run(JSON.stringify(data), entry.card_instance_id)
     }
 
     return mediaId
   } catch (e) {
-    db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
+    await db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
       .run(e.message, entryId)
     throw e
   }

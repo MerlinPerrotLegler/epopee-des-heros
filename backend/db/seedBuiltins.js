@@ -14,8 +14,9 @@
 
 import { existsSync, copyFileSync, readdirSync } from 'fs'
 import { join, extname } from 'path'
-import { getDb } from './database.js'
+import { getDb, getSqliteSync } from './database.js'
 import { DATA_DIR } from '../paths.js'
+import { insertOrIgnoreInto, useMysql } from './sqlDialect.js'
 
 const SEEDS_DIR = join(DATA_DIR, 'seeds')
 const UPLOADS_DIR = join(DATA_DIR, 'uploads')
@@ -29,20 +30,47 @@ const MIME_MAP = {
   '.gif':  'image/gif',
 }
 
-export function seedBuiltins() {
+export async function seedBuiltins() {
   if (!existsSync(SEEDS_DIR)) return
 
-  const db = getDb()
+  let files
+  try { files = readdirSync(SEEDS_DIR) } catch { return }
 
-  // ── Créer le dossier "Ressources intégrées" s'il n'existe pas ─────────────
+  if (useMysql()) {
+    const db = getDb()
+    await db.prepare(`
+      ${insertOrIgnoreInto()} media_folders (id, name, parent_id)
+      VALUES ('builtin', 'Ressources intégrées', 'root')
+    `).run()
+
+    const stmt = db.prepare(`
+      ${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, folder_id)
+      VALUES (?, ?, ?, ?, 'builtin')
+    `)
+
+    for (const file of files) {
+      const ext = extname(file).toLowerCase()
+      const mime = MIME_MAP[ext]
+      if (!mime) continue
+
+      const destFile = `builtin-${file}`
+      const id = destFile
+
+      const destPath = join(UPLOADS_DIR, destFile)
+      if (!existsSync(destPath)) {
+        copyFileSync(join(SEEDS_DIR, file), destPath)
+      }
+
+      await stmt.run(id, destFile, file, mime)
+    }
+    return
+  }
+
+  const db = getSqliteSync()
   db.prepare(`
     INSERT OR IGNORE INTO media_folders (id, name, parent_id)
     VALUES ('builtin', 'Ressources intégrées', 'root')
   `).run()
-
-  // ── Scanner les fichiers du dossier seeds ─────────────────────────────────
-  let files
-  try { files = readdirSync(SEEDS_DIR) } catch { return }
 
   const stmt = db.prepare(`
     INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, folder_id)
@@ -52,18 +80,16 @@ export function seedBuiltins() {
   for (const file of files) {
     const ext = extname(file).toLowerCase()
     const mime = MIME_MAP[ext]
-    if (!mime) continue                          // ignorer les fichiers non-image
+    if (!mime) continue
 
-    const destFile = `builtin-${file}`                   // nom fixe dans uploads/
-    const id       = destFile                            // ex: builtin-texture-parchemin.png
+    const destFile = `builtin-${file}`
+    const id = destFile
 
-    // Copier vers uploads/ si absent
     const destPath = join(UPLOADS_DIR, destFile)
     if (!existsSync(destPath)) {
       copyFileSync(join(SEEDS_DIR, file), destPath)
     }
 
-    // Insérer dans la DB si absent (INSERT OR IGNORE)
     stmt.run(id, destFile, file, mime)
   }
 }

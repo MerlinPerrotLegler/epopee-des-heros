@@ -1,3 +1,4 @@
+import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
@@ -7,7 +8,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { DATA_DIR } from './paths.js';
 
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
-import { closeDb, getDb } from './db/database.js';
+import { closeDb, initDatabase } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
 
 import authRouter from './routes/auth.js';
@@ -33,10 +34,6 @@ const UPLOADS_DIR = join(DATA_DIR, 'uploads');
 // Ensure data directories exist
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
-
-// Seed built-in assets (runs once per asset, idempotent)
-getDb()           // initialise la DB + schema
-seedBuiltins()
 
 const app = express();
 
@@ -126,8 +123,18 @@ app.use((err, req, res, next) => {
 process.on('SIGINT', () => { closeDb(); process.exit(0); });
 process.on('SIGTERM', () => { closeDb(); process.exit(0); });
 
-app.listen(PORT, () => {
-  console.log(`Card Designer API running on http://localhost:${PORT}`);
-  const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
-  console.log(`Auth: session login (admin: ${admin})`);
+async function main() {
+  await initDatabase();
+  await seedBuiltins();
+
+  app.listen(PORT, () => {
+    console.log(`Card Designer API running on http://localhost:${PORT}`);
+    const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
+    console.log(`Auth: session login (admin: ${admin})`);
+  });
+}
+
+main().catch((err) => {
+  console.error('[server] Fatal:', err);
+  process.exit(1);
 });

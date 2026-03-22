@@ -1,31 +1,31 @@
 import { Router } from 'express';
-import { getDb } from '../db/database.js';
-import { randomUUID } from 'crypto';
-import { runImportPipeline, normalizeGoogleSheetsUrl, parseCsvText } from './cards.js';
+import { getDb, getSqliteSync } from '../db/database.js';
+import { useMysql } from '../db/sqlDialect.js';
+import { runImportPipeline, runImportPipelineAsync, normalizeGoogleSheetsUrl, parseCsvText } from './cards.js';
 
 const router = Router();
 
 // List all import jobs
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const db = getDb();
-  const rows = db.prepare(`
+  const rows = await db.prepare(`
     SELECT ij.*, l.name AS layout_name,
       (SELECT COUNT(*) FROM card_instances WHERE import_job_id = ij.id) AS instance_count
     FROM import_jobs ij
     LEFT JOIN layouts l ON l.id = ij.layout_id
     ORDER BY ij.created_at DESC
   `).all();
-  rows.forEach(r => {
-    if (r.mappings) r.mappings = JSON.parse(r.mappings);
-    if (r.last_sync_stats) r.last_sync_stats = JSON.parse(r.last_sync_stats);
+  rows.forEach((r) => {
+    if (r.mappings) r.mappings = typeof r.mappings === 'string' ? JSON.parse(r.mappings) : r.mappings;
+    if (r.last_sync_stats) r.last_sync_stats = typeof r.last_sync_stats === 'string' ? JSON.parse(r.last_sync_stats) : r.last_sync_stats;
   });
   res.json(rows);
 });
 
 // Get single import job
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
   const db = getDb();
-  const row = db.prepare(`
+  const row = await db.prepare(`
     SELECT ij.*, l.name AS layout_name,
       (SELECT COUNT(*) FROM card_instances WHERE import_job_id = ij.id) AS instance_count
     FROM import_jobs ij
@@ -33,18 +33,18 @@ router.get('/:id', (req, res) => {
     WHERE ij.id = ?
   `).get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
-  if (row.mappings) row.mappings = JSON.parse(row.mappings);
-  if (row.last_sync_stats) row.last_sync_stats = JSON.parse(row.last_sync_stats);
+  if (row.mappings) row.mappings = typeof row.mappings === 'string' ? JSON.parse(row.mappings) : row.mappings;
+  if (row.last_sync_stats) row.last_sync_stats = typeof row.last_sync_stats === 'string' ? JSON.parse(row.last_sync_stats) : row.last_sync_stats;
   res.json(row);
 });
 
 // Re-sync an import job (re-fetch source URL and upsert instances)
 router.post('/:id/sync', async (req, res) => {
   const db = getDb();
-  const job = db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(req.params.id);
+  const job = await db.prepare('SELECT * FROM import_jobs WHERE id = ?').get(req.params.id);
   if (!job) return res.status(404).json({ error: 'Not found' });
 
-  const mappings = JSON.parse(job.mappings);
+  const mappings = typeof job.mappings === 'string' ? JSON.parse(job.mappings) : job.mappings;
 
   try {
     const url = normalizeGoogleSheetsUrl(job.source_url);
@@ -54,17 +54,27 @@ router.post('/:id/sync', async (req, res) => {
     const rows = parseCsvText(csvText);
     if (!rows.length) throw new Error('CSV vide ou sans données');
 
-    const stats = runImportPipeline(db, {
-      rows,
-      mode: job.mode,
-      layoutId: job.layout_id,
-      layoutColumn: job.layout_column,
-      idColumn: job.id_column,
-      mappings,
-      jobId: job.id,
-    });
+    const stats = useMysql()
+      ? await runImportPipelineAsync(db, {
+        rows,
+        mode: job.mode,
+        layoutId: job.layout_id,
+        layoutColumn: job.layout_column,
+        idColumn: job.id_column,
+        mappings,
+        jobId: job.id,
+      })
+      : runImportPipeline(getSqliteSync(), {
+        rows,
+        mode: job.mode,
+        layoutId: job.layout_id,
+        layoutColumn: job.layout_column,
+        idColumn: job.id_column,
+        mappings,
+        jobId: job.id,
+      });
 
-    db.prepare(`UPDATE import_jobs SET last_synced_at = datetime('now'), last_sync_stats = ? WHERE id = ?`)
+    await db.prepare(`UPDATE import_jobs SET last_synced_at = CURRENT_TIMESTAMP, last_sync_stats = ? WHERE id = ?`)
       .run(JSON.stringify(stats), job.id);
 
     res.json({ ok: true, jobId: job.id, ...stats });
@@ -74,9 +84,9 @@ router.post('/:id/sync', async (req, res) => {
 });
 
 // Delete import job (does NOT delete instances)
-router.delete('/:id', (req, res) => {
+router.delete('/:id', async (req, res) => {
   const db = getDb();
-  db.prepare('DELETE FROM import_jobs WHERE id = ?').run(req.params.id);
+  await db.prepare('DELETE FROM import_jobs WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });
 
