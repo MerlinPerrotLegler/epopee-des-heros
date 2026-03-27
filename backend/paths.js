@@ -1,5 +1,6 @@
 import { join, dirname, isAbsolute, basename } from 'path'
 import { fileURLToPath } from 'url'
+import { config as loadEnv } from 'dotenv'
 
 /**
  * Dossier racine des données (SQLite, sous-dossier uploads/, seeds/).
@@ -13,6 +14,8 @@ import { fileURLToPath } from 'url'
  * En production sur hébergeur à disque éphémère : définir DATA_DIR vers un volume monté.
  */
 const backendRoot = dirname(fileURLToPath(import.meta.url))
+loadEnv({ path: join(backendRoot, '..', '.env') })
+loadEnv()
 
 /**
  * Si le chemin finit par un segment `uploads`, on le retire : les fichiers média vivent
@@ -29,7 +32,8 @@ function stripTrailingUploadsSegment(resolved) {
 function resolveDataDir() {
   const raw = process.env.DATA_DIR?.trim()
   if (!raw) return join(backendRoot, 'data')
-  const merged = isAbsolute(raw) ? raw : join(backendRoot, raw)
+  const normalizedRaw = raw.replace(/^\.?\/*backend\//, '')
+  const merged = isAbsolute(raw) ? raw : join(backendRoot, normalizedRaw)
   return stripTrailingUploadsSegment(merged)
 }
 

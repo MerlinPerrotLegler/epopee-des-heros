@@ -20,6 +20,7 @@ let sqliteDb = null
 let mysqlPool = null
 /** Interface async unifiée pour les routes */
 let adapter = null
+const DB_DEBUG = process.env.DB_DEBUG === '1' || process.env.BACKEND_DEBUG === '1'
 
 export function getSqliteSync() {
   if (useMysql()) throw new Error('getSqliteSync: mode MySQL actif')
@@ -224,10 +225,18 @@ function initSqliteSync() {
 
 async function initMysql() {
   mysqlPool = createMysqlPool()
+  try {
+    const [rows] = await mysqlPool.query('SELECT 1 AS ok')
+    if (DB_DEBUG) console.log('[db mysql] ping ok:', rows?.[0]?.ok === 1)
+  } catch (e) {
+    console.error('[db mysql] ping failed:', e.message)
+    throw e
+  }
   await runMysqlSchema(mysqlPool)
   await runMysqlMigrations(mysqlPool)
   adapter = createMysqlAdapter(mysqlPool)
   await seedInitialAdminIfNeededAsync(adapter)
+  if (DB_DEBUG) console.log('[db mysql] adapter ready')
 }
 
 function seedInitialAdminIfNeededSync(db) {
@@ -265,9 +274,15 @@ export async function initDatabase() {
   if (useMysql()) {
     console.log('[db] Mode MySQL (DATABASE_URL ou MYSQL_*)')
     await initMysql()
+    if (DB_DEBUG) {
+      const host = process.env.MYSQL_HOST || '(via DATABASE_URL)'
+      const dbName = process.env.MYSQL_DATABASE || '(via DATABASE_URL)'
+      console.log(`[db] MySQL host=${host} database=${dbName}`)
+    }
   } else {
     console.log('[db] Mode SQLite:', DB_PATH)
     initSqliteSync()
+    if (DB_DEBUG) console.log(`[db] SQLite file=${DB_PATH}`)
   }
 }
 

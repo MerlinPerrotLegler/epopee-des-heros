@@ -29,6 +29,8 @@ import adminUsersRouter from './routes/adminUsers.js';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 const DIST_DIR = join(__dirname, '..', 'frontend', 'dist');
+const DEBUG_HTTP = process.env.DEBUG_HTTP === '1' || process.env.BACKEND_DEBUG === '1';
+const DEBUG_ERRORS = process.env.DEBUG_ERRORS === '1' || process.env.BACKEND_DEBUG === '1';
 // Ensure data directories exist
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
@@ -46,6 +48,17 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '50mb' }));
+
+if (DEBUG_HTTP) {
+  app.use((req, res, next) => {
+    const start = Date.now();
+    res.on('finish', () => {
+      const ms = Date.now() - start;
+      console.log(`[http] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${ms}ms)`);
+    });
+    next();
+  });
+}
 
 app.use(session({
   name: 'cardDesigner.sid',
@@ -113,7 +126,16 @@ if (existsSync(DIST_DIR)) {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  const base = `[error] ${req.method} ${req.originalUrl} -> ${err.message}`;
+  if (DEBUG_ERRORS) {
+    // Evite de logguer les mots de passe en clair
+    const safeBody = req.originalUrl.includes('/api/auth/login')
+      ? { ...(req.body || {}), password: '***' }
+      : req.body;
+    console.error(base, '\nbody:', safeBody, '\nstack:', err.stack);
+  } else {
+    console.error(base);
+  }
   res.status(500).json({ error: err.message });
 });
 
@@ -129,6 +151,10 @@ async function main() {
     console.log(`Card Designer API running on http://localhost:${PORT}`);
     const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
     console.log(`Auth: session login (admin: ${admin})`);
+    console.log(`[server] DATA_DIR=${DATA_DIR}`);
+    console.log(`[server] UPLOADS_DIR=${UPLOADS_DIR}`);
+    if (DEBUG_HTTP) console.log('[debug] HTTP logs enabled (DEBUG_HTTP=1)');
+    if (DEBUG_ERRORS) console.log('[debug] Detailed error logs enabled (DEBUG_ERRORS=1)');
   });
 }
 
