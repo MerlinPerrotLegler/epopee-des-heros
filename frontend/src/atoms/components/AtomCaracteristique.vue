@@ -1,5 +1,5 @@
 <template>
-  <div class="carac-wrap">
+  <div class="carac-wrap" :style="wrapStyle">
     <!-- SVG derrière -->
     <img v-if="params.svgMediaId && params.svgPosition === 'behind'"
       :src="`/uploads/${params.svgMediaId}`" class="carac-overlay" />
@@ -26,11 +26,16 @@ const props = defineProps({ params: { type: Object, default: () => ({}) }, width
 const { mmToPx } = useAtomScale(props)
 
 const stat = computed(() => (props.params.stat || 'FOR').toUpperCase().slice(0, 3))
+const effectiveFontMm = computed(() => Number(props.params.fontSize || 3))
+const wrapStyle = computed(() => ({
+  // Hauteur pilotée par la taille de police pour garder un rendu cohérent
+  height: `${Math.max(1, mmToPx(effectiveFontMm.value * 1.35))}px`,
+}))
 
 const rectStyle = computed(() => ({
   background: 'transparent',
   color: props.params.textColor ?? STAT_TYPES[props.params.stat]?.color ?? '#1a1a2e',
-  fontSize: `${mmToPx(props.params.fontSize || 3)}px`,
+  fontSize: `${mmToPx(effectiveFontMm.value)}px`,
   fontFamily: props.params.fontFamily || FONT_FAMILY,
   fontWeight: props.params.fontWeight || 700,
 }))
@@ -40,7 +45,8 @@ const rectStyle = computed(() => ({
 .carac-wrap {
   position: relative;
   width: 100%;
-  height: 100%;
+  display: flex;
+  align-items: flex-start;
 }
 
 .carac-rect {
@@ -49,11 +55,13 @@ const rectStyle = computed(() => ({
   min-height: 0;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
+  text-align: left;
   border-radius: 3px;
   font-weight: 700;
   letter-spacing: 0.05em;
   line-height: 1.1;
+  padding: 0 0.2em;
   user-select: none;
   box-sizing: border-box;
 }

@@ -25,6 +25,7 @@ import AtomBackgroundImage          from '@/atoms/components/AtomBackgroundImage
 import AtomTitle               from '@/atoms/components/AtomTitle.vue'
 import AtomText                from '@/atoms/components/AtomText.vue'
 import AtomIcon                from '@/atoms/components/AtomIcon.vue'
+import AtomIconMap             from '@/atoms/components/AtomIconMap.vue'
 import AtomPastille            from '@/atoms/components/AtomPastille.vue'
 import AtomDice8                from '@/atoms/components/AtomDice8.vue'
 import AtomDice12               from '@/atoms/components/AtomDice12.vue'
@@ -54,6 +55,7 @@ const ATOM_COMPONENTS = {
   title:               AtomTitle,
   text:                AtomText,
   icon:                AtomIcon,
+  iconMap:             AtomIconMap,
   pastille:            AtomPastille,
   die8:                AtomDice8,
   die12:               AtomDice12,

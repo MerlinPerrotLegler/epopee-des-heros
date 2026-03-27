@@ -124,6 +124,23 @@ export const ATOM_TYPES = {
     defaultSize: { width_mm: 6, height_mm: 6 }
   },
 
+  iconMap: {
+    label: 'Icône (valeur → image)',
+    icon: '🗂',
+    defaultParams: {
+      // Peut être bindé (ex: {{card.rarity}})
+      value: '',
+      // Tableau éditable dans le panneau propriétés
+      rows: [
+        { value: 'common', mediaId: null },
+      ],
+      fallbackMediaId: null,
+      fit: 'contain', // cover | contain | fill | none
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 8, height_mm: 8 },
+  },
+
   pastille: {
     label: 'Pastille',
     icon: '●',

@@ -92,7 +92,7 @@
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !isParamHidden(key)"
+        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !isParamHidden(key)"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -291,6 +291,38 @@
         </div>
       </div>
     </div>
+
+    <!-- ── Section iconMap : tableau valeur -> image ─────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'iconMap'">
+      <div class="panel-section-title">Tableau valeur → image</div>
+      <div
+        v-for="(row, idx) in iconMapRows"
+        :key="`row-${idx}`"
+        class="map-row"
+      >
+        <input
+          :value="row.value || ''"
+          @input="updateIconMapRow(idx, 'value', $event.target.value)"
+          placeholder="valeur (ex: rare)"
+          style="flex:1"
+        />
+        <input
+          :value="row.mediaId || ''"
+          @input="updateIconMapRow(idx, 'mediaId', $event.target.value || null)"
+          placeholder="media ID"
+          style="flex:1; font-family:var(--font-mono); font-size:10px"
+        />
+        <MediaPicker :model-value="row.mediaId || null" @update:model-value="updateIconMapRow(idx, 'mediaId', $event || null)" />
+        <button class="clear-btn" @click="removeIconMapRow(idx)">✕</button>
+      </div>
+
+      <div class="field-row" style="margin-top:6px">
+        <button class="clear-btn" @click="addIconMapRow">+ Ajouter une ligne</button>
+      </div>
+      <div class="param-help" style="margin-top:4px">
+        Astuce: liez <code>value</code> (ex: <code v-pre>{{card.rarity}}</code>) et l’atome affichera l’image de la ligne correspondante.
+      </div>
+    </div>
   </div>
 
   <!-- Group selected -->
@@ -396,6 +428,11 @@ const effectiveParams = computed(() => {
   return { ...defaults, ...el.value.params }
 })
 
+const iconMapRows = computed(() => {
+  const rows = el.value?.params?.rows
+  return Array.isArray(rows) ? rows : []
+})
+
 function update(key, value) {
   store.updateElement(el.value.id, { [key]: value })
 }
@@ -410,6 +447,22 @@ function updateParamJson(key, raw) {
     const parsed = JSON.parse(raw)
     updateParam(key, parsed)
   } catch { /* ignore invalid JSON */ }
+}
+
+function updateIconMapRow(index, key, value) {
+  const rows = [...iconMapRows.value]
+  rows[index] = { ...(rows[index] || {}), [key]: value }
+  updateParam('rows', rows)
+}
+
+function addIconMapRow() {
+  updateParam('rows', [...iconMapRows.value, { value: '', mediaId: null }])
+}
+
+function removeIconMapRow(index) {
+  const rows = [...iconMapRows.value]
+  rows.splice(index, 1)
+  updateParam('rows', rows)
 }
 
 // ── Gestion des overrides par case (CardTrack) ─────────────────────────────
@@ -635,6 +688,13 @@ function isParamFixed(paramKey) {
   padding: 2px 6px;
 }
 .clear-btn:hover { color: #ef4444; border-color: #ef4444; }
+
+.map-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
 
 .properties-empty {
   padding: 24px 12px;
