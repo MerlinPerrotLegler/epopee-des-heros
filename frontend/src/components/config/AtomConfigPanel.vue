@@ -36,8 +36,41 @@
         </label>
 
         <div class="typed-value">
+          <div
+            v-if="selectedAtom === 'iconMap' && key === 'rows'"
+            class="rows-editor"
+          >
+            <div
+              v-for="(row, idx) in iconMapRows()"
+              :key="`cfg-row-${idx}`"
+              class="rows-editor-line"
+            >
+              <input
+                type="text"
+                :value="row.value || ''"
+                @input="updateIconMapRow(idx, 'value', $event.target.value)"
+                :disabled="!isFixedEnabled(key)"
+                placeholder="valeur"
+              />
+              <input
+                type="text"
+                :value="row.mediaId || ''"
+                @input="updateIconMapRow(idx, 'mediaId', $event.target.value || null)"
+                :disabled="!isFixedEnabled(key)"
+                placeholder="media ID"
+                class="mono"
+              />
+              <MediaPicker
+                :model-value="row.mediaId || null"
+                @update:model-value="updateIconMapRow(idx, 'mediaId', $event || null)"
+              />
+              <button class="line-btn" @click="removeIconMapRow(idx)" :disabled="!isFixedEnabled(key)">✕</button>
+            </div>
+            <button class="line-btn add" @click="addIconMapRow" :disabled="!isFixedEnabled(key)">+ Ligne</button>
+          </div>
+
           <ColorPickerAlpha
-            v-if="controlType(key) === 'color'"
+            v-else-if="controlType(key) === 'color'"
             :model-value="valueAsColorString(key)"
             @update:model-value="onTypedValueChange(key, $event)"
           />
@@ -93,6 +126,7 @@ import { ATOM_TYPES } from '@/atoms/index.js'
 import { useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
 import ColorPickerAlpha from '@/components/editor/ColorPickerAlpha.vue'
+import MediaPicker from '@/components/editor/MediaPicker.vue'
 
 const configStore = useConfigStore()
 const fontsStore = useFontsStore()
@@ -184,6 +218,27 @@ async function toggleFixed(key, fixedEnabled) {
 async function toggleHidden(key) {
   await configStore.setAtomParamRule(selectedAtom.value, key, { hidden: !paramRule(key).hidden })
 }
+
+function iconMapRows() {
+  const rows = typedValue('rows')
+  return Array.isArray(rows) ? rows : []
+}
+
+async function updateIconMapRow(index, field, value) {
+  const rows = [...iconMapRows()]
+  rows[index] = { ...(rows[index] || {}), [field]: value }
+  await onTypedValueChange('rows', rows)
+}
+
+async function addIconMapRow() {
+  await onTypedValueChange('rows', [...iconMapRows(), { value: '', mediaId: null }])
+}
+
+async function removeIconMapRow(index) {
+  const rows = [...iconMapRows()]
+  rows.splice(index, 1)
+  await onTypedValueChange('rows', rows)
+}
 </script>
 
 <style scoped>
@@ -210,8 +265,21 @@ async function toggleHidden(key) {
 .param-meta strong { font-size: 10px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .param-meta small { font-family: var(--font-mono); font-size: 9px; color: var(--text-muted); }
 .typed-value { width: 100%; min-width: 0; }
+.typed-value .mono { font-family: var(--font-mono); font-size: 10px; }
 .fix-col { display: flex; align-items: center; justify-content: center; padding-top: 4px; }
 .bool-row { display: inline-flex; gap: 6px; align-items: center; font-size: 10px; color: var(--text-secondary); }
 .eye-btn { border: 1px solid var(--border-subtle); border-radius: 6px; background: var(--bg-secondary); color: var(--text-primary); cursor: pointer; font-size: 12px; height: 28px; margin-top: 2px; width: 40px; }
 .eye-btn.hidden { color: #ef4444; border-color: #ef4444; }
+.rows-editor { display: flex; flex-direction: column; gap: 4px; }
+.rows-editor-line { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 4px; align-items: center; }
+.line-btn {
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 4px 8px;
+}
+.line-btn.add { width: fit-content; }
 </style>
