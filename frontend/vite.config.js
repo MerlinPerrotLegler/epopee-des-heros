@@ -12,12 +12,12 @@ export default defineConfig({
     proxy: {
       // Objet explicite : meilleure transmission Set-Cookie / Cookie avec express-session
       '/api': {
-        target: 'http://127.0.0.1:3001',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://127.0.0.1:3001',
+        target: 'http://127.0.0.1:3002',
         changeOrigin: true,
         secure: false,
       },

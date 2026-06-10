@@ -5,8 +5,10 @@ import { getDb } from '../db/database.js'
 
 const router = express.Router()
 
+const REMEMBER_ME_MAX_AGE = 30 * 24 * 60 * 60 * 1000 // 30 jours
+
 router.post('/login', async (req, res) => {
-  const { username, password } = req.body || {}
+  const { username, password, rememberMe } = req.body || {}
 
   if (typeof username !== 'string' || typeof password !== 'string') {
     return res.status(400).json({ error: 'Identifiants invalides' })
@@ -31,6 +33,7 @@ router.post('/login', async (req, res) => {
       'admin',
     )
     req.session.user = { id, username: cleanUsername, role: 'admin' }
+    if (rememberMe) req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE
     return req.session.save((err) => {
       if (err) return res.status(500).json({ error: 'Erreur session' })
       return res.json({
@@ -51,6 +54,7 @@ router.post('/login', async (req, res) => {
     username: row.username,
     role: row.role,
   }
+  if (rememberMe) req.session.cookie.maxAge = REMEMBER_ME_MAX_AGE
   return req.session.save((err) => {
     if (err) return res.status(500).json({ error: 'Erreur session' })
     return res.json({

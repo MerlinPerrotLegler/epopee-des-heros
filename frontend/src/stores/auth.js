@@ -25,12 +25,12 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function login(username, password) {
+  async function login(username, password, rememberMe = false) {
     const r = await fetch('/api/auth/login', {
       method: 'POST',
       credentials: 'include',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      body: JSON.stringify({ username, password, rememberMe }),
     })
     const d = await r.json().catch(() => ({}))
     if (!r.ok) {

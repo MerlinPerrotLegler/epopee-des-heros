@@ -17,6 +17,10 @@
           <span>Mot de passe</span>
           <input v-model="password" type="password" autocomplete="current-password" required />
         </label>
+        <label class="login-remember">
+          <input v-model="rememberMe" type="checkbox" />
+          <span>Se rappeler de moi</span>
+        </label>
         <button type="submit" class="login-btn" :disabled="loading">
           {{ loading ? 'Connexion…' : 'Se connecter' }}
         </button>
@@ -36,6 +40,7 @@ const auth = useAuthStore()
 
 const username = ref('')
 const password = ref('')
+const rememberMe = ref(false)
 const error = ref('')
 const loading = ref(false)
 
@@ -43,7 +48,7 @@ async function onSubmit() {
   error.value = ''
   loading.value = true
   try {
-    await auth.login(username.value.trim(), password.value)
+    await auth.login(username.value.trim(), password.value, rememberMe.value)
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/layouts'
     await router.replace(redirect || '/layouts')
   } catch (e) {
@@ -120,6 +125,16 @@ async function onSubmit() {
   border: 1px solid var(--border-subtle);
   background: var(--bg-primary);
   color: var(--text-primary);
+}
+
+.login-form .login-remember {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  cursor: pointer;
 }
 
 .login-error {
