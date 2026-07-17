@@ -136,16 +136,16 @@ export function tokenize(content) {
       }
     } else if (raw.startsWith('/SVG{')) {
       tokens.push({ type: 'svg', name: raw.slice(5, -1).trim() })
-    } else if (raw.startsWith('\\')) {
-      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: true })
-    } else if (/^\/[a-zA-Z0-9_-]+$/.test(raw)) {
-      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: false })
-    } else {
-      // stat : /FOR or /FOR{+1}
+    } else if (/^\/(FOR|DEX|INI|CHA|MAG|DEV|VIE|DEF)(?:\{[^}]*\})?$/.test(raw)) {
+      // stat : /FOR or /FOR{+1} — before /ref picto branch
       const braceIdx = raw.indexOf('{')
       const stat     = braceIdx === -1 ? raw.slice(1) : raw.slice(1, braceIdx)
       const modifier = braceIdx === -1 ? '' : raw.slice(braceIdx + 1, -1)
       tokens.push({ type: 'stat', stat, modifier })
+    } else if (raw.startsWith('\\')) {
+      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: true })
+    } else if (/^\/[a-zA-Z0-9_-]+$/.test(raw)) {
+      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: false })
     }
 
     lastIndex = TOKEN_RE.lastIndex
