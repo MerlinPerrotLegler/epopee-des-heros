@@ -168,6 +168,26 @@ export const ATOM_TYPES = {
     defaultSize: { width_mm: 24, height_mm: 8 },
   },
 
+  picto: {
+    label: 'Picto',
+    icon: '⌖',
+    defaultParams: {
+      tag: '',
+      ref: '',
+      view: 'horizontal',
+      iconSize: 6,
+      gap: 1,
+      fit: 'contain',
+      fontSize: 2.8,
+      fontFamily: null,
+      fontWeight: 400,
+      color: null,
+      textAlign: 'left',
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 24, height_mm: 8 },
+  },
+
   pastille: {
     label: 'Pastille',
     icon: '●',

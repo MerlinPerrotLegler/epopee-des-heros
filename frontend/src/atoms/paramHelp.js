@@ -78,6 +78,11 @@ export const PARAM_HELP = {
   // ── AtomIcon ───────────────────────────────────────────────────────────────
   // (mediaId, svgContent, color, opacity déjà définis)
 
+  // ── AtomPicto ──────────────────────────────────────────────────────────────
+  tag:             'Tag Pictorgame pour filtrer la liste des refs dans le panneau propriétés',
+  ref:             'Référence stable du picto dans le catalogue (ex. or, une-main)',
+  view:            'Mode d\'affichage : icône seule, horizontal, vertical, inversé, ou texte seul',
+
   // ── AtomIconMap / AtomBadge ────────────────────────────────────────────────
   rows:            'Table de correspondance : une ligne par valeur (clé checklist → média ± label)',
   fallbackMediaId: 'Image affichée si aucune ligne ne correspond à la valeur',
