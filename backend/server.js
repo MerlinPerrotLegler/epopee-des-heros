@@ -1,3 +1,4 @@
+import './loadEnv.js';
 import 'express-async-errors';
 import express from 'express';
 import cors from 'cors';
@@ -10,7 +11,8 @@ import { DATA_DIR, UPLOADS_DIR } from './paths.js';
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
 import { closeDb, initDatabase, getDb } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
-import { backfillBlobsFromDisk } from './services/mediaStorage.js';
+import { backfillBlobsFromDisk, usesRemoteMediaStorage } from './services/mediaStorage.js';
+import { useMysql } from './db/sqlDialect.js';
 
 import authRouter from './routes/auth.js';
 import layoutsRouter from './routes/layouts.js';
@@ -156,6 +158,8 @@ async function main() {
     console.log(`Auth: session login (admin: ${admin})`);
     console.log(`[server] DATA_DIR=${DATA_DIR}`);
     console.log(`[server] UPLOADS_DIR=${UPLOADS_DIR}`);
+    console.log(`[server] DB=${useMysql() ? 'MySQL (config)' : 'SQLite (local)'}`);
+    console.log(`[server] Media storage=${usesRemoteMediaStorage() ? 'BLOB en base distante (indépendant du cwd)' : 'BLOB + cache disque local'}`);
     if (DEBUG_HTTP) console.log('[debug] HTTP logs enabled (DEBUG_HTTP=1)');
     if (DEBUG_ERRORS) console.log('[debug] Detailed error logs enabled (DEBUG_ERRORS=1)');
   });

@@ -1,6 +1,6 @@
 import { join, dirname, isAbsolute, basename } from 'path'
 import { fileURLToPath } from 'url'
-import { config as loadEnv } from 'dotenv'
+import './loadEnv.js'
 
 /**
  * Dossier racine des données (SQLite, sous-dossier uploads/, seeds/).
@@ -14,8 +14,6 @@ import { config as loadEnv } from 'dotenv'
  * En production sur hébergeur à disque éphémère : définir DATA_DIR vers un volume monté.
  */
 const backendRoot = dirname(fileURLToPath(import.meta.url))
-loadEnv({ path: join(backendRoot, '..', '.env') })
-loadEnv()
 
 /**
  * Si le chemin finit par un segment `uploads`, on le retire : les fichiers média vivent

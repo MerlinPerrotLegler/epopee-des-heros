@@ -27,15 +27,24 @@ npm start
 
 ### Base de données et déploiement
 
-**Layouts, composants, instances** : en production Hostinger, configurez **MySQL** (`DATABASE_URL` ou `MYSQL_*` dans `.env`) — la base survit aux redéploiements.
+**Quelle base est utilisée ?** Uniquement la **config** (`.env` à la racine du projet), pas l’endroit où tu lances le serveur :
 
-**Médias (images, polices)** : les fichiers binaires sont stockés en **BLOB** dans la table `media` (colonne `content`), pas uniquement sur le disque. La route `/uploads/:filename` sert d’abord le cache disque local, puis le BLOB en base. Ainsi les médias survivent aux redéploiements Hostinger même si le dossier `backend/data/uploads/` est recréé vide.
+| Variables dans `.env` | Comportement |
+|----------------------|--------------|
+| `MYSQL_*` ou `DATABASE_URL` définis | **MySQL distant** (ex. Hostinger) — layouts, médias, comptes |
+| Aucune variable MySQL | **SQLite** local (`backend/data/card-designer.db`) |
 
-En développement local (SQLite), le même mécanisme s’applique : `card-designer.db` + BLOB dans `media.content`. Le dossier `backend/data/` reste ignoré par Git.
+Le fichier `.env` est chargé depuis la racine du projet quel que soit le `cwd` (`backend/loadEnv.js`).
 
-Au démarrage, un **backfill** migre automatiquement vers la base les fichiers encore présents sur disque sans BLOB (`backfillBlobsFromDisk`).
+**Médias (images, polices)** : avec MySQL, les binaires vont en **BLOB** dans `media.content` sur la base distante — **pas** sur le disque de ta machine. Tu peux lancer `npm run dev` sur ton Mac : les uploads partent dans la même base que la prod Hostinger.
 
-**Note :** les médias uploadés *avant* ce correctif et déjà perdus du disque Hostinger ne peuvent pas être récupérés automatiquement — il faut les ré-uploader une fois le nouveau code déployé.
+Sans MySQL (SQLite), les médias sont en BLOB dans `card-designer.db` + cache disque optionnel sous `backend/data/uploads/`.
+
+La route `/uploads/:filename` lit le BLOB en base (MySQL) ou disque puis BLOB (SQLite).
+
+Au démarrage, un **backfill** migre vers la base les fichiers encore présents sur disque sans BLOB.
+
+**Note :** les médias uploadés avant le correctif BLOB et déjà perdus du disque Hostinger doivent être ré-uploadés une fois le nouveau code déployé.
 
 ## Architecture
 

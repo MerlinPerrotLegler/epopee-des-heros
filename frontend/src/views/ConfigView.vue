@@ -51,7 +51,7 @@ const tabs = [
 <style scoped>
 .config-view {
   padding: 24px;
-  max-width: 1280px;
+  max-width: max-content;
   font-size: 12px;
   display: flex;
   flex-direction: column;
