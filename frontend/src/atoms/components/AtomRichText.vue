@@ -60,6 +60,19 @@
           :style="dieSpanStyle"
         />
 
+        <!-- ── Picto pictorgame (/ref icône, \ref icône + label) ─────── -->
+        <span v-else-if="token.type === 'picto'" class="rt-picto" :style="inlineTagStyle">
+          <img
+            v-if="pictoMediaId(token.ref)"
+            :src="`/uploads/${pictoMediaId(token.ref)}`"
+            class="rt-picto-img"
+            :style="dieSpanStyle"
+            alt=""
+          />
+          <span v-else class="rt-picto-missing">?{{ token.ref }}</span>
+          <span v-if="token.withLabel" class="rt-picto-label">{{ pictoLabel(token.ref) }}</span>
+        </span>
+
         <!-- ── Formule math (inline ou bloc) ──────────────────────────── -->
         <span v-else-if="token.type === 'math'"
           :class="['rt-math', { 'rt-math-block': token.block }]"
@@ -79,8 +92,8 @@ import { computed, ref } from 'vue'
 import { tokenize, parseFML }    from '@/utils/richTextParser.js'
 import { RESOURCE_TYPES, STAT_TYPES } from '@/atoms/index.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
+import { usePictosStore } from '@/stores/pictos.js'
 import { useAtomScale }           from './useAtomScale.js'
-import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 import AtomDice8  from './AtomDice8.vue'
 import AtomDice12 from './AtomDice12.vue'
 
@@ -96,6 +109,8 @@ const props = defineProps({
 
 const { mmToPx } = useAtomScale(props)
 const configStore = useConfigStore()
+const pictosStore = usePictosStore()
+pictosStore.load()
 
 // ── KaTeX (chargement dynamique — fallback texte si non installé) ──────────────
 const katex = ref(null)
@@ -104,7 +119,7 @@ import('katex').then(m => { katex.value = m.default }).catch(() => {})
 // ── Computed params ───────────────────────────────────────────────────────────
 const p = computed(() => props.params)
 
-const fontSize_mm  = useLayoutRelativeFontMm(computed(() => p.value.fontSize  || 4))
+const fontSize_mm  = computed(() => Number(p.value.fontSize || 4))
 const diceScale    = computed(() => p.value.diceScale  || 1.4)
 const dieSize      = computed(() => fontSize_mm.value * diceScale.value)  // mm
 const color        = computed(() => p.value.color      || '#1a1a2e')
@@ -173,6 +188,10 @@ function diePenParams(value, sides) {
     penPoolSize:getFixedAtomParam(atomType, 'penPoolSize', undefined),
   }
 }
+
+// ── Picto helpers ─────────────────────────────────────────────────────────────
+function pictoMediaId(ref) { return pictosStore.byRef(ref)?.id || null }
+function pictoLabel(ref) { return pictosStore.byRef(ref)?.picto_label || ref }
 
 // ── Resource helpers ──────────────────────────────────────────────────────────
 function resourceColor(type) {
@@ -280,6 +299,24 @@ function renderMath(expr, block) {
   /* dieSpanStyle via :style binding */
   object-fit: contain;
   vertical-align: middle;
+}
+
+/* Picto pictorgame inline */
+.rt-picto-img {
+  object-fit: contain;
+  vertical-align: middle;
+}
+
+.rt-picto-missing {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  opacity: 0.5;
+}
+
+.rt-picto-label {
+  font-weight: 600;
 }
 
 /* Math */
