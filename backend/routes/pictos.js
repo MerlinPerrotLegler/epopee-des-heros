@@ -15,6 +15,14 @@ function sendError(res, err) {
   res.status(err.status || 500).json({ error: err.message })
 }
 
+function isUniqueConstraintError(err) {
+  const msg = String(err?.message || '')
+  return err?.code === 'SQLITE_CONSTRAINT'
+    || err?.code === 'SQLITE_CONSTRAINT_UNIQUE'
+    || msg.includes('UNIQUE constraint failed')
+    || msg.includes('Duplicate entry')
+}
+
 function assertRef(ref) {
   const r = String(ref || '').trim()
   if (!r || !REF_RE.test(r)) {
@@ -57,13 +65,46 @@ function parseTagIds(raw) {
   return ids.map((id) => String(id).trim()).filter(Boolean)
 }
 
+async function assertValidTagIds(db, tagIds) {
+  if (!tagIds.length) return
+  const placeholders = tagIds.map(() => '?').join(', ')
+  const rows = await db.prepare(
+    `SELECT id FROM picto_tags WHERE id IN (${placeholders})`,
+  ).all(...tagIds)
+  if (rows.length !== tagIds.length) {
+    const err = new Error('Invalid tag id')
+    err.status = 400
+    throw err
+  }
+}
+
 async function syncPictoTags(db, mediaId, tagIds) {
+  await assertValidTagIds(db, tagIds)
   await db.prepare('DELETE FROM media_picto_tags WHERE media_id = ?').run(mediaId)
   if (!tagIds.length) return
   const insert = db.prepare('INSERT INTO media_picto_tags (media_id, tag_id) VALUES (?, ?)')
   for (const tagId of tagIds) {
     await insert.run(mediaId, tagId)
   }
+}
+
+async function resolveUploadMediaId(db, file) {
+  const sha1 = createHash('sha1').update(file.buffer).digest('hex')
+  const ext = extname(file.originalname).toLowerCase()
+  const sha1Id = `${sha1}${ext}`
+
+  const existing = await db.prepare('SELECT id, kind FROM media WHERE id = ?').get(sha1Id)
+  if (!existing) {
+    return { id: sha1Id, filename: sha1Id }
+  }
+  if (existing.kind === 'picto') {
+    const err = new Error('Picto with same content already exists')
+    err.status = 409
+    throw err
+  }
+
+  const id = `picto-${randomUUID()}${ext}`
+  return { id, filename: id }
 }
 
 async function fetchTagsForMediaIds(db, mediaIds) {
@@ -134,6 +175,9 @@ router.get('/', async (req, res) => {
   const tagMap = await fetchTagsForMediaIds(db, rows.map((r) => r.id))
   res.json(rows.map((row) => pictoRowToJson(row, tagMap.get(row.id) || [])))
   } catch (err) {
+    if (isUniqueConstraintError(err)) {
+      return sendError(res, Object.assign(new Error('picto_ref already exists'), { status: 409 }))
+    }
     sendError(res, err)
   }
 })
@@ -151,23 +195,18 @@ router.post('/', upload.array('files', 20), async (req, res) => {
 
     const files = req.files || []
     if (!files.length) return res.status(400).json({ error: 'files required' })
+    if (files.length > 1) return res.status(400).json({ error: 'One file per upload' })
 
-    const results = []
-    for (const file of files) {
-      const sha1 = createHash('sha1').update(file.buffer).digest('hex')
-      const ext = extname(file.originalname).toLowerCase()
-      const filename = `${sha1}${ext}`
+    const file = files[0]
+    const { id, filename } = await resolveUploadMediaId(db, file)
 
-      await db.prepare(`
-        INSERT INTO media (id, filename, original_name, mime_type, width_px, height_px, folder_id, content, kind, picto_ref, picto_label, source_media_id)
-        VALUES (?, ?, ?, ?, NULL, NULL, 'default', ?, 'picto', ?, ?, NULL)
-      `).run(filename, filename, file.originalname, file.mimetype, file.buffer, pictoRef, pictoLabel)
+    await db.prepare(`
+      INSERT INTO media (id, filename, original_name, mime_type, width_px, height_px, folder_id, content, kind, picto_ref, picto_label, source_media_id)
+      VALUES (?, ?, ?, ?, NULL, NULL, 'default', ?, 'picto', ?, ?, NULL)
+    `).run(id, filename, file.originalname, file.mimetype, file.buffer, pictoRef, pictoLabel)
 
-      await syncPictoTags(db, filename, tagIds)
-      results.push(await getPictoById(db, filename))
-    }
-
-    return res.status(201).json(results.length === 1 ? results[0] : results)
+    await syncPictoTags(db, id, tagIds)
+    return res.status(201).json(await getPictoById(db, id))
   }
 
   const { source_media_id, picto_ref, picto_label, tagIds: rawTagIds } = req.body || {}
@@ -198,6 +237,9 @@ router.post('/', upload.array('files', 20), async (req, res) => {
   await syncPictoTags(db, id, tagIds)
   res.status(201).json(await getPictoById(db, id))
   } catch (err) {
+    if (isUniqueConstraintError(err)) {
+      return sendError(res, Object.assign(new Error('picto_ref already exists'), { status: 409 }))
+    }
     sendError(res, err)
   }
 })
@@ -251,6 +293,9 @@ router.patch('/:id', async (req, res) => {
 
   res.json(await getPictoById(db, req.params.id))
   } catch (err) {
+    if (isUniqueConstraintError(err)) {
+      return sendError(res, Object.assign(new Error('picto_ref already exists'), { status: 409 }))
+    }
     sendError(res, err)
   }
 })
