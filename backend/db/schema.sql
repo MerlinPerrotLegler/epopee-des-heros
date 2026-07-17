@@ -55,7 +55,24 @@ CREATE TABLE IF NOT EXISTS media (
   height_px INTEGER,
   folder_id TEXT NOT NULL DEFAULT 'default' REFERENCES media_folders(id) ON DELETE SET DEFAULT,
   content BLOB,
+  kind TEXT NOT NULL DEFAULT 'media',
+  picto_ref TEXT,
+  picto_label TEXT,
+  source_media_id TEXT REFERENCES media(id) ON DELETE SET NULL,
   created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS picto_tags (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#888888',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS media_picto_tags (
+  media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  tag_id   TEXT NOT NULL REFERENCES picto_tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (media_id, tag_id)
 );
 
 -- ============================================
@@ -170,5 +187,6 @@ INSERT OR IGNORE INTO settings (id, design_config) VALUES (1, '{}');
 
 -- Indexes
 CREATE INDEX IF NOT EXISTS idx_media_folder ON media(folder_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_media_picto_ref ON media(picto_ref) WHERE kind = 'picto' AND picto_ref IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_card_instances_layout ON card_instances(layout_id);
 CREATE INDEX IF NOT EXISTS idx_layouts_type ON layouts(card_type);

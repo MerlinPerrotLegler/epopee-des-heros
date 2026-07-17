@@ -54,14 +54,16 @@ router.delete('/folders/:id', async (req, res) => {
 });
 
 // === Files ===
+const MEDIA_KIND_FILTER = "(kind = 'media' OR kind IS NULL OR kind = '')";
+
 router.get('/', async (req, res) => {
   const db = getDb();
   const { folder_id } = req.query;
   let rows;
   if (folder_id) {
-    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE folder_id = ? ORDER BY original_name`).all(folder_id);
+    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE ${MEDIA_KIND_FILTER} AND folder_id = ? ORDER BY original_name`).all(folder_id);
   } else {
-    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media ORDER BY original_name`).all();
+    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE ${MEDIA_KIND_FILTER} ORDER BY original_name`).all();
   }
   res.json(rows);
 });

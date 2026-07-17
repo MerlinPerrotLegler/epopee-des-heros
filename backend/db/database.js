@@ -114,6 +114,21 @@ async function runMysqlMigrations(pool) {
     expires_at BIGINT NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
   await tryAlter('ALTER TABLE media ADD COLUMN content LONGBLOB NULL')
+  await tryAlter("ALTER TABLE media ADD COLUMN kind VARCHAR(16) NOT NULL DEFAULT 'media'")
+  await tryAlter('ALTER TABLE media ADD COLUMN picto_ref VARCHAR(128) NULL')
+  await tryAlter('ALTER TABLE media ADD COLUMN picto_label VARCHAR(255) NULL')
+  await tryAlter('ALTER TABLE media ADD COLUMN source_media_id VARCHAR(255) NULL')
+  await tryAlter(`CREATE TABLE IF NOT EXISTS picto_tags (
+    id VARCHAR(36) PRIMARY KEY,
+    name VARCHAR(128) NOT NULL UNIQUE,
+    color VARCHAR(32) NOT NULL DEFAULT '#888888',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter(`CREATE TABLE IF NOT EXISTS media_picto_tags (
+    media_id VARCHAR(255) NOT NULL,
+    tag_id VARCHAR(36) NOT NULL,
+    PRIMARY KEY (media_id, tag_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
 }
 
 function initSqliteSync() {
@@ -223,6 +238,36 @@ function initSqliteSync() {
   try {
     sqliteDb.exec('ALTER TABLE media ADD COLUMN content BLOB')
   } catch {}
+  try {
+    sqliteDb.exec("ALTER TABLE media ADD COLUMN kind TEXT NOT NULL DEFAULT 'media'")
+  } catch {}
+  try {
+    sqliteDb.exec('ALTER TABLE media ADD COLUMN picto_ref TEXT')
+  } catch {}
+  try {
+    sqliteDb.exec('ALTER TABLE media ADD COLUMN picto_label TEXT')
+  } catch {}
+  try {
+    sqliteDb.exec('ALTER TABLE media ADD COLUMN source_media_id TEXT REFERENCES media(id) ON DELETE SET NULL')
+  } catch {}
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS picto_tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL DEFAULT '#888888',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch {}
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS media_picto_tags (
+      media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+      tag_id TEXT NOT NULL REFERENCES picto_tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (media_id, tag_id)
+    )`)
+  } catch {}
+  try {
+    sqliteDb.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_media_picto_ref ON media(picto_ref) WHERE kind = 'picto' AND picto_ref IS NOT NULL")
+  } catch {}
   seedInitialAdminIfNeededSync(sqliteDb)
   adapter = createSqliteAdapter(sqliteDb)
 }
@@ -292,7 +337,7 @@ export async function initDatabase() {
 
 export async function createSnapshot(label, codeVersion) {
   const db = getDb()
-  const tables = ['card_types', 'media_folders', 'media', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings', 'users']
+  const tables = ['card_types', 'media_folders', 'media', 'picto_tags', 'media_picto_tags', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings', 'users']
   const dump = {}
   for (const table of tables) {
     dump[table] = await db.prepare(`SELECT * FROM ${table}`).all()
@@ -312,7 +357,7 @@ export async function restoreSnapshot(snapshotId) {
   const snapshot = await db.prepare('SELECT * FROM snapshots WHERE id = ?').get(snapshotId)
   if (!snapshot) throw new Error('Snapshot not found')
   const dump = typeof snapshot.dump === 'string' ? JSON.parse(snapshot.dump) : snapshot.dump
-  const tables = ['layout_locks', 'card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media', 'media_folders', 'card_types', 'users']
+  const tables = ['layout_locks', 'card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media_picto_tags', 'media', 'picto_tags', 'media_folders', 'card_types', 'users']
 
   if (useMysql()) {
     await db.transaction(async (tx) => {
