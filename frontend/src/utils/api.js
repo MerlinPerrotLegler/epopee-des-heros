@@ -163,9 +163,26 @@ export const api = {
   createPictoLink: (data) => request('/pictos', { method: 'POST', body: data }),
   updatePicto: (id, data) => request(`/pictos/${id}`, { method: 'PATCH', body: data }),
   deletePicto: (id) => request(`/pictos/${id}`, { method: 'DELETE' }),
-  createPictoUpload: (formData) =>
-    fetch(`${BASE}/pictos`, { method: 'POST', body: formData, credentials: 'include' })
-      .then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json() }),
+  createPictoUpload: (formData) => {
+    return fetch(`${BASE}/pictos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    }).then(async (r) => {
+      if (r.status === 401) {
+        const loc = `${window.location.pathname}${window.location.search}`
+        if (!loc.startsWith('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+        }
+        throw new Error('Non authentifié')
+      }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }))
+        throw new Error(err.error || `API error ${r.status}`)
+      }
+      return r.json()
+    })
+  },
 
   // Card Types
   getCardTypes: () => request('/card-types'),
