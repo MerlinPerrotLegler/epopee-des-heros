@@ -6,12 +6,11 @@ import session from 'express-session';
 import { join, dirname } from 'path';
 import { fileURLToPath } from 'url';
 import { existsSync, mkdirSync } from 'fs';
-import { DATA_DIR, UPLOADS_DIR } from './paths.js';
+import { DATA_DIR } from './paths.js';
 
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
-import { closeDb, initDatabase, getDb } from './db/database.js';
+import { closeDb, initDatabase } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
-import { backfillBlobsFromDisk, usesRemoteMediaStorage } from './services/mediaStorage.js';
 import { useMysql } from './db/sqlDialect.js';
 
 import authRouter from './routes/auth.js';
@@ -37,7 +36,6 @@ const DEBUG_HTTP = process.env.DEBUG_HTTP === '1' || process.env.BACKEND_DEBUG =
 const DEBUG_ERRORS = process.env.DEBUG_ERRORS === '1' || process.env.BACKEND_DEBUG === '1';
 // Ensure data directories exist
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true });
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
 
 const app = express();
 
@@ -149,7 +147,6 @@ process.on('SIGTERM', () => { closeDb(); process.exit(0); });
 
 async function main() {
   await initDatabase();
-  await backfillBlobsFromDisk(getDb());
   await seedBuiltins();
 
   app.listen(PORT, () => {
@@ -157,9 +154,8 @@ async function main() {
     const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
     console.log(`Auth: session login (admin: ${admin})`);
     console.log(`[server] DATA_DIR=${DATA_DIR}`);
-    console.log(`[server] UPLOADS_DIR=${UPLOADS_DIR}`);
-    console.log(`[server] DB=${useMysql() ? 'MySQL (config)' : 'SQLite (local)'}`);
-    console.log(`[server] Media storage=${usesRemoteMediaStorage() ? 'BLOB en base distante (indépendant du cwd)' : 'BLOB + cache disque local'}`);
+    console.log(`[server] DB=${useMysql() ? 'MySQL' : 'SQLite'}`);
+    console.log('[server] Media storage=BLOB en base (media.content)');
     if (DEBUG_HTTP) console.log('[debug] HTTP logs enabled (DEBUG_HTTP=1)');
     if (DEBUG_ERRORS) console.log('[debug] Detailed error logs enabled (DEBUG_ERRORS=1)');
   });

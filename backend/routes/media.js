@@ -5,7 +5,6 @@ import { createHash, randomUUID } from 'crypto';
 import { extname } from 'path';
 import {
   MEDIA_LIST_COLUMNS,
-  deleteDiskCache,
   insertMediaRecord,
 } from '../services/mediaStorage.js';
 
@@ -106,10 +105,6 @@ router.patch('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   const db = getDb();
-  const row = await db.prepare('SELECT filename FROM media WHERE id = ?').get(req.params.id);
-  if (row) {
-    deleteDiskCache(row.filename);
-  }
   await db.prepare('DELETE FROM media WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

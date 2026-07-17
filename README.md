@@ -36,13 +36,9 @@ npm start
 
 Le fichier `.env` est chargé depuis la racine du projet quel que soit le `cwd` (`backend/loadEnv.js`).
 
-**Médias (images, polices)** : avec MySQL, les binaires vont en **BLOB** dans `media.content` sur la base distante — **pas** sur le disque de ta machine. Tu peux lancer `npm run dev` sur ton Mac : les uploads partent dans la même base que la prod Hostinger.
+**Médias** : tout en **BLOB** dans `media.content` (MySQL ou SQLite). Aucun fichier dans `data/uploads/` — `/uploads/:filename` lit uniquement la base.
 
-Sans MySQL (SQLite), les médias sont en BLOB dans `card-designer.db` + cache disque optionnel sous `backend/data/uploads/`.
-
-La route `/uploads/:filename` lit le BLOB en base (MySQL) ou disque puis BLOB (SQLite).
-
-Au démarrage, un **backfill** migre vers la base les fichiers encore présents sur disque sans BLOB.
+Les assets intégrés (textures par défaut) sont lus une fois depuis `backend/seeds/` au démarrage, puis insérés en base.
 
 **Note :** les médias uploadés avant le correctif BLOB et déjà perdus du disque Hostinger doivent être ré-uploadés une fois le nouveau code déployé.
 

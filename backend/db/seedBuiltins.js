@@ -3,24 +3,18 @@
  * ───────────────
  * Seede les assets visuels par défaut dans la médiathèque au démarrage.
  *
- * Convention :
- *  - Les fichiers sources vivent dans  <DATA_DIR>/seeds/
- *  - Le contenu est stocké en BLOB dans la table `media` (source de vérité)
- *  - Un cache disque optionnel est écrit dans <DATA_DIR>/uploads/
- *  - Un enregistrement est créé dans la table `media` avec l'ID fixe "builtin-<nomSansExt>"
- *  - Un dossier spécial "Ressources intégrées" (id='builtin') regroupe ces assets
- *
- * Pour ajouter un nouvel asset par défaut, déposez simplement le fichier dans data/seeds/.
+ * Les fichiers sources sont lus une fois depuis `backend/seeds/` (versionnés dans le repo),
+ * puis stockés en BLOB dans `media.content`. Aucune écriture dans data/uploads/.
  */
 
 import { existsSync, readFileSync, readdirSync } from 'fs'
-import { join, extname } from 'path'
-import { getDb, getSqliteSync } from './database.js'
-import { DATA_DIR } from '../paths.js'
-import { insertOrIgnoreInto, useMysql } from './sqlDialect.js'
+import { join, extname, dirname } from 'path'
+import { fileURLToPath } from 'url'
+import { getDb } from './database.js'
+import { insertOrIgnoreInto } from './sqlDialect.js'
 import { insertMediaRecord } from '../services/mediaStorage.js'
 
-const SEEDS_DIR = join(DATA_DIR, 'seeds')
+const SEEDS_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'seeds')
 
 const MIME_MAP = {
   '.jpg':  'image/jpeg',
@@ -58,19 +52,6 @@ export async function seedBuiltins() {
 
   let files
   try { files = readdirSync(SEEDS_DIR) } catch { return }
-
-  if (useMysql()) {
-    const db = getDb()
-    await db.prepare(`
-      ${insertOrIgnoreInto()} media_folders (id, name, parent_id)
-      VALUES ('builtin', 'Ressources intégrées', 'root')
-    `).run()
-
-    for (const file of files) {
-      await seedFile(db, file)
-    }
-    return
-  }
 
   const db = getDb()
   await db.prepare(`
