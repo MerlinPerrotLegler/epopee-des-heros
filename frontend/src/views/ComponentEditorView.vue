@@ -25,10 +25,6 @@ const props = defineProps({ id: String })
 const store = useEditorStore()
 const panelWidth = ref(320)
 
-onMounted(() => {
-  store.loadComponent(props.id)
-})
-
 function isInputFocused() {
   const tag = document.activeElement?.tagName
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
@@ -51,8 +47,16 @@ function onKeyDown(e) {
   }
 }
 
-onMounted(() => document.addEventListener('keydown', onKeyDown))
-onBeforeUnmount(() => document.removeEventListener('keydown', onKeyDown))
+onMounted(() => {
+  store.loadComponent(props.id)
+  document.addEventListener('keydown', onKeyDown)
+})
+onBeforeUnmount(async () => {
+  document.removeEventListener('keydown', onKeyDown)
+  if (store.dirty && store.autoSave) {
+    try { await store.saveDefinition() } catch { /* ignore */ }
+  }
+})
 
 let resizing = false
 function startPanelResize(e) {

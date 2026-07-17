@@ -30,7 +30,9 @@
         :disabled="store.readOnly || !store.layoutLockHeld"
         @click="showSettings = true"
       >⚙</button>
-      <span class="save-indicator" v-if="store.dirty">● non sauvegardé</span>
+      <span class="save-indicator" v-if="store.saving">● sauvegarde…</span>
+      <span class="save-indicator" v-else-if="store.dirty">● non sauvegardé</span>
+      <span class="save-indicator save-ok" v-else-if="store.autoSave">✓ auto</span>
     </div>
     <div class="toolbar-center">
       <button class="btn-icon btn-sm" @click="store.zoom = Math.max(0.05, store.zoom - 0.25)">−</button>
@@ -50,6 +52,14 @@
       </label>
     </div>
     <div class="toolbar-right">
+      <label class="toggle-label" title="Enregistre automatiquement ~1,5 s après une modification">
+        <input
+          type="checkbox"
+          :checked="store.autoSave"
+          @change="store.setAutoSave($event.target.checked)"
+        />
+        Auto-save
+      </label>
       <button
         class="btn-ghost btn-sm"
         @click="store.saveDefinition()"
@@ -227,5 +237,8 @@ async function saveLayoutMeta(payload) {
 .save-indicator {
   font-size: 11px;
   color: var(--accent-warning);
+}
+.save-ok {
+  color: var(--text-muted);
 }
 </style>

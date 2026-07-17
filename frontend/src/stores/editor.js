@@ -4,6 +4,18 @@ import { api, acquireLayoutLock } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 
 const MAX_HISTORY = 0
+const AUTO_SAVE_DELAY_MS = 1500
+const AUTO_SAVE_LS_KEY = 'card-designer:autoSave'
+
+function readAutoSavePref() {
+  try {
+    const v = localStorage.getItem(AUTO_SAVE_LS_KEY)
+    if (v === null) return true // activé par défaut
+    return v === '1' || v === 'true'
+  } catch {
+    return true
+  }
+}
 
 export const useEditorStore = defineStore('editor', () => {
   // === State ===
@@ -12,6 +24,11 @@ export const useEditorStore = defineStore('editor', () => {
   const dirty = ref(false)
   const saving = ref(false)
   const mode = ref('layout') // 'layout' | 'component'
+  /** Sauvegarde automatique (debounce) — activée par défaut */
+  const autoSave = ref(readAutoSavePref())
+  let autoSaveTimer = null
+  /** Incrémenté à chaque modif — évite d’effacer dirty si on a édité pendant le save */
+  let editVersion = 0
 
   /** Édition layout verrouillée par un autre utilisateur (lecture seule) */
   const readOnly = ref(false)
@@ -217,6 +234,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (!history.value.length || !layout.value) return
     layout.value.definition = history.value.pop()
     dirty.value = true
+    editVersion += 1
   }
 
   // ── Load / Save ───────────────────────────────────────────────────────────
@@ -278,6 +296,14 @@ export const useEditorStore = defineStore('editor', () => {
 
 
   async function leaveLayoutEditor(layoutId) {
+    cancelAutoSave()
+    if (dirty.value && !readOnly.value && (mode.value !== 'layout' || layoutLockHeld.value)) {
+      try {
+        await saveDefinition()
+      } catch (e) {
+        console.warn('[editor] flush auto-save on leave', e)
+      }
+    }
     stopLockTimers()
     if (layoutId && layoutLockHeld.value) {
       try {
@@ -291,6 +317,42 @@ export const useEditorStore = defineStore('editor', () => {
     layoutLockHeld.value = false
   }
 
+  function cancelAutoSave() {
+    if (autoSaveTimer) {
+      clearTimeout(autoSaveTimer)
+      autoSaveTimer = null
+    }
+  }
+
+  function scheduleAutoSave() {
+    cancelAutoSave()
+    if (!autoSave.value || !dirty.value) return
+    if (mode.value === 'layout' && (readOnly.value || !layoutLockHeld.value)) return
+    autoSaveTimer = window.setTimeout(() => {
+      autoSaveTimer = null
+      if (dirty.value && autoSave.value) saveDefinition()
+    }, AUTO_SAVE_DELAY_MS)
+  }
+
+  function setAutoSave(enabled) {
+    autoSave.value = !!enabled
+    try {
+      localStorage.setItem(AUTO_SAVE_LS_KEY, autoSave.value ? '1' : '0')
+    } catch { /* ignore */ }
+    if (autoSave.value) scheduleAutoSave()
+    else cancelAutoSave()
+  }
+
+  watch(dirty, (isDirty) => {
+    if (isDirty) scheduleAutoSave()
+    else cancelAutoSave()
+  })
+
+  watch(autoSave, (on) => {
+    if (on) scheduleAutoSave()
+    else cancelAutoSave()
+  })
+
   async function loadLayout(id) {
     loading.value = true
     mode.value = 'layout'
@@ -299,6 +361,7 @@ export const useEditorStore = defineStore('editor', () => {
       raw.definition = _migrateDefinition(raw.definition)
       layout.value = raw
       dirty.value = false
+      editVersion = 0
       history.value = []
       selectedElementId.value = null
       selectedItemId.value = layers.value[0]?.id || null
@@ -368,6 +431,7 @@ export const useEditorStore = defineStore('editor', () => {
         definition: def
       }
       dirty.value = false
+      editVersion = 0
       history.value = []
       selectedElementId.value = null
       selectedItemId.value = null
@@ -380,6 +444,8 @@ export const useEditorStore = defineStore('editor', () => {
   async function saveDefinition() {
     if (!layout.value || !dirty.value) return
     if (mode.value === 'layout' && (readOnly.value || !layoutLockHeld.value)) return
+    cancelAutoSave()
+    const versionAtSave = editVersion
     saving.value = true
     try {
       const thumbnail = captureCallback ? await captureCallback() : null
@@ -393,9 +459,11 @@ export const useEditorStore = defineStore('editor', () => {
       } else {
         await api.updateLayoutDefinition(layout.value.id, { definition: layout.value.definition, thumbnail })
       }
-      dirty.value = false
+      // Ne clear dirty que si aucune nouvelle modif n’est arrivée pendant le save
+      if (editVersion === versionAtSave) dirty.value = false
     } finally {
       saving.value = false
+      if (dirty.value && autoSave.value) scheduleAutoSave()
     }
   }
 
@@ -407,6 +475,7 @@ export const useEditorStore = defineStore('editor', () => {
   function markDirty() {
     if (!assertEditable()) return
     dirty.value = true
+    editVersion += 1
   }
 
   // ── Item operations (groups & elements) ──────────────────────────────────
@@ -656,7 +725,7 @@ export const useEditorStore = defineStore('editor', () => {
   const removeLayer     = removeItem
 
   return {
-    layout, loading, dirty, saving,
+    layout, loading, dirty, saving, autoSave,
     selectedElementId, selectedItemId, selectedLayerId,
     activeCellIdx, backgroundElement,
     zoom, panX, panY, snapGrid, showGrid, requestFit,
@@ -668,7 +737,7 @@ export const useEditorStore = defineStore('editor', () => {
     readOnly, layoutLockHolder, layoutLockHeld,
     enterLayoutEditor, leaveLayoutEditor,
     history, canUndo, undo, _snapshot,
-    loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta,
+    loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
     // Group/item ops
     addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
     moveItemToGroup, moveGroupBy, reorderItemAroundTarget,
