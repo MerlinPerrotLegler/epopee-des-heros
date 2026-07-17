@@ -150,6 +150,12 @@ export const PARAM_HELP = {
   titleColor:    'Couleur du titre du cadre',
   titleBgColor:  'Fond derrière le titre (souvent la couleur de la carte pour masquer le trait)',
   bgOpacity:     'Opacité du fond intérieur du cadre (0–1)',
+  cornerShape: 'Forme décorative aux coins : aucune, étoile 4/5 branches, rond, carré, triangle',
+  cornerSize:  'Taille des ornements de coin en millimètres',
+  cornerTL:    'Afficher l\'ornement en haut à gauche',
+  cornerTR:    'Afficher l\'ornement en haut à droite',
+  cornerBL:    'Afficher l\'ornement en bas à gauche',
+  cornerBR:    'Afficher l\'ornement en bas à droite',
 
   // ── AtomTrakCorner ────────────────────────────────────────────────────────
   n:             'Numéro affiché dans cette case de coin',

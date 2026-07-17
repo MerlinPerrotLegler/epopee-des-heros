@@ -32,6 +32,38 @@
           :fill-opacity="stroke.opacity"
         />
       </g>
+      <g
+        v-for="orn in cornerOrnaments"
+        :key="orn.key"
+        class="cadre-corner"
+      >
+        <path
+          v-if="orn.kind === 'star4' || orn.kind === 'star5'"
+          :d="orn.d"
+          :fill="strokeColor"
+        />
+        <circle
+          v-else-if="orn.kind === 'circle'"
+          :cx="orn.cx"
+          :cy="orn.cy"
+          :r="orn.r"
+          :fill="strokeColor"
+        />
+        <rect
+          v-else-if="orn.kind === 'square'"
+          :x="orn.cx - orn.r"
+          :y="orn.cy - orn.r"
+          :width="orn.r * 2"
+          :height="orn.r * 2"
+          :fill="strokeColor"
+        />
+        <polygon
+          v-else-if="orn.kind === 'triangle'"
+          :points="`${orn.cx},${orn.cy - orn.r} ${orn.cx - orn.r * 0.866},${orn.cy + orn.r * 0.5} ${orn.cx + orn.r * 0.866},${orn.cy + orn.r * 0.5}`"
+          :fill="strokeColor"
+          :transform="`rotate(${orn.rotationDeg} ${orn.cx} ${orn.cy})`"
+        />
+      </g>
     </svg>
 
     <div
@@ -45,6 +77,7 @@
 <script setup>
 import { computed } from 'vue'
 import { buildFramePaths, estimateTitleGapWidth } from '@/utils/frameStrokes.js'
+import { buildCornerOrnaments } from '@/utils/cornerOrnaments.js'
 import { useAtomScale } from './useAtomScale.js'
 
 const props = defineProps({
@@ -84,6 +117,24 @@ const paths = computed(() =>
     titleCenterX: svgW.value / 2,
   })
 )
+
+const cornerOrnaments = computed(() => {
+  const shape = props.params.cornerShape ?? 'star4'
+  const sizeMm = props.params.cornerSize ?? 2
+  return buildCornerOrnaments({
+    svgW: svgW.value,
+    svgH: svgH.value,
+    pad: pad.value,
+    shape,
+    sizeSvg: sizeMm * SCALE,
+    corners: {
+      TL: props.params.cornerTL !== false,
+      TR: props.params.cornerTR !== false,
+      BL: props.params.cornerBL !== false,
+      BR: props.params.cornerBR !== false,
+    },
+  })
+})
 
 const titleStyle = computed(() => {
   const align = props.params.titleAlign || 'center'
