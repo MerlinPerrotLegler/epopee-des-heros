@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { api, acquireLayoutLock } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
+import { migrateDefinitionSizing, REF_HEIGHT_MM } from '@/utils/migrateSizing.js'
 
 const MAX_HISTORY = 0
 const AUTO_SAVE_DELAY_MS = 1500
@@ -155,6 +156,15 @@ export const useEditorStore = defineStore('editor', () => {
       }
     }
     return { ...def, layers: newLayers }
+  }
+
+  function _applyDefinitionMigrations(def, heightMm) {
+    const structural = _migrateDefinition(def)
+    const { definition, changed } = migrateDefinitionSizing(
+      structural,
+      heightMm ?? REF_HEIGHT_MM,
+    )
+    return { definition, sizingChanged: changed }
   }
 
   // ── Computed ───────────────────────────────────────────────────────────────
@@ -358,9 +368,13 @@ export const useEditorStore = defineStore('editor', () => {
     mode.value = 'layout'
     try {
       const raw = await api.getLayout(id)
-      raw.definition = _migrateDefinition(raw.definition)
+      const { definition, sizingChanged } = _applyDefinitionMigrations(
+        raw.definition,
+        raw.height_mm,
+      )
+      raw.definition = definition
       layout.value = raw
-      dirty.value = false
+      dirty.value = sizingChanged
       editVersion = 0
       history.value = []
       selectedElementId.value = null
@@ -422,6 +436,11 @@ export const useEditorStore = defineStore('editor', () => {
       } else {
         def = { layers: [], dataSchema: {} }
       }
+      const { definition, sizingChanged } = _applyDefinitionMigrations(
+        def,
+        comp.height_mm || REF_HEIGHT_MM,
+      )
+      def = definition
       layout.value = {
         id: comp.id,
         name: comp.name,
@@ -430,7 +449,7 @@ export const useEditorStore = defineStore('editor', () => {
         card_type: null,
         definition: def
       }
-      dirty.value = false
+      dirty.value = sizingChanged
       editVersion = 0
       history.value = []
       selectedElementId.value = null
@@ -453,7 +472,7 @@ export const useEditorStore = defineStore('editor', () => {
         await api.updateComponent(layout.value.id, {
           width_mm: layout.value.width_mm,
           height_mm: layout.value.height_mm,
-          definition: { layers: definition.value.layers },
+          definition: layout.value.definition,
           ...(thumbnail ? { thumbnail } : {})
         })
       } else {

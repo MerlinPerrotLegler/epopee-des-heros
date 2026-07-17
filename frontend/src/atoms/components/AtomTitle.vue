@@ -5,17 +5,14 @@
 <script setup>
 import { computed } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
-import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 
 const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
 const { mmToPx } = useAtomScale(props)
 
-const fontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.fontSize || 4.5))
-
 const style = computed(() => ({
   width: '100%', height: '100%', overflow: 'hidden',
   fontFamily: props.params.fontFamily || 'Outfit',
-  fontSize: `${mmToPx(fontSizeMm.value)}px`,
+  fontSize: `${mmToPx(props.params.fontSize || 4.5)}px`,
   fontWeight: props.params.fontWeight || 700,
   color: props.params.color || '#000',
   textAlign: props.params.textAlign || 'center',

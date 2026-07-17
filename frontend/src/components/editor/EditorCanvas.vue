@@ -184,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, provide } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -196,7 +196,6 @@ import DrawingToolbar from './DrawingToolbar.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
-import { LAYOUT_HEIGHT_MM_KEY } from '@/atoms/components/useLayoutRelativeFont.js'
 
 const store = useEditorStore()
 const containerRef    = ref(null)
@@ -212,9 +211,6 @@ const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
-
-// Hauteur layout pour tailles de texte relatives (% → mm)
-provide(LAYOUT_HEIGHT_MM_KEY, cardH)
 
 const rulerLen = computed(() => Math.max(mmToPx(cardW.value) + 200, 1000))
 

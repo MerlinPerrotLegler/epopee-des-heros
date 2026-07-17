@@ -23,7 +23,6 @@
 <script setup>
 import { computed } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
-import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -92,11 +91,11 @@ const emptyIconStyle = computed(() => ({
   flexShrink: 0,
 }))
 
-const resolvedFontSizeMm = useLayoutRelativeFontMm(computed(() => {
+const resolvedFontSizeMm = computed(() => {
   const rowFs = matchedRow.value?.fontSize
-  if (rowFs != null && rowFs !== '' && Number(rowFs) > 0) return Number(rowFs)
-  return props.params.fontSize ?? 2.8
-}))
+  if (rowFs != null && rowFs !== '') return Number(rowFs)
+  return Number(props.params.fontSize ?? 2.8)
+})
 
 const labelStyle = computed(() => ({
   fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,

@@ -21,7 +21,8 @@ Cette mise à jour est **non négociable** — même si la session était courte
 
 ## Conventions techniques
 
-- Mesures toujours en **mm** dans le store, les composants, et les props. Jamais de valeurs px codées en dur.
+- Mesures toujours en **mm** dans le store, les composants, et les props. Jamais de valeurs px codées en dur pour une taille visuelle (passer par `mmToPx` / SCALE).
+- `fontSize`, paddings, gaps, bordures, épaisseurs : **mm physiques** (TSD-022) — pas de % hauteur layout.
 - Scale : `3.7795 px/mm` (constante dans `useMmScale.js`)
 - Snap par défaut : 1 mm
 - Framework : **Vue 3** Composition API + Pinia. Ne pas utiliser React, Options API, ou vue-class-component.

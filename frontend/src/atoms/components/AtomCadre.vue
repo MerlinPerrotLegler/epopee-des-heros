@@ -1,7 +1,7 @@
 <template>
   <!--
     AtomCadre — Cadre calligraphique (mêmes tiers/seed que le séparateur) + titre optionnel.
-    Titre : fontSize en % de la hauteur du layout en cours.
+    Titre : fontSize en mm physiques.
   -->
   <div class="cadre-root">
     <svg
@@ -46,7 +46,6 @@
 import { computed } from 'vue'
 import { buildFramePaths, estimateTitleGapWidth } from '@/utils/frameStrokes.js'
 import { useAtomScale } from './useAtomScale.js'
-import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -71,8 +70,7 @@ const pad = computed(() => Math.max(2, Math.min(svgW.value, svgH.value) * 0.02))
 const titleText = computed(() => String(props.params.title ?? '').trim())
 const showTitle = computed(() => props.params.showTitle !== false)
 
-// fontSize = % de la hauteur du layout en cours
-const fontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.fontSize ?? 2.8))
+const fontSizeMm = computed(() => Number(props.params.fontSize ?? 2.8))
 const fontSizeSvg = computed(() => fontSizeMm.value * SCALE)
 
 const titleGapWidth = computed(() => {

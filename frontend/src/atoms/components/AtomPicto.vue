@@ -24,7 +24,6 @@
 import { computed, onMounted, watch } from 'vue'
 import { usePictosStore } from '@/stores/pictos.js'
 import { useAtomScale } from './useAtomScale.js'
-import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -99,7 +98,7 @@ const imgBaseStyle = computed(() => ({
 const iconStyle = imgBaseStyle
 const emptyIconStyle = imgBaseStyle
 
-const resolvedFontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.fontSize ?? 2.8))
+const resolvedFontSizeMm = computed(() => Number(props.params.fontSize ?? 2.8))
 
 const labelStyle = computed(() => ({
   fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,

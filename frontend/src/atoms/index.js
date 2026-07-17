@@ -83,7 +83,7 @@ export const ATOM_TYPES = {
     icon: 'T',
     defaultParams: {
       text: 'Titre',
-      fontSize: 4.5, // % de la hauteur du layout
+      fontSize: 4.5, // mm
       fontWeight: 700,
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
@@ -99,7 +99,7 @@ export const ATOM_TYPES = {
     icon: 'Aa',
     defaultParams: {
       text: 'Lorem ipsum',
-      fontSize: 2.8, // % hauteur layout
+      fontSize: 2.8, // mm
       fontWeight: 400,
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
@@ -107,7 +107,7 @@ export const ATOM_TYPES = {
       lineHeight: 1.3,
       overflow: 'hidden', // hidden | visible | ellipsis
       autoSize: true,     // agrandit le texte pour remplir la zone
-      maxFontSize: 12,    // % hauteur layout (autoSize)
+      maxFontSize: 12,    // mm (autoSize)
     },
     defaultSize: { width_mm: 40, height_mm: 10 }
   },
@@ -158,7 +158,7 @@ export const ATOM_TYPES = {
       fit: 'contain',       // cover | contain | fill | none
       showIcon: true,
       showLabel: true,
-      fontSize: 2.8,        // % hauteur layout
+      fontSize: 2.8,        // mm
       fontFamily: null,     // null → config globale / héritage
       fontWeight: 400,
       color: null,          // null → config globale
@@ -195,7 +195,7 @@ export const ATOM_TYPES = {
       text: '',
       bgColor: null,          // null → config globale
       textColor: null,        // null → config globale
-      fontSize: 2.8, // % hauteur layout
+      fontSize: 2.8, // mm
       borderRadius: 50, // percentage
       borderWidth: 0,
       borderColor: null,      // null → config globale
@@ -245,7 +245,7 @@ export const ATOM_TYPES = {
       borderColor:   null,        // null → config globale
       borderStyle:   'dashed',
       borderWidth:   0.4,         // mm
-      borderRadius:  4,           // px
+      borderRadius:  1,           // mm
       textColor:     null,        // null → config globale
       fontSize:      2.5,         // mm
       iconMediaId:   null,        // SVG/image au-dessus du label
@@ -302,7 +302,7 @@ export const ATOM_TYPES = {
       type: '', // bound to card_type
       showIcon: true,
       showLabel: true,
-      fontSize: 2.3, // % hauteur layout
+      fontSize: 2.3, // mm
       color: null,            // null → config globale
       bgColor: null,          // null → config globale
     },
@@ -315,7 +315,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       prefix: '#',
       value: '',
-      fontSize: 2.3, // % hauteur layout
+      fontSize: 2.3, // mm
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
     },
@@ -478,7 +478,7 @@ export const ATOM_TYPES = {
       color:       null,        // couleur du trait
       bgColor:     null,        // fond intérieur optionnel
       bgOpacity:   1,
-      fontSize:    2.8,         // % hauteur layout
+      fontSize:    2.8,         // mm
       fontFamily:  null,
       fontWeight:  600,
     },
@@ -491,7 +491,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       content:    '',         // source — markdown + /D8{N} /D12{N} /R{type,amt} /FOR{mod} /SVG{name} $$fml$$
       fontFamily: null,
-      fontSize:   4,          // % hauteur layout
+      fontSize:   4,          // mm
       color:      null,       // null → config globale
       align:      'left',     // left | center | right
       lineHeight: 1.5,
