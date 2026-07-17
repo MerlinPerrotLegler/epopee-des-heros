@@ -3,6 +3,7 @@ import { ref, computed, watch } from 'vue'
 import { api, acquireLayoutLock } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { migrateDefinitionSizing, REF_HEIGHT_MM } from '@/utils/migrateSizing.js'
+import { computeAlignmentGuides } from '@/utils/alignmentGuides.js'
 
 const MAX_HISTORY = 0
 const AUTO_SAVE_DELAY_MS = 1500
@@ -70,6 +71,76 @@ export const useEditorStore = defineStore('editor', () => {
   const snapGrid = ref(1)
   const showGrid = ref(true)
   const requestFit = ref(null)
+
+  const GUIDE_OPTIONS_KEY = 'card-designer.guideOptions'
+  const DEFAULT_GUIDE_OPTIONS = {
+    layoutCenters: true,
+    elementEdges: true,
+    elementCenters: true,
+    margins: true,
+    frames: true,
+  }
+
+  function _loadGuideOptions() {
+    try {
+      const raw = localStorage.getItem(GUIDE_OPTIONS_KEY)
+      if (!raw) return { ...DEFAULT_GUIDE_OPTIONS }
+      return { ...DEFAULT_GUIDE_OPTIONS, ...JSON.parse(raw) }
+    } catch {
+      return { ...DEFAULT_GUIDE_OPTIONS }
+    }
+  }
+
+  const guideOptions = ref(_loadGuideOptions())
+  const guidesActive = ref(false)
+  const activeGuides = ref([])
+  let guidesClearTimer = null
+
+  function setGuideOption(key, value) {
+    if (!(key in guideOptions.value)) return
+    guideOptions.value = { ...guideOptions.value, [key]: !!value }
+    localStorage.setItem(GUIDE_OPTIONS_KEY, JSON.stringify(guideOptions.value))
+  }
+
+  function scheduleGuidesClear() {
+    clearTimeout(guidesClearTimer)
+    guidesClearTimer = setTimeout(() => {
+      guidesClearTimer = null
+      clearGuides()
+    }, 300)
+  }
+
+  function refreshGuides(activeEl) {
+    clearTimeout(guidesClearTimer)
+    guidesClearTimer = null
+    if (!assertEditable() || !activeEl) { clearGuides(); return }
+    const opts = guideOptions.value
+    if (!opts.layoutCenters && !opts.elementEdges && !opts.elementCenters && !opts.margins && !opts.frames) {
+      clearGuides()
+      return
+    }
+    const candidates = allElements.value.filter(e =>
+      e.id !== activeEl.id && !e._layerLocked
+    )
+    const layoutW = layout.value?.width_mm || 63
+    const layoutH = Number(layout.value?.height_mm) || 88
+    activeGuides.value = computeAlignmentGuides({
+      active: activeEl,
+      candidates,
+      layoutW,
+      layoutH,
+      snapGrid: snapGrid.value || 1,
+      options: opts,
+    })
+    guidesActive.value = true
+  }
+
+  function clearGuides() {
+    clearTimeout(guidesClearTimer)
+    guidesClearTimer = null
+    guidesActive.value = false
+    activeGuides.value = []
+  }
 
   // Preview
   const previewData = ref(null)
@@ -748,6 +819,7 @@ export const useEditorStore = defineStore('editor', () => {
     selectedElementId, selectedItemId, selectedLayerId,
     activeCellIdx, backgroundElement,
     zoom, panX, panY, snapGrid, showGrid, requestFit,
+    guideOptions, guidesActive, activeGuides, setGuideOption, refreshGuides, clearGuides, scheduleGuidesClear,
     previewData,
     componentsCache,
     definition, layers, selectedItem, activeLayer,

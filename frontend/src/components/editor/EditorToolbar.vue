@@ -50,6 +50,8 @@
         <input type="number" v-model.number="store.snapGrid" min="0.5" max="10" step="0.5" class="snap-input" />
         mm
       </label>
+      <span class="toolbar-divider"></span>
+      <GuidesMenu />
     </div>
     <div class="toolbar-right">
       <label class="toggle-label" title="Enregistre automatiquement ~1,5 s après une modification">
@@ -86,6 +88,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { api } from '@/utils/api.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
+import GuidesMenu from '@/components/editor/GuidesMenu.vue'
 
 const store = useEditorStore()
 const showSettings = ref(false)
