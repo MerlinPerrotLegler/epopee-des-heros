@@ -70,7 +70,13 @@ const routes = [
     name: 'Users',
     meta: { adminOnly: true },
     component: () => import('@/views/UsersView.vue')
-  }
+  },
+  {
+    path: '/docs/:id?',
+    name: 'Docs',
+    component: () => import('@/views/DocsView.vue'),
+    props: true,
+  },
 ]
 
 const router = createRouter({

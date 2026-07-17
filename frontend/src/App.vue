@@ -34,6 +34,10 @@
           <span class="nav-icon">⚛</span>
           <span class="nav-label">Atomes</span>
         </router-link>
+        <router-link to="/docs" class="nav-item" :class="{ active: route.path.startsWith('/docs') }">
+          <span class="nav-icon">☰</span>
+          <span class="nav-label">Docs</span>
+        </router-link>
       </div>
       <div class="nav-bottom">
         <router-link to="/config" class="nav-item" :class="{ active: route.path === '/config' }">

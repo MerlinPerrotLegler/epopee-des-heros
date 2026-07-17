@@ -180,4 +180,8 @@ export const api = {
   getFonts: () => request('/fonts'),
   createFont: (data) => request('/fonts', { method: 'POST', body: data }),
   deleteFont: (id) => request(`/fonts/${id}`, { method: 'DELETE' }),
+
+  // Specs / documentation
+  getSpecs: () => request('/specs'),
+  getSpec: (id) => request(`/specs/${encodeURIComponent(id)}`),
 }

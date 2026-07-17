@@ -28,6 +28,7 @@ import missingMediaRouter from './routes/missingMedia.js';
 import locksRouter from './routes/locks.js';
 import adminUsersRouter from './routes/adminUsers.js';
 import uploadsRouter from './routes/uploads.js';
+import specsRouter from './routes/specs.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -100,6 +101,7 @@ app.use('/api/config', configRouter);
 app.use('/api/fonts', fontsRouter);
 app.use('/api/import-jobs', importJobsRouter);
 app.use('/api/missing-media', missingMediaRouter);
+app.use('/api/specs', specsRouter);
 
 // Serve Vue frontend in production
 if (existsSync(DIST_DIR)) {
