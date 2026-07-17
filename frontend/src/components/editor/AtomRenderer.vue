@@ -45,6 +45,7 @@ import AtomTrak                from '@/atoms/components/AtomTrak.vue'
 import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
+import AtomCadre               from '@/atoms/components/AtomCadre.vue'
 import AtomDrawing             from '@/atoms/components/AtomDrawing.vue'
 import AtomRichText            from '@/atoms/components/AtomRichText.vue'
 
@@ -76,6 +77,7 @@ const ATOM_COMPONENTS = {
   trakCorner:          AtomTrakCorner,
   cardTrack:           AtomCardTrack,
   separator:           AtomSeparator,
+  cadre:               AtomCadre,
   drawing:             AtomDrawing,
   richText:            AtomRichText,
 }
@@ -111,6 +113,11 @@ const resolvedParams = computed(() => {
 
   const atomRules = cfg?.[ATOM_PARAM_RULES_KEY]?.[props.atomType] || {}
   for (const [paramKey, rule] of Object.entries(atomRules)) {
+    // rows checklist : appliquer dès qu'une fixedValue tableau est définie
+    if (paramKey === 'rows' && Array.isArray(rule?.fixedValue) && rule.fixedValue.length) {
+      resolved[paramKey] = rule.fixedValue
+      continue
+    }
     if (rule?.fixedEnabled && Object.prototype.hasOwnProperty.call(rule || {}, 'fixedValue')) {
       resolved[paramKey] = rule.fixedValue
     }

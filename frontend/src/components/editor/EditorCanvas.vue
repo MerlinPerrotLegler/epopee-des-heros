@@ -184,7 +184,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, provide } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -196,6 +196,7 @@ import DrawingToolbar from './DrawingToolbar.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
+import { LAYOUT_HEIGHT_MM_KEY } from '@/atoms/components/useLayoutRelativeFont.js'
 
 const store = useEditorStore()
 const containerRef    = ref(null)
@@ -210,7 +211,10 @@ const dragDrop = useDragAndDrop(store, { pxToMm })
 const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
-const cardH = computed(() => store.layout?.height_mm || 88)
+const cardH = computed(() => Number(store.layout?.height_mm) || 88)
+
+// Hauteur layout pour tailles de texte relatives (% → mm)
+provide(LAYOUT_HEIGHT_MM_KEY, cardH)
 
 const rulerLen = computed(() => Math.max(mmToPx(cardW.value) + 200, 1000))
 
@@ -271,6 +275,7 @@ function onElementMouseDown(e, el) {
   }
   const wasAlreadySelected = store.selectedElementId === el.id
   store.selectedElementId = el.id
+  store.selectedItemId = el.id // sync calque → flèches / panneau calques
 
   // Clic sur une case d'un CardTrack déjà sélectionné → sélection de case
   if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' && el.atomType === 'cardTrack') {
@@ -298,6 +303,7 @@ function onCanvasBgClick(e) {
   if (e.target === containerRef.value || e.target.classList.contains('card-boundary') || e.target.classList.contains('canvas-viewport')) {
     if (drawingMode.active.value) { drawingMode.exit(); return }
     store.selectedElementId = null
+    store.selectedItemId = null
   }
   // Pan with middle mouse or if clicking on background
   if (e.button === 1) {

@@ -23,7 +23,20 @@
       <div v-if="store.previewData !== null" class="preview-fields">
         <div v-for="bp in bindingPaths" :key="bp.path" class="field-row">
           <label :title="bp.path">{{ bp.nameInLayout }}.{{ bp.path.split('.').pop() }}</label>
+          <select
+            v-if="bp.options?.length"
+            :value="store.previewData[bp.path] || ''"
+            @change="store.previewData[bp.path] = $event.target.value"
+          >
+            <option value="">— choisir —</option>
+            <option
+              v-for="opt in bp.options"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label }}</option>
+          </select>
           <input
+            v-else
             :value="store.previewData[bp.path] || ''"
             @input="store.previewData[bp.path] = $event.target.value"
           />
@@ -64,12 +77,16 @@
 import { ref, computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { getBindablePaths } from '@/utils/binding.js'
+import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { api } from '@/utils/api.js'
 import Papa from 'papaparse'
 
 const store = useEditorStore()
+const configStore = useConfigStore()
 
-const bindingPaths = computed(() => getBindablePaths(store.definition))
+const bindingPaths = computed(() =>
+  getBindablePaths(store.definition, configStore.config?.[ATOM_PARAM_RULES_KEY] || null)
+)
 
 const csvPreview = ref(null)
 const csvColumns = ref([])

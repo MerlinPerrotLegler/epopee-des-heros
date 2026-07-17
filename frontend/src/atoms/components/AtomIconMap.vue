@@ -24,7 +24,11 @@ const rows = computed(() => Array.isArray(props.params.rows) ? props.params.rows
 const normalizedValue = computed(() => String(props.params.value ?? '').trim())
 
 const resolvedMediaId = computed(() => {
-  const hit = rows.value.find((r) => String(r?.value ?? '').trim() === normalizedValue.value)
+  const want = normalizedValue.value
+  const hit = rows.value.find((r) => {
+    const key = String(r?.value ?? '').trim() || String(r?.label ?? '').trim()
+    return key === want
+  })
   return hit?.mediaId || props.params.fallbackMediaId || null
 })
 

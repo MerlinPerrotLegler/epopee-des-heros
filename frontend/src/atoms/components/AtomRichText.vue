@@ -80,6 +80,7 @@ import { tokenize, parseFML }    from '@/utils/richTextParser.js'
 import { RESOURCE_TYPES, STAT_TYPES } from '@/atoms/index.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useAtomScale }           from './useAtomScale.js'
+import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 import AtomDice8  from './AtomDice8.vue'
 import AtomDice12 from './AtomDice12.vue'
 
@@ -103,7 +104,7 @@ import('katex').then(m => { katex.value = m.default }).catch(() => {})
 // ── Computed params ───────────────────────────────────────────────────────────
 const p = computed(() => props.params)
 
-const fontSize_mm  = computed(() => p.value.fontSize  || 3.5)
+const fontSize_mm  = useLayoutRelativeFontMm(computed(() => p.value.fontSize  || 4))
 const diceScale    = computed(() => p.value.diceScale  || 1.4)
 const dieSize      = computed(() => fontSize_mm.value * diceScale.value)  // mm
 const color        = computed(() => p.value.color      || '#1a1a2e')

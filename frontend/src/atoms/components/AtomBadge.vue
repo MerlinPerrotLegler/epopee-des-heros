@@ -23,6 +23,7 @@
 <script setup>
 import { computed } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
+import { useLayoutRelativeFontMm } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -36,9 +37,14 @@ const { mmToPx } = useAtomScale(props)
 const rows = computed(() => Array.isArray(props.params.rows) ? props.params.rows : [])
 const normalizedValue = computed(() => String(props.params.value ?? '').trim())
 
-const matchedRow = computed(() =>
-  rows.value.find((r) => String(r?.value ?? '').trim() === normalizedValue.value) || null
-)
+const matchedRow = computed(() => {
+  const want = normalizedValue.value
+  if (!want) return null
+  return rows.value.find((r) => {
+    const key = String(r?.value ?? '').trim() || String(r?.label ?? '').trim()
+    return key === want
+  }) || null
+})
 
 const resolvedMediaId = computed(() =>
   matchedRow.value?.mediaId || props.params.fallbackMediaId || null
@@ -63,11 +69,7 @@ const wrapStyle = computed(() => ({
   flexDirection: isVertical.value ? 'column' : 'row',
   gap: `${mmToPx(props.params.gap ?? 1)}px`,
   opacity: props.params.opacity ?? 1,
-  justifyContent: isVertical.value
-    ? 'center'
-    : (props.params.textAlign === 'center' ? 'center'
-      : props.params.textAlign === 'right' ? 'flex-end'
-      : 'flex-start'),
+  justifyContent: 'center',
   alignItems: 'center',
 }))
 
@@ -90,12 +92,18 @@ const emptyIconStyle = computed(() => ({
   flexShrink: 0,
 }))
 
+const resolvedFontSizeMm = useLayoutRelativeFontMm(computed(() => {
+  const rowFs = matchedRow.value?.fontSize
+  if (rowFs != null && rowFs !== '' && Number(rowFs) > 0) return Number(rowFs)
+  return props.params.fontSize ?? 2.8
+}))
+
 const labelStyle = computed(() => ({
-  fontSize: `${mmToPx(props.params.fontSize ?? 2.5)}px`,
+  fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,
   fontFamily: props.params.fontFamily || 'inherit',
   fontWeight: props.params.fontWeight ?? 400,
   color: props.params.color || 'inherit',
-  textAlign: props.params.textAlign || 'left',
+  textAlign: 'center',
   lineHeight: 1.2,
   minWidth: 0,
 }))
@@ -111,9 +119,11 @@ const labelStyle = computed(() => ({
 }
 
 .badge-label {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  min-width: 0;
+  flex: 1;
 }
 
 .badge-icon--empty {

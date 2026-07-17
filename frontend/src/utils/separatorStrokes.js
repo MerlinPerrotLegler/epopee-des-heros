@@ -1,7 +1,7 @@
 /**
  * separatorStrokes.js
  * ───────────────────
- * Génération de séparateurs calligraphiques SVG — 5 niveaux d'ornementation.
+ * Génération de séparateurs calligraphiques SVG — 6 niveaux d'ornementation.
  *
  * Technique identique aux traits de plume du CardTrack :
  *   - Fuseaux remplis (filled polygons bezier) pour l'effet plume
@@ -10,6 +10,7 @@
  * Coordonnées : SVG units = mm × 10 (cohérent avec AtomTrak)
  *
  * Tiers disponibles :
+ *   fin        — trait super fin, ligne irrégulière « à la main »
  *   basic      — trait plume pur, sobre
  *   rare       — trait + petites enjolivures (diamants + croix centrale)
  *   epic       — trait + enjolivures moyennes (3 croix + diamants multiples)
@@ -50,6 +51,61 @@ function fH(x1, x2, cy, hw, wob = 0, vT = 1, vB = 1, m = 0.10) {
     `C ${f(C2x)} ${f(cy + W2b)},${f(C1x)} ${f(cy + W1b)},${f(Px)} ${f(cy)}`,
     'Z',
   ].join(' ')
+}
+
+// ── Trait « à la main » : ruban fin le long d'une ligne centrale irrégulière ─
+function handRibbon(W, cy, hw, amp, seed, segments = 14) {
+  const rand = seededRand(seed + 17)
+  const pts = []
+  let y = cy
+  // Fréquences irrégulières pour éviter un sinus trop régulier
+  const f1 = 1.2 + rand() * 1.4
+  const f2 = 2.8 + rand() * 2.2
+  const ph1 = rand() * Math.PI * 2
+  const ph2 = rand() * Math.PI * 2
+
+  for (let i = 0; i <= segments; i++) {
+    const t = i / segments
+    // Marche aléatoire amortie + deux ondes déphasées
+    y += (rand() - 0.5) * amp * 0.55
+    y = cy + (y - cy) * 0.62
+    const wave =
+      Math.sin(t * Math.PI * f1 + ph1) * amp * 0.55 +
+      Math.sin(t * Math.PI * f2 + ph2) * amp * 0.28
+    // Clamp dans la demi-hauteur utile
+    const yy = Math.max(cy - amp, Math.min(cy + amp, y + wave))
+    pts.push({ x: W * t, y: yy })
+  }
+
+  // Contours haut / bas décalés selon la normale locale
+  const top = []
+  const bot = []
+  for (let i = 0; i < pts.length; i++) {
+    const prev = pts[Math.max(0, i - 1)]
+    const next = pts[Math.min(pts.length - 1, i + 1)]
+    let dx = next.x - prev.x
+    let dy = next.y - prev.y
+    const len = Math.hypot(dx, dy) || 1
+    dx /= len
+    dy /= len
+    const nx = -dy
+    const ny = dx
+    // Épaisseur irrégulière (pression de plume variable)
+    const h = hw * (0.55 + rand() * 0.9)
+    top.push({ x: pts[i].x + nx * h, y: pts[i].y + ny * h })
+    bot.push({ x: pts[i].x - nx * h, y: pts[i].y - ny * h })
+  }
+
+  // Path fermé : aller sur le bord haut, retour sur le bord bas
+  const parts = [`M ${f(top[0].x)} ${f(top[0].y)}`]
+  for (let i = 1; i < top.length; i++) {
+    parts.push(`L ${f(top[i].x)} ${f(top[i].y)}`)
+  }
+  for (let i = bot.length - 1; i >= 0; i--) {
+    parts.push(`L ${f(bot[i].x)} ${f(bot[i].y)}`)
+  }
+  parts.push('Z')
+  return parts.join(' ')
 }
 
 // ── Fuseau vertical : (cx,y1) → (cx,y2), demi-largeur hw ────────────────────
@@ -118,7 +174,7 @@ function p(d, opacity = 1) { return { d, opacity } }
  *
  * @param {number} W     - Largeur totale en SVG units (= width_mm × 10)
  * @param {number} H     - Hauteur totale en SVG units (= height_mm × 10)
- * @param {string} tier  - 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
+ * @param {string} tier  - 'fin' | 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
  * @param {number} seed  - Seed pour la variation déterministe
  * @returns {Array<{d: string, opacity: number}>}
  */
@@ -127,6 +183,15 @@ export function buildSeparatorPaths(W, H, tier, seed) {
   const cx = W / 2   // centre horizontal
   const cy = H / 2   // centre vertical (axe du trait principal)
   const R  = H / 2   // demi-hauteur = rayon max des ornements
+
+  // ── fin : trait super fin, pas droit (à la main) ─────────────────────────
+  if (tier === 'fin') {
+    // hw très petit ; amp large pour que le trait « danse » dans la hauteur
+    const hw  = Math.max(R * 0.10, 0.55)
+    const amp = Math.max(R * 0.78, hw * 3)
+    const segs = 12 + Math.floor(rand() * 5) // 12–16 segments
+    return [p(handRibbon(W, cy, hw, amp, seed, segs), 0.92)]
+  }
 
   // Variation aléatoire déterministe pour ce seed
   // basic → wobble très faible : on veut un trait de plume droit et sobre

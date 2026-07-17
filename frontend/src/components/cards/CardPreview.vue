@@ -26,11 +26,12 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, defineComponent, h } from 'vue'
+import { ref, computed, watch, defineComponent, h, provide } from 'vue'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
+import { LAYOUT_HEIGHT_MM_KEY } from '@/atoms/components/useLayoutRelativeFont.js'
 
 const props = defineProps({
   layout: { type: Object, required: true },
@@ -40,6 +41,10 @@ const props = defineProps({
 
 const zoomRef = computed(() => props.zoom)
 const { mmToPx } = useMmScale(zoomRef)
+
+const cardW = computed(() => props.layout.width_mm || 63)
+const cardH = computed(() => Number(props.layout.height_mm) || 88)
+provide(LAYOUT_HEIGHT_MM_KEY, cardH)
 
 // ── Flatten layout definition into renderable elements ──────────────────────
 const BACKGROUND_ATOM_TYPES = new Set(['rectangle', 'cardType', 'hexTile'])
@@ -87,10 +92,7 @@ function resolvedParams(el) {
   return resolveElementParams(el, props.data)
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-const cardW = computed(() => props.layout.width_mm || 63)
-const cardH = computed(() => props.layout.height_mm || 88)
-
+// ── Styles (cardW / cardH déjà définis plus haut pour provide) ──────────────
 const outerStyle = computed(() => ({
   width:    `${mmToPx(cardW.value)}px`,
   height:   `${mmToPx(cardH.value)}px`,

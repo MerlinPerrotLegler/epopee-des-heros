@@ -53,10 +53,68 @@ export function resolveElementParams(element, data, prefixOverride = null) {
 }
 
 /**
- * Get all bindable paths from a layout definition (direct atoms only, no component traversal).
- * Returns array of { path, label, type, elementId, nameInLayout }
+ * Options de checklist pour iconMap / badge (valeur → label affiché).
+ * Clé = row.value, ou row.label si value vide.
  */
-export function getBindablePaths(definition) {
+export function getMapValueOptionsFromRows(rows) {
+  const seen = new Set()
+  const opts = []
+  for (const row of rows || []) {
+    const key = String(row?.value ?? '').trim() || String(row?.label ?? '').trim()
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    const label = String(row?.label ?? '').trim() || key
+    opts.push({ value: key, label })
+  }
+  return opts
+}
+
+/**
+ * Résout les rows checklist : priorité à la config atome (Config > Atomes),
+ * sinon les rows de l’élément placé sur le layout.
+ *
+ * @param {string} atomType
+ * @param {object|null} elementParams
+ * @param {object|null} atomParamRules - config.atomParamRules
+ */
+export function resolveMapRows(atomType, elementParams = null, atomParamRules = null) {
+  const rule = atomParamRules?.[atomType]?.rows
+  const atomRows = rule?.fixedValue
+  if (Array.isArray(atomRows) && atomRows.length > 0) {
+    return atomRows
+  }
+  if (Array.isArray(elementParams?.rows) && elementParams.rows.length > 0) {
+    return elementParams.rows
+  }
+  if (Array.isArray(atomRows)) return atomRows
+  if (Array.isArray(elementParams?.rows)) return elementParams.rows
+  return []
+}
+
+/**
+ * True si la checklist est définie au niveau atome (Config > Atomes).
+ */
+export function hasAtomLevelMapRows(atomType, atomParamRules = null) {
+  const rule = atomParamRules?.[atomType]?.rows
+  return Array.isArray(rule?.fixedValue) && rule.fixedValue.length > 0
+}
+
+/**
+ * Options checklist pour un élément atom iconMap/badge, ou null.
+ */
+export function getMapValueOptionsForElement(el, atomParamRules = null) {
+  if (!el || el.type !== 'atom') return null
+  if (el.atomType !== 'badge' && el.atomType !== 'iconMap') return null
+  return getMapValueOptionsFromRows(resolveMapRows(el.atomType, el.params, atomParamRules))
+}
+
+/**
+ * Get all bindable paths from a layout definition (direct atoms only, no component traversal).
+ * Returns array of { path, label, type, elementId, nameInLayout, options? }
+ * @param {object} definition
+ * @param {object|null} atomParamRules - config.atomParamRules (pour options badge/iconMap)
+ */
+export function getBindablePaths(definition, atomParamRules = null) {
   const paths = []
 
   function walkItems(items) {
@@ -65,12 +123,18 @@ export function getBindablePaths(definition) {
       const el = item
       if (!el.nameInLayout) continue
       for (const [paramKey, paramValue] of Object.entries(el.params || {})) {
+        const isMapValue = paramKey === 'value'
+          && (el.atomType === 'badge' || el.atomType === 'iconMap')
+        const rows = isMapValue
+          ? resolveMapRows(el.atomType, el.params, atomParamRules)
+          : null
         paths.push({
           path: `${el.nameInLayout}.${paramKey}`,
           label: `${el.nameInLayout} → ${paramKey}`,
           type: typeof paramValue,
           elementId: el.id,
-          nameInLayout: el.nameInLayout
+          nameInLayout: el.nameInLayout,
+          options: isMapValue ? getMapValueOptionsFromRows(rows) : null,
         })
       }
     }

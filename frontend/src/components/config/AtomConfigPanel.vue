@@ -62,6 +62,18 @@
                 placeholder="label"
               />
               <input
+                v-if="selectedAtom === 'badge'"
+                type="number"
+                step="0.5"
+                min="0.5"
+                :value="row.fontSize ?? ''"
+                @input="updateMapRow(idx, 'fontSize', $event.target.value === '' ? null : +$event.target.value)"
+                :disabled="!isFixedEnabled(key)"
+                :placeholder="String(defaultParamValue('fontSize') ?? 2.5)"
+                title="Taille mm (vide = défaut atome)"
+                class="fontsize"
+              />
+              <input
                 type="text"
                 :value="row.mediaId || ''"
                 @input="updateMapRow(idx, 'mediaId', $event.target.value || null)"
@@ -152,6 +164,7 @@ const ENUM_MAPS = {
   textOrientation: ['parallel', 'perpendicular'],
   cornerTextMode: ['bisect', 'parallel', 'perpendicular', 'custom'],
   textAlign: ['left', 'center', 'right', 'justify'],
+  titleAlign: ['left', 'center', 'right'],
   textTransform: ['none', 'uppercase', 'capitalize', 'lowercase'],
   overflow: ['hidden', 'visible', 'ellipsis'],
   fit: ['cover', 'contain', 'fill', 'none'],
@@ -166,7 +179,7 @@ const ENUM_MAPS = {
   direction: ['horizontal', 'vertical'],
   stat: ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
   svgPosition: ['front', 'behind'],
-  tier: ['basic', 'rare', 'epic', 'mythique', 'legendaire'],
+  tier: ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
 }
 
 const atomEntries = computed(() =>
@@ -219,7 +232,12 @@ function valueAsColorString(key) {
 }
 
 async function onTypedValueChange(key, value) {
-  await configStore.setAtomParamRule(selectedAtom.value, key, { fixedValue: value })
+  const patch = { fixedValue: value }
+  // Checklist badge/iconMap : activer automatiquement le fix pour appliquer partout
+  if (key === 'rows' && (selectedAtom.value === 'badge' || selectedAtom.value === 'iconMap')) {
+    patch.fixedEnabled = true
+  }
+  await configStore.setAtomParamRule(selectedAtom.value, key, patch)
 }
 async function toggleFixed(key, fixedEnabled) {
   await configStore.setAtomParamRule(selectedAtom.value, key, { fixedEnabled })
@@ -241,7 +259,7 @@ async function updateMapRow(index, field, value) {
 
 async function addMapRow() {
   const blank = selectedAtom.value === 'badge'
-    ? { value: '', mediaId: null, label: '' }
+    ? { value: '', mediaId: null, label: '', fontSize: null }
     : { value: '', mediaId: null }
   await onTypedValueChange('rows', [...mapRows(), blank])
 }
@@ -284,7 +302,8 @@ async function removeMapRow(index) {
 .eye-btn.hidden { color: #ef4444; border-color: #ef4444; }
 .rows-editor { display: flex; flex-direction: column; gap: 4px; }
 .rows-editor-line { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 4px; align-items: center; }
-.rows-editor-line--badge { grid-template-columns: 1fr 1fr 1fr auto auto; }
+.rows-editor-line--badge { grid-template-columns: 1fr 1fr 52px 1fr auto auto; }
+.typed-value .fontsize { width: 100%; font-size: 10px; }
 .line-btn {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;

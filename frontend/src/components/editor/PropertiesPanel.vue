@@ -127,6 +127,31 @@
           </select>
         </template>
 
+        <!-- iconMap / badge : value = liste des clés du tableau rows -->
+        <template v-else-if="isMapValueSelect(key)">
+          <select
+            :value="value || ''"
+            @change="updateParam(key, $event.target.value)"
+            :data-param-key="key"
+            :disabled="isParamFixed(key)"
+            style="flex:1"
+          >
+            <option value="">— choisir —</option>
+            <option
+              v-for="opt in mapValueOptions"
+              :key="opt.value"
+              :value="opt.value"
+            >{{ opt.label }}</option>
+            <option
+              v-if="value && !mapValueOptions.some(o => o.value === String(value))"
+              :value="value"
+            >{{ value }}</option>
+          </select>
+          <span v-if="!mapValueOptions.length" class="param-help" style="flex-basis:100%">
+            Aucune entrée : définissez le catalogue dans Config → Atomes (paramètre rows), ou ajoutez des lignes ci-dessous.
+          </span>
+        </template>
+
         <!-- Media ID param — text + picker button -->
         <template v-else-if="isMediaParam(key)">
           <input :value="value || ''" @input="updateParam(key, $event.target.value || null)" :data-param-key="key" style="flex:1; font-family:var(--font-mono); font-size:10px" placeholder="ID media" :disabled="isParamFixed(key)" />
@@ -297,6 +322,11 @@
       <div class="panel-section-title">
         {{ el.atomType === 'badge' ? 'Checklist valeur → image + label' : 'Tableau valeur → image' }}
       </div>
+      <div v-if="mapRowsFromAtom" class="param-help" style="margin-bottom:8px">
+        Catalogue défini dans <strong>Config → Atomes</strong> ({{ mapValueOptions.length }} entrée{{ mapValueOptions.length > 1 ? 's' : '' }}).
+        Le select <code>value</code> utilise cette liste.
+      </div>
+      <template v-else>
       <div
         v-for="(row, idx) in mapRows"
         :key="`row-${idx}`"
@@ -307,32 +337,46 @@
           :value="row.value || ''"
           @input="updateMapRow(idx, 'value', $event.target.value)"
           placeholder="valeur (ex: belle)"
-          style="flex:1"
+          class="map-row-value"
         />
         <input
           v-if="el.atomType === 'badge'"
           :value="row.label || ''"
           @input="updateMapRow(idx, 'label', $event.target.value)"
           placeholder="label affiché"
-          style="flex:1"
+          class="map-row-value"
         />
         <input
-          :value="row.mediaId || ''"
-          @input="updateMapRow(idx, 'mediaId', $event.target.value || null)"
-          placeholder="media ID"
-          style="flex:1; font-family:var(--font-mono); font-size:10px"
+          v-if="el.atomType === 'badge'"
+          type="number"
+          step="0.5"
+          min="0.5"
+          :value="row.fontSize ?? ''"
+          @input="updateMapRow(idx, 'fontSize', $event.target.value === '' ? null : +$event.target.value)"
+          :placeholder="String(el.params.fontSize ?? 2.5)"
+          class="map-row-fontsize"
+          title="Taille police (mm) — vide = taille de l’atome"
         />
-        <MediaPicker :model-value="row.mediaId || null" @update:model-value="updateMapRow(idx, 'mediaId', $event || null)" />
-        <button class="clear-btn" @click="removeMapRow(idx)">✕</button>
+        <div class="map-row-media">
+          <input
+            :value="row.mediaId || ''"
+            @input="updateMapRow(idx, 'mediaId', $event.target.value || null)"
+            placeholder="media ID"
+            class="map-row-media-id"
+          />
+          <MediaPicker :model-value="row.mediaId || null" @update:model-value="updateMapRow(idx, 'mediaId', $event || null)" />
+          <button class="map-row-remove" @click="removeMapRow(idx)">✕</button>
+        </div>
       </div>
 
       <div class="field-row" style="margin-top:6px">
         <button class="clear-btn" @click="addMapRow">+ Ajouter une ligne</button>
       </div>
+      </template>
       <div class="param-help" style="margin-top:4px">
         Astuce: liez <code>value</code> (ex: <code v-pre>{{card.guilde}}</code>) —
         l’atome affichera {{ el.atomType === 'badge' ? 'l’image et le label' : 'l’image' }} de la ligne correspondante.
-        Placez les images dans un dossier média « badges ».
+        Définissez le catalogue dans <strong>Config → Atomes → {{ el.atomType === 'badge' ? 'Badge' : 'Icône (valeur → image)' }}</strong> (paramètre rows + Fixer).
       </div>
     </div>
   </div>
@@ -385,6 +429,7 @@ import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
+import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
 import GradientStopEditor from './GradientStopEditor.vue'
 import MediaPicker from './MediaPicker.vue'
 import ColorPickerAlpha from './ColorPickerAlpha.vue'
@@ -440,10 +485,35 @@ const effectiveParams = computed(() => {
   return { ...defaults, ...el.value.params }
 })
 
-const mapRows = computed(() => {
-  const rows = el.value?.params?.rows
-  return Array.isArray(rows) ? rows : []
+const atomParamRules = computed(() => configStore.config?.[ATOM_PARAM_RULES_KEY] || {})
+
+const mapRowsFromAtom = computed(() =>
+  hasAtomLevelMapRows(el.value?.atomType, atomParamRules.value)
+)
+
+/** Rows pour le select value : priorité Config Atomes, sinon élément */
+const mapValueOptions = computed(() => {
+  if (!isMapValueSelect('value')) return []
+  const rows = resolveMapRows(el.value?.atomType, el.value?.params, atomParamRules.value)
+  return getMapValueOptionsFromRows(rows)
 })
+
+/** Rows éditables sur l’élément (seulement si pas de catalogue atome) */
+const mapRows = computed(() => {
+  if (mapRowsFromAtom.value) {
+    return resolveMapRows(el.value?.atomType, null, atomParamRules.value)
+  }
+  const live = el.value?.params?.rows
+  if (Array.isArray(live)) return live
+  const defaults = ATOM_TYPES[el.value?.atomType]?.defaultParams?.rows
+  return Array.isArray(defaults) ? defaults : []
+})
+
+function isMapValueSelect(key) {
+  if (key !== 'value') return false
+  const t = el.value?.atomType
+  return t === 'iconMap' || t === 'badge'
+}
 
 function update(key, value) {
   store.updateElement(el.value.id, { [key]: value })
@@ -469,7 +539,7 @@ function updateMapRow(index, key, value) {
 
 function addMapRow() {
   const blank = el.value?.atomType === 'badge'
-    ? { value: '', mediaId: null, label: '' }
+    ? { value: '', mediaId: null, label: '', fontSize: null }
     : { value: '', mediaId: null }
   updateParam('rows', [...mapRows.value, blank])
 }
@@ -553,6 +623,7 @@ const ENUM_MAPS = {
   textOrientation: ['parallel', 'perpendicular'],
   cornerTextMode:  ['bisect', 'parallel', 'perpendicular', 'custom'],
   textAlign:       ['left', 'center', 'right', 'justify'],
+  titleAlign:      ['left', 'center', 'right'],
   textTransform:   ['none', 'uppercase', 'capitalize', 'lowercase'],
   overflow:        ['hidden', 'visible', 'ellipsis'],
   fit:             ['cover', 'contain', 'fill', 'none'],
@@ -568,7 +639,7 @@ const ENUM_MAPS = {
   direction:       ['horizontal', 'vertical'],
   stat:            ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
   svgPosition:     ['front', 'behind'],
-  tier:            ['basic', 'rare', 'epic', 'mythique', 'legendaire'],
+  tier:            ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
 }
 
 function getEnumOptions(key) {
@@ -709,10 +780,40 @@ function isParamFixed(paramKey) {
   align-items: center;
   gap: 4px;
   margin-bottom: 4px;
-  flex-wrap: wrap;
 }
-.map-row--badge {
-  flex-wrap: wrap;
+.map-row-value {
+  flex: 1;
+  min-width: 0;
+}
+.map-row-fontsize {
+  width: 44px;
+  flex-shrink: 0;
+  font-size: 10px;
+}
+.map-row-media {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.map-row-media-id {
+  width: 72px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+}
+.map-row-remove {
+  background: none;
+  border: 1px solid var(--border-default);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  padding: 2px 6px;
+}
+.map-row-remove:hover { color: #ef4444; border-color: #ef4444; }
+.map-row--badge .map-row-value {
+  flex: 1;
 }
 
 .properties-empty {

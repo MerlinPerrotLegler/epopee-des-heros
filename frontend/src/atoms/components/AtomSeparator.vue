@@ -1,9 +1,9 @@
 <template>
   <!--
-    AtomSeparator — Séparateur calligraphique à la plume, 5 niveaux d'ornementation.
+    AtomSeparator — Séparateur calligraphique à la plume, 6 niveaux d'ornementation.
 
     Props params:
-      tier      {string}  'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
+      tier      {string}  'fin' | 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
       color     {string}  Couleur de remplissage (défaut '#6c7aff')
       seed      {number}  Seed pour la variation déterministe (défaut 42)
       direction {string}  'horizontal' | 'vertical' (défaut 'horizontal')

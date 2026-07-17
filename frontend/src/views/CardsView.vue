@@ -81,7 +81,25 @@
         <div class="data-fields">
           <div v-for="(val, key) in editingCard.data" :key="key" class="data-field">
             <label class="field-key">{{ key }}</label>
-            <input :value="val" @input="editingCard.data[key] = $event.target.value" class="field-val" />
+            <select
+              v-if="optionsForBinding(key)?.length"
+              :value="val"
+              @change="editingCard.data[key] = $event.target.value"
+              class="field-val"
+            >
+              <option value="">— choisir —</option>
+              <option
+                v-for="opt in optionsForBinding(key)"
+                :key="opt.value"
+                :value="opt.value"
+              >{{ opt.label }}</option>
+            </select>
+            <input
+              v-else
+              :value="val"
+              @input="editingCard.data[key] = $event.target.value"
+              class="field-val"
+            />
             <button class="btn-icon btn-danger btn-xs" @click="removeBinding(key)">×</button>
           </div>
           <div v-if="!Object.keys(editingCard.data).length" class="empty-data">Aucune donnée.</div>
@@ -165,10 +183,12 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { getBindablePaths } from '@/utils/binding.js'
+import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import ImportWizard from '@/components/cards/ImportWizard.vue'
 import CardPreview from '@/components/cards/CardPreview.vue'
 
 const route = useRoute()
+const configStore = useConfigStore()
 
 const layouts = ref([])
 const cards = ref([])
@@ -231,12 +251,20 @@ async function saveCard(card) {
 
 async function editCard(card) {
   editingCard.value = { ...card, data: { ...card.data } }
-  // Load binding paths for this card's layout
+  // Load binding paths for this card's layout (+ catalogue atome pour badge/iconMap)
   try {
+    if (!configStore.config || !Object.keys(configStore.config).length) {
+      await configStore.load()
+    }
     const layout = await api.getLayout(card.layout_id)
     const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
-    editingCardPaths.value = getBindablePaths(def)
+    editingCardPaths.value = getBindablePaths(def, configStore.config?.[ATOM_PARAM_RULES_KEY] || null)
   } catch { editingCardPaths.value = [] }
+}
+
+function optionsForBinding(key) {
+  const bp = editingCardPaths.value.find(p => p.path === key)
+  return bp?.options?.length ? bp.options : null
 }
 
 function removeBinding(key) {

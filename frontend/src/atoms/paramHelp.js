@@ -46,7 +46,7 @@ export const PARAM_HELP = {
 
   // ── Communs à plusieurs atomes ─────────────────────────────────────────────
   text:          'Texte affiché. Peut contenir une référence de données, ex : {nom.texte}',
-  fontSize:      'Taille du texte en millimètres',
+  fontSize:      'Taille du texte en % de la hauteur du layout en cours (ex. 3 → 3 % de height_mm)',
   fontWeight:    'Graisse du texte : 400 = normal, 700 = gras, 900 = très gras',
   fontFamily:    'Police de caractères utilisée',
   color:         'Couleur du texte ou du tracé',
@@ -123,7 +123,7 @@ export const PARAM_HELP = {
 
   // ── AtomText (auto-size) ──────────────────────────────────────────────────
   autoSize:      'Agrandit automatiquement le texte pour occuper tout l\'espace disponible',
-  maxFontSize:   'Taille de police maximale autorisée en mm (utilisée avec le redimensionnement automatique)',
+  maxFontSize:   'Taille max en % de la hauteur du layout (avec autoSize)',
 
   // ── AtomImage ─────────────────────────────────────────────────────────────
   fit:           'Ajustement de l\'image dans son cadre : remplir, contenir, ou étirer',
@@ -136,6 +136,15 @@ export const PARAM_HELP = {
   // ── AtomLine ──────────────────────────────────────────────────────────────
   thickness:     'Épaisseur de la ligne en millimètres',
   style:         'Style du tracé : plein, tirets, pointillés',
+
+  // ── AtomSeparator / AtomCadre ─────────────────────────────────────────────
+  tier:          'Niveau d\'ornementation : fin (à la main), basic, rare, epic, mythique, legendaire',
+  seed:          'Graine de variation du tracé (même seed = même rendu)',
+  showTitle:     'Afficher le titre sur le bord haut du cadre',
+  titleAlign:    'Alignement du titre du cadre : gauche, centre, droite',
+  titleColor:    'Couleur du titre du cadre',
+  titleBgColor:  'Fond derrière le titre (souvent la couleur de la carte pour masquer le trait)',
+  bgOpacity:     'Opacité du fond intérieur du cadre (0–1)',
 
   // ── AtomTrakCorner ────────────────────────────────────────────────────────
   n:             'Numéro affiché dans cette case de coin',

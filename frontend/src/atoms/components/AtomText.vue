@@ -7,6 +7,7 @@
 <script setup>
 import { computed, ref, watch, nextTick, onMounted } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
+import { useLayoutRelativeFontMm, useLayoutScale } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -15,6 +16,9 @@ const props = defineProps({
   zoom:      { type: Number, default: 1 },
 })
 const { mmToPx } = useAtomScale(props)
+const layoutScale = useLayoutScale()
+const fontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.fontSize || 2.8))
+const maxFontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.maxFontSize ?? 12))
 
 const textEl     = ref(null)
 const autoFontPx = ref(null)
@@ -24,8 +28,7 @@ function fitTextSize() {
   if (!props.params.autoSize) { autoFontPx.value = null; return }
 
   const text        = props.params.text || 'Texte…'
-  const maxFontMm   = props.params.maxFontSize ?? 10
-  const maxFontPx_  = mmToPx(maxFontMm)
+  const maxFontPx_  = mmToPx(maxFontSizeMm.value)
   const minFontPx   = 4
   const containerW  = mmToPx(props.width_mm)
   const containerH  = mmToPx(props.height_mm)
@@ -64,7 +67,7 @@ onMounted(fitTextSize)
 watch(
   () => [props.params.text, props.params.autoSize, props.params.maxFontSize,
          props.params.fontFamily, props.params.fontWeight, props.params.lineHeight,
-         props.width_mm, props.height_mm, props.zoom],
+         props.width_mm, props.height_mm, props.zoom, layoutScale.value],
   () => nextTick(fitTextSize),
 )
 
@@ -80,7 +83,7 @@ const containerStyle = computed(() => ({
 const textStyle = computed(() => {
   const fontSizePx = props.params.autoSize && autoFontPx.value
     ? autoFontPx.value
-    : mmToPx(props.params.fontSize || 2.5)
+    : mmToPx(fontSizeMm.value)
   return {
     fontFamily:   props.params.fontFamily || 'Outfit',
     fontSize:     `${fontSizePx}px`,

@@ -83,7 +83,7 @@ export const ATOM_TYPES = {
     icon: 'T',
     defaultParams: {
       text: 'Titre',
-      fontSize: 4, // mm
+      fontSize: 4.5, // % de la hauteur du layout
       fontWeight: 700,
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
@@ -99,7 +99,7 @@ export const ATOM_TYPES = {
     icon: 'Aa',
     defaultParams: {
       text: 'Lorem ipsum',
-      fontSize: 2.5,
+      fontSize: 2.8, // % hauteur layout
       fontWeight: 400,
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
@@ -107,7 +107,7 @@ export const ATOM_TYPES = {
       lineHeight: 1.3,
       overflow: 'hidden', // hidden | visible | ellipsis
       autoSize: true,     // agrandit le texte pour remplir la zone
-      maxFontSize: 10,    // taille maximale en mm (autoSize seulement)
+      maxFontSize: 12,    // % hauteur layout (autoSize)
     },
     defaultSize: { width_mm: 40, height_mm: 10 }
   },
@@ -148,7 +148,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       value: '',
       rows: [
-        { value: '', mediaId: null, label: '' },
+        { value: '', mediaId: null, label: '', fontSize: null },
       ],
       fallbackMediaId: null,
       fallbackLabel: '',
@@ -158,7 +158,7 @@ export const ATOM_TYPES = {
       fit: 'contain',       // cover | contain | fill | none
       showIcon: true,
       showLabel: true,
-      fontSize: 2.5,        // mm
+      fontSize: 2.8,        // % hauteur layout
       fontFamily: null,     // null → config globale / héritage
       fontWeight: 400,
       color: null,          // null → config globale
@@ -175,7 +175,7 @@ export const ATOM_TYPES = {
       text: '',
       bgColor: null,          // null → config globale
       textColor: null,        // null → config globale
-      fontSize: 2.5,
+      fontSize: 2.8, // % hauteur layout
       borderRadius: 50, // percentage
       borderWidth: 0,
       borderColor: null,      // null → config globale
@@ -282,7 +282,7 @@ export const ATOM_TYPES = {
       type: '', // bound to card_type
       showIcon: true,
       showLabel: true,
-      fontSize: 2,
+      fontSize: 2.3, // % hauteur layout
       color: null,            // null → config globale
       bgColor: null,          // null → config globale
     },
@@ -295,7 +295,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       prefix: '#',
       value: '',
-      fontSize: 2,
+      fontSize: 2.3, // % hauteur layout
       fontFamily: null,       // null → config globale
       color: null,            // null → config globale
     },
@@ -436,12 +436,33 @@ export const ATOM_TYPES = {
     label: 'Séparateur',
     icon: '—',
     defaultParams: {
-      tier:      'basic',       // 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
+      tier:      'basic',       // 'fin' | 'basic' | 'rare' | 'epic' | 'mythique' | 'legendaire'
       color:     null,          // null → config globale
       seed:      42,            // seed pour la variation déterministe
       direction: 'horizontal',  // 'horizontal' | 'vertical'
     },
     defaultSize: { width_mm: 40, height_mm: 2 }
+  },
+
+  cadre: {
+    label: 'Cadre',
+    icon: '▭',
+    defaultParams: {
+      title:       '',
+      showTitle:   true,
+      titleAlign:  'center',    // left | center | right
+      titleColor:  null,        // null → color / héritage
+      titleBgColor: null,   // fond derrière le titre (coupure du bord)
+      tier:        'basic',     // mêmes tiers que séparateur
+      seed:        42,
+      color:       null,        // couleur du trait
+      bgColor:     null,        // fond intérieur optionnel
+      bgOpacity:   1,
+      fontSize:    2.8,         // % hauteur layout
+      fontFamily:  null,
+      fontWeight:  600,
+    },
+    defaultSize: { width_mm: 50, height_mm: 18 }
   },
 
   richText: {
@@ -450,7 +471,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       content:    '',         // source — markdown + /D8{N} /D12{N} /R{type,amt} /FOR{mod} /SVG{name} $$fml$$
       fontFamily: null,
-      fontSize:   3.5,        // mm
+      fontSize:   4,          // % hauteur layout
       color:      null,       // null → config globale
       align:      'left',     // left | center | right
       lineHeight: 1.5,
