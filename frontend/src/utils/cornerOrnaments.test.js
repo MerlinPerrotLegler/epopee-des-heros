@@ -16,6 +16,14 @@ describe('buildCornerOrnaments', () => {
     assert.deepEqual(out, [])
   })
 
+  it('returns empty when sizeSvg is zero', () => {
+    const out = buildCornerOrnaments({
+      svgW: 500, svgH: 180, pad: 10, shape: 'star4', sizeSvg: 0,
+      corners: { TL: true, TR: true, BL: true, BR: true },
+    })
+    assert.deepEqual(out, [])
+  })
+
   it('returns 4 ornaments by default for star4', () => {
     const out = buildCornerOrnaments({
       svgW: 500, svgH: 180, pad: 10, shape: 'star4', sizeSvg: 20, corners: {},

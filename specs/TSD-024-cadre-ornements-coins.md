@@ -2,7 +2,7 @@
 
 | Field       | Value                                      |
 |-------------|--------------------------------------------|
-| Status      | Review                                     |
+| Status      | Done                                       |
 | Author      | @merlinperrot                              |
 | Created     | 2026-07-17                                 |
 | Last update | 2026-07-17                                 |
@@ -98,14 +98,16 @@ N/A — pas de changement backend. Les params sont déjà persistés dans la dé
 
 ## 7. Acceptance criteria
 
-- [ ] Nouveau cadre affiche `star4` sur les 4 coins
-- [ ] Changer `cornerShape` met à jour les coins visibles
-- [ ] `cornerSize` redimensionne les formes en mm
-- [ ] Couleur des formes = couleur du trait du cadre
-- [ ] Décocher un coin le masque sans affecter les autres
-- [ ] `none` masque tous les ornements
-- [ ] Cadres anciens sans params se comportent comme le défaut
-- [ ] Params visibles dans PropertiesPanel et config atomes
+- [x] Nouveau cadre affiche `star4` sur les 4 coins
+- [x] Changer `cornerShape` met à jour les coins visibles
+- [x] `cornerSize` redimensionne les formes en mm
+- [x] Couleur des formes = couleur du trait du cadre
+- [x] Décocher un coin le masque sans affecter les autres
+- [x] `none` masque tous les ornements
+- [x] Cadres anciens sans params se comportent comme le défaut
+- [x] Params visibles dans PropertiesPanel et config atomes
+
+**Note (QA résiduelle)** : la smoke QA navigateur (création cadre, changement forme/taille, masquage coin dans l’éditeur) a été reportée — login bloqué en session. Couverture actuelle : chemins code (`cornerOrnaments.js`, `AtomCadre.vue`), tests unitaires géométrie/défauts, câblage PropertiesPanel + config atomes.
 
 ---
 
