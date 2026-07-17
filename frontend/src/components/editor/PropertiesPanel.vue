@@ -706,7 +706,7 @@ const INTEGER_PARAMS = new Set([
 
 function paramStep(key) {
   if (INTEGER_PARAMS.has(key)) return 1
-  if (key === 'fontSize' || key === 'maxFontSize') return 0.1
+  if (key === 'fontSize' || key === 'maxFontSize' || key === 'cornerSize') return 0.1
   return 0.5
 }
 
@@ -735,6 +735,7 @@ const ENUM_MAPS = {
   svgPosition:     ['front', 'behind'],
   tier:            ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
   view:            ['icon', 'horizontal', 'vertical', 'horizontal-inverse', 'vertical-inverse', 'text'],
+  cornerShape:     ['none', 'star4', 'star5', 'circle', 'square', 'triangle'],
 }
 
 function getEnumOptions(key) {

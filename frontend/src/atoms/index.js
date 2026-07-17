@@ -478,6 +478,12 @@ export const ATOM_TYPES = {
       color:       null,        // couleur du trait
       bgColor:     null,        // fond intérieur optionnel
       bgOpacity:   1,
+      cornerShape: 'star4', // none | star4 | star5 | circle | square | triangle
+      cornerSize:  2,       // mm
+      cornerTL:    true,
+      cornerTR:    true,
+      cornerBL:    true,
+      cornerBR:    true,
       fontSize:    2.8,         // mm
       fontFamily:  null,
       fontWeight:  600,

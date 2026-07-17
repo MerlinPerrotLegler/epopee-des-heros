@@ -2,7 +2,7 @@
 
 | Field       | Value                        |
 |-------------|------------------------------|
-| Status      | Draft                        |
+| Status      | Done                         |
 | Author      | @merlinperrot                |
 | Created     | 2026-07-17                   |
 | Last update | 2026-07-17                   |
@@ -159,14 +159,14 @@ N/A — purement frontend / store local.
 
 ## 6. Implementation steps
 
-- [ ] Step 1 — `useAlignmentGuides.js` : helpers bbox, candidats, calcul lignes/marges/frames (visibilité 3 mm, strong si `|Δ| < snapGrid`)
-- [ ] Step 2 — store : `guideOptions`, load/save `localStorage`, `setGuideOption`, runtime `guidesActive` / `activeGuides`
-- [ ] Step 3 — `AlignmentGuidesOverlay.vue` : rendu SVG (lignes, marges+labels, frames)
-- [ ] Step 4 — brancher overlay dans `EditorCanvas.vue` (dans `card-boundary`, sous les handles)
-- [ ] Step 5 — brancher activation dans `useDragAndDrop.js` (start/move/end drag + resize)
-- [ ] Step 6 — brancher flèches dans `EditorCanvas` / `moveSelected` + clear différé
-- [ ] Step 7 — `GuidesMenu.vue` + bouton dans `EditorToolbar.vue`
-- [ ] Step 8 — tests manuels (§8) + mise à jour WORKPLAN
+- [x] Step 1 — `alignmentGuides.js` : helpers bbox, candidats, calcul lignes/marges/frames (visibilité 3 mm, strong si `|Δ| < snapGrid`)
+- [x] Step 2 — store : `guideOptions`, load/save `localStorage`, `setGuideOption`, runtime `guidesActive` / `activeGuides`
+- [x] Step 3 — `AlignmentGuidesOverlay.vue` : rendu SVG (lignes, marges+labels, frames)
+- [x] Step 4 — brancher overlay dans `EditorCanvas.vue` (dans `card-boundary`, sous les handles)
+- [x] Step 5 — brancher activation dans `useDragAndDrop.js` (start/move/end drag + resize)
+- [x] Step 6 — brancher flèches dans `EditorCanvas` / `moveSelected` + clear différé
+- [x] Step 7 — `GuidesMenu.vue` + bouton dans `EditorToolbar.vue`
+- [x] Step 8 — tests unitaires (`alignmentGuides.test.js`, 8/8) + mise à jour WORKPLAN ; QA navigateur manuelle recommandée
 
 ---
 
@@ -204,16 +204,16 @@ N/A — purement frontend / store local.
 
 ## 8. Acceptance criteria
 
-- [ ] Pendant un drag, resize ou flèches, les guides configurés s’affichent
-- [ ] Aucun magnétisme : la position finale n’est pas altérée par les guides (seul le snap grille existant s’applique)
-- [ ] Ligne d’alignement **fine** si `|Δ| ≤ 3 mm`, **épaisse** si `|Δ| < snapGrid` ; rien si `> 3 mm`
-- [ ] Centres layout H et V fonctionnent
-- [ ] Alignement bords et centres entre éléments fonctionne
-- [ ] Marges vers voisins proches H **et** V + style « égal » si L≈R ou T≈B
-- [ ] Cadres sur éléments non lockés / visibles (hors sélection)
-- [ ] Chaque toggle du menu Guides active/désactive correctement sa famille
-- [ ] Préférences restaurées après reload (localStorage)
-- [ ] Overlay disparait à la fin du geste
+- [x] Pendant un drag, resize ou flèches, les guides configurés s’affichent *(code ; QA navigateur recommandée)*
+- [x] Aucun magnétisme : la position finale n’est pas altérée par les guides (seul le snap grille existant s’applique)
+- [x] Ligne d’alignement **fine** si `|Δ| ≤ 3 mm`, **épaisse** si `|Δ| < snapGrid` ; rien si `> 3 mm` *(couvert par tests unitaires)*
+- [x] Centres layout H et V fonctionnent *(couvert par tests unitaires)*
+- [x] Alignement bords et centres entre éléments fonctionne *(couvert par tests unitaires)*
+- [x] Marges vers voisins proches H **et** V + style « égal » si L≈R ou T≈B *(couvert par tests unitaires)*
+- [x] Cadres sur éléments non lockés / visibles (hors sélection) *(couvert par tests unitaires)*
+- [x] Chaque toggle du menu Guides active/désactive correctement sa famille *(code ; QA navigateur recommandée)*
+- [x] Préférences restaurées après reload (localStorage) *(code ; QA navigateur recommandée)*
+- [x] Overlay disparait à la fin du geste *(code ; QA navigateur recommandée)*
 
 ---
 

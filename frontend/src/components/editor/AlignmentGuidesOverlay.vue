@@ -79,7 +79,8 @@ function lineColor(g) {
   top: 0;
   left: 0;
   pointer-events: none;
-  z-index: 50;
+  /* Above selected canvas elements (100) and handles (101); below floating UI panels */
+  z-index: 120;
   overflow: visible;
 }
 </style>
