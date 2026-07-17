@@ -17,8 +17,23 @@
       <div
         v-for="item in filtered" :key="item.id"
         class="item-tile"
-        @click="$router.push(`/components/${item.id}/editor`)"
+        @click="openEditor(item)"
       >
+        <div class="tile-title-row" @click.stop>
+          <input
+            v-if="renamingId === item.id"
+            :ref="renameRef"
+            class="tile-rename-input"
+            v-model="renameValue"
+            @blur="onRenameBlur(item)"
+            @keydown.enter.prevent="commitRename(item)"
+            @keydown.escape="cancelRename"
+            @click.stop
+          />
+          <div v-else class="tile-name" @dblclick.stop="startRename(item)" :title="item.name">{{ item.name }}</div>
+        </div>
+
+        <div class="tile-body">
         <!-- Thumbnail -->
         <div class="tile-thumb" :style="thumbStyle(item)">
           <img v-if="item.thumbnail" :src="item.thumbnail" class="thumb-img" />
@@ -30,29 +45,19 @@
 
         <!-- Info -->
         <div class="tile-info">
-          <input
-            v-if="renamingId === item.id"
-            class="tile-rename-input"
-            v-model="renameValue"
-            @blur="commitRename(item)"
-            @keyup.enter="commitRename(item)"
-            @keyup.escape="renamingId = null"
-            @click.stop
-            autofocus
-          />
-          <div v-else class="tile-name" @dblclick.stop="startRename(item)">{{ item.name }}</div>
           <div class="tile-meta">
             <span class="badge">Composant</span>
             <span v-if="item.width_mm" class="tile-size">{{ item.width_mm }}×{{ item.height_mm }} mm</span>
             <span class="tile-size">{{ countElements(item.definition) }} élém.</span>
           </div>
         </div>
+        </div>
 
         <!-- Actions toujours visibles en bas à droite -->
         <div class="tile-actions" @click.stop>
-          <button class="act-btn" title="Renommer" @click="startRename(item)">✎</button>
-          <button class="act-btn" title="Dupliquer" @click="duplicate(item)">⧉</button>
-          <button class="act-btn act-del" title="Supprimer" @click="remove(item)">✕</button>
+          <button type="button" class="act-btn" title="Renommer" @mousedown.prevent @click="startRename(item)">✎</button>
+          <button type="button" class="act-btn" title="Dupliquer" @mousedown.prevent @click="duplicate(item)">⧉</button>
+          <button type="button" class="act-btn act-del" title="Supprimer" @mousedown.prevent @click="remove(item)">✕</button>
         </div>
       </div>
     </div>
@@ -80,30 +85,36 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '@/utils/api.js'
+import { useInlineRename } from '@/composables/useInlineRename.js'
 
+const router = useRouter()
 const items      = ref([])
 const showCreate = ref(false)
 const search     = ref('')
 const sortKey    = ref('name')
 const form       = ref({ name: '', description: '', width_mm: 30, height_mm: 20 })
 
-// Inline rename
-const renamingId  = ref(null)
-const renameValue = ref('')
+const {
+  renamingId,
+  renameValue,
+  startRename,
+  cancelRename,
+  renameRef,
+  onRenameBlur,
+  commitRename,
+} = useInlineRename(
+  (item) => item.name,
+  async (item, name) => {
+    const updated = await api.patchComponent(item.id, { name })
+    item.name = updated.name
+  },
+)
 
-function startRename(item) {
-  renamingId.value  = item.id
-  renameValue.value = item.name
-}
-
-async function commitRename(item) {
-  if (!renamingId.value) return
-  renamingId.value = null
-  const name = renameValue.value.trim()
-  if (!name || name === item.name) return
-  const updated = await api.patchComponent(item.id, { name })
-  item.name = updated.name
+function openEditor(item) {
+  if (renamingId.value) return
+  router.push(`/components/${item.id}/editor`)
 }
 
 const filtered = computed(() => {
@@ -191,12 +202,32 @@ async function remove(item) {
   padding: 12px;
   cursor: pointer;
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
   position: relative;
   transition: border-color 120ms, background 120ms;
 }
 .item-tile:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
+
+.tile-title-row { width: 100%; }
+.tile-body { display: flex; gap: 12px; width: 100%; align-items: flex-start; }
+
+.tile-name {
+  width: 100%;
+  font-weight: 600; font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  cursor: text;
+}
+.tile-rename-input {
+  font-size: 13px; font-weight: 600; width: 100%; box-sizing: border-box;
+  background: var(--bg-deep); color: var(--text-primary);
+  border: 1px solid var(--accent-primary); border-radius: 3px;
+  padding: 2px 6px; outline: none;
+}
+
+.tile-info { flex: 1; min-width: 0; }
 
 .tile-thumb {
   flex-shrink: 0;
@@ -223,18 +254,6 @@ async function remove(item) {
 .ph-dims { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); font-weight: 600; }
 .ph-hint { font-size: 8px; color: var(--text-muted); text-align: center; line-height: 1.3; }
 
-.tile-info { flex: 1; min-width: 0; padding-top: 2px; padding-bottom: 24px; }
-.tile-name {
-  font-weight: 600; font-size: 13px; margin-bottom: 6px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  cursor: text;
-}
-.tile-rename-input {
-  font-size: 13px; font-weight: 600; width: 100%; margin-bottom: 6px;
-  background: var(--bg-deep); color: var(--text-primary);
-  border: 1px solid var(--accent-primary); border-radius: 3px;
-  padding: 1px 4px; outline: none;
-}
 .tile-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tile-size { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 

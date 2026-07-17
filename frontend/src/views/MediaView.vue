@@ -83,25 +83,25 @@
             <div class="media-name-wrap">
               <input
                 v-if="renamingId === m.id"
+                :ref="renameRef"
                 class="media-name-input"
                 v-model="renameValue"
-                @blur="commitRename(m)"
-                @keyup.enter="commitRename(m)"
-                @keyup.escape="renamingId = null"
+                @blur="onRenameBlur(m)"
+                @keydown.enter.prevent="commitRename(m)"
+                @keydown.escape="cancelRename"
                 @click.stop
-                autofocus
               />
-              <span v-else class="media-name" :title="m.original_name">{{ m.original_name }}</span>
+              <span v-else class="media-name" :title="m.original_name" @dblclick.stop="startRename(m)">{{ m.original_name }}</span>
             </div>
             <div class="media-actions">
-              <button v-if="canRemoveBg(m)" class="btn-icon btn-sm btn-rembg" :disabled="!!processingId" @click.stop="removeBgFor(m)" title="Supprimer le fond">
+              <button v-if="canRemoveBg(m)" class="btn-icon btn-sm btn-rembg" :disabled="!!processingId" @mousedown.prevent @click.stop="removeBgFor(m)" title="Supprimer le fond">
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
                   <line x1="1" y1="11" x2="6.5" y2="5.5"/><line x1="6" y1="6" x2="11" y2="1" stroke-width="1.8"/>
                   <line x1="9" y1="4.5" x2="9" y2="3"/><line x1="8.2" y1="3.8" x2="9.8" y2="3.8"/>
                   <line x1="3.5" y1="9.5" x2="3.5" y2="8"/><line x1="2.8" y1="8.8" x2="4.2" y2="8.8"/>
                 </svg>
               </button>
-              <button class="btn-icon btn-sm" @click.stop="startRename(m)" title="Renommer">✎</button>
+              <button type="button" class="btn-icon btn-sm" @mousedown.prevent @click.stop="startRename(m)" title="Renommer">✎</button>
               <button class="btn-icon btn-sm" @click.stop="copyId(m.id)" title="Copier l'ID">⧉</button>
               <button class="btn-icon btn-sm act-del" @click.stop="deleteTarget = m" title="Supprimer">✕</button>
             </div>
@@ -160,6 +160,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 import MissingMediaList from '@/components/media/MissingMediaList.vue'
+import { useInlineRename } from '@/composables/useInlineRename.js'
 
 const activeTab     = ref('library')
 const folders       = ref([])
@@ -177,23 +178,22 @@ const filteredMedia = computed(() => {
   return media.value.filter(m => m.folder_id === currentFolder.value)
 })
 
-// ── Inline rename ─────────────────────────────────────────────────────────────
-const renamingId  = ref(null)
-const renameValue = ref('')
-
-function startRename(m) { renamingId.value = m.id; renameValue.value = m.original_name }
-
-async function commitRename(m) {
-  if (!renamingId.value) return
-  renamingId.value = null
-  const name = renameValue.value.trim()
-  if (!name || name === m.original_name) return
-  try {
+const {
+  renamingId,
+  renameValue,
+  startRename,
+  cancelRename,
+  renameRef,
+  onRenameBlur,
+  commitRename,
+} = useInlineRename(
+  (m) => m.original_name,
+  async (m, name) => {
     const updated = await api.updateMedia(m.id, { original_name: name })
     const idx = media.value.findIndex(x => x.id === m.id)
     if (idx !== -1) media.value[idx] = { ...media.value[idx], original_name: updated.original_name }
-  } catch (e) { console.error('Rename failed', e) }
-}
+  },
+)
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function isImage(m)     { return m.mime_type?.startsWith('image/') }
@@ -406,8 +406,12 @@ async function onDropToFolder(targetFolderId) {
 
 /* Name + actions */
 .media-body { flex: 1; display: flex; flex-direction: column; padding: 7px 8px 6px; }
-.media-name-wrap { flex: 1; min-width: 0; margin-bottom: 5px; }
-.media-name { font-size: 11px; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-secondary); }
+.media-name-wrap { flex: 1; min-width: 0; margin-bottom: 5px; width: 100%; }
+.media-name {
+  font-size: 11px; display: block; width: 100%;
+  white-space: normal; word-break: break-word; line-height: 1.35;
+  color: var(--text-secondary); cursor: text;
+}
 .media-name-input { font-size: 11px; display: block; width: 100%; box-sizing: border-box; background: var(--bg-deep); color: var(--text-primary); border: 1px solid var(--accent-primary); border-radius: 3px; padding: 1px 4px; outline: none; }
 .media-actions { display: flex; gap: 2px; justify-content: flex-end; }
 .act-del:hover { color: #ef4444 !important; }

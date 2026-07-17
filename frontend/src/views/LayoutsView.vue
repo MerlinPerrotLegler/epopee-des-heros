@@ -10,6 +10,22 @@
           <option value="type">Type</option>
           <option value="updated">Modifié</option>
         </select>
+        <div class="view-mode-toggle" role="group" aria-label="Mode d'affichage">
+          <button
+            type="button"
+            class="view-mode-btn"
+            :class="{ active: viewMode === 'grid' }"
+            title="Grille"
+            @click="viewMode = 'grid'"
+          >⊞</button>
+          <button
+            type="button"
+            class="view-mode-btn"
+            :class="{ active: viewMode === 'list' }"
+            title="Liste"
+            @click="viewMode = 'list'"
+          >☰</button>
+        </div>
         <button class="btn-primary" @click="showCreate = true">+ Nouveau</button>
       </div>
     </header>
@@ -26,62 +42,68 @@
       </button>
     </div>
 
-    <div class="items-grid" v-if="filtered.length">
+    <div :class="viewMode === 'list' ? 'items-list' : 'items-grid'" v-if="filtered.length">
       <div
         v-for="l in filtered" :key="l.id"
         class="item-tile"
-        @click="$router.push(`/editor/${l.id}`)"
+        :class="{ 'item-tile--list': viewMode === 'list' }"
+        @click="openEditor(l)"
       >
-        <!-- Thumbnail -->
-        <div class="tile-thumb" :style="thumbStyle(l)">
-          <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" />
-          <div v-else class="thumb-placeholder">
-            <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
-            <span class="ph-hint">Ouvrir et sauvegarder pour générer</span>
-          </div>
-        </div>
-
-        <!-- Info -->
-        <div class="tile-info">
-          <!-- Rename inline -->
+        <!-- Titre pleine largeur -->
+        <div class="tile-title-row" @click.stop>
           <input
             v-if="renamingId === l.id"
+            :ref="renameRef"
             class="tile-rename-input"
             v-model="renameValue"
-            @blur="commitRename(l)"
-            @keyup.enter="commitRename(l)"
-            @keyup.escape="renamingId = null"
+            @blur="onRenameBlur(l)"
+            @keydown.enter.prevent="commitRename(l)"
+            @keydown.escape="cancelRename"
             @click.stop
-            autofocus
           />
-          <div v-else class="tile-name" @dblclick.stop="startRename(l)">{{ l.name }}</div>
-          <div class="tile-meta">
-            <span class="badge">{{ l.card_type }}</span>
-            <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
-            <span class="tile-size">{{ l.width_mm }}×{{ l.height_mm }} mm</span>
+          <div v-else class="tile-name" @dblclick.stop="startRename(l)" :title="l.name">{{ l.name }}</div>
+        </div>
+
+        <div class="tile-body">
+          <!-- Thumbnail -->
+          <div class="tile-thumb" :style="thumbStyle(l)">
+            <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" alt="" />
+            <div v-else class="thumb-placeholder">
+              <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
+              <span class="ph-hint">Ouvrir et sauvegarder pour générer</span>
+            </div>
           </div>
 
-          <!-- Verso link config (recto tiles only) -->
-          <div v-if="!l.is_back" class="tile-verso-config" @click.stop>
-            <span class="verso-label">Verso :</span>
-            <select
-              class="verso-select"
-              :value="l.back_layout_id || ''"
-              @change="onVersoSelectChange(l, $event.target.value)"
-            >
-              <option value="">— Aucun —</option>
-              <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
-              <option value="__create__">+ Créer…</option>
-            </select>
+          <!-- Meta -->
+          <div class="tile-info">
+            <div class="tile-meta">
+              <span class="badge">{{ l.card_type }}</span>
+              <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
+              <span class="tile-size">{{ l.width_mm }}×{{ l.height_mm }} mm</span>
+            </div>
+
+            <!-- Verso link config (recto tiles only) -->
+            <div v-if="!l.is_back" class="tile-verso-config" @click.stop>
+              <span class="verso-label">Verso :</span>
+              <select
+                class="verso-select"
+                :value="l.back_layout_id || ''"
+                @change="onVersoSelectChange(l, $event.target.value)"
+              >
+                <option value="">— Aucun —</option>
+                <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
+                <option value="__create__">+ Créer…</option>
+              </select>
+            </div>
+            <div v-else class="tile-verso-badge">DOS</div>
           </div>
-          <div v-else class="tile-verso-badge">DOS</div>
         </div>
 
         <!-- Actions -->
         <div class="tile-actions" @click.stop>
-          <button class="act-btn" title="Renommer" @click="startRename(l)">✎</button>
-          <button class="act-btn" title="Dupliquer" @click="duplicate(l)">⧉</button>
-          <button class="act-btn act-del" title="Supprimer" @click="confirmDelete(l)">✕</button>
+          <button type="button" class="act-btn" title="Renommer" @mousedown.prevent @click="startRename(l)">✎</button>
+          <button type="button" class="act-btn" title="Dupliquer" @mousedown.prevent @click="duplicate(l)">⧉</button>
+          <button type="button" class="act-btn act-del" title="Supprimer" @mousedown.prevent @click="confirmDelete(l)">✕</button>
         </div>
       </div>
     </div>
@@ -168,19 +190,22 @@
 
 <script setup>
 import { ref, computed, onMounted, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { hexHeightFromWidth, isHexLayout } from '@/utils/hexGeometry.js'
+import { useInlineRename } from '@/composables/useInlineRename.js'
 
+const router = useRouter()
 const layouts    = ref([])
 const cardTypes  = ref([])
 const showCreate = ref(false)
 const search     = ref('')
 const sortKey    = ref('name')
 const faceTab    = ref('recto')
+const viewMode   = ref('grid')
 
 const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false })
 
-// Auto-compute hex height when toggling or changing width
 watch(() => [form.value.is_hexagonal, form.value.width_mm], ([isHex, w]) => {
   if (isHex) form.value.height_mm = hexHeightFromWidth(w)
 })
@@ -188,25 +213,27 @@ watch(() => [form.value.is_hexagonal, form.value.width_mm], ([isHex, w]) => {
 const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
 const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
 
-// ── Inline rename ─────────────────────────────────────────────────────────────
-const renamingId  = ref(null)
-const renameValue = ref('')
+const {
+  renamingId,
+  renameValue,
+  startRename,
+  cancelRename,
+  renameRef,
+  onRenameBlur,
+  commitRename,
+} = useInlineRename(
+  (item) => item.name,
+  async (item, name) => {
+    await api.updateLayout(item.id, { name })
+    item.name = name
+  },
+)
 
-function startRename(item) {
-  renamingId.value  = item.id
-  renameValue.value = item.name
+function openEditor(l) {
+  if (renamingId.value) return
+  router.push(`/editor/${l.id}`)
 }
 
-async function commitRename(item) {
-  if (!renamingId.value) return
-  renamingId.value = null
-  const name = renameValue.value.trim()
-  if (!name || name === item.name) return
-  await api.updateLayout(item.id, { name })
-  item.name = name
-}
-
-// ── Filter / sort ─────────────────────────────────────────────────────────────
 const filtered = computed(() => {
   let list = faceTab.value === 'verso' ? versoLayouts.value : rectoLayouts.value
   if (search.value) {
@@ -226,9 +253,8 @@ onMounted(async () => {
   [layouts.value, cardTypes.value] = await Promise.all([api.getLayouts(), api.getCardTypes()])
 })
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
 function thumbStyle(l) {
-  const MAX = 120
+  const MAX = viewMode.value === 'list' ? 56 : 120
   const ratio = l.height_mm / l.width_mm
   return { width: `${MAX}px`, height: `${Math.round(MAX * ratio)}px` }
 }
@@ -239,7 +265,6 @@ function swapDims(obj) {
   obj.height_mm = tmp
 }
 
-// ── Create layout (main modal) ────────────────────────────────────────────────
 async function create() {
   const layout = await api.createLayout({
     name: form.value.name,
@@ -255,8 +280,7 @@ async function create() {
   form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false }
 }
 
-// ── Verso link + quick-create ─────────────────────────────────────────────────
-const versoCreateTarget = ref(null) // the recto layout we're creating a verso for
+const versoCreateTarget = ref(null)
 const versoForm = ref({ name: '', card_type: 'dos', width_mm: 63, height_mm: 88 })
 
 function onVersoSelectChange(l, value) {
@@ -288,7 +312,6 @@ async function createVerso() {
     back_layout_id: null,
   })
   layouts.value.push(verso)
-  // Link the recto to the new verso
   await api.updateLayout(recto.id, { back_layout_id: verso.id })
   recto.back_layout_id = verso.id
   versoCreateTarget.value = null
@@ -299,7 +322,6 @@ async function linkVerso(l, versoId) {
   l.back_layout_id = versoId || null
 }
 
-// ── Duplicate / delete ────────────────────────────────────────────────────────
 async function duplicate(l) {
   const dup = await api.duplicateLayout(l.id, { with_instances: true })
   layouts.value.push(dup)
@@ -318,7 +340,7 @@ async function confirmDelete(l) {
 
 .view-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .view-header h1 { font-size: 20px; font-weight: 600; }
-.header-controls { display: flex; gap: 8px; align-items: center; }
+.header-controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .search-input {
   padding: 5px 10px; font-size: 12px;
@@ -333,7 +355,24 @@ async function confirmDelete(l) {
   border-radius: var(--radius-sm); color: var(--text-primary); outline: none; cursor: pointer;
 }
 
-/* Recto / Verso tabs */
+.view-mode-toggle {
+  display: flex;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.view-mode-btn {
+  padding: 4px 10px;
+  font-size: 14px;
+  background: var(--bg-tertiary);
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.view-mode-btn + .view-mode-btn { border-left: 1px solid var(--border-subtle); }
+.view-mode-btn:hover { color: var(--text-primary); background: var(--bg-secondary); }
+.view-mode-btn.active { color: var(--accent-primary); background: rgba(108,122,255,0.1); }
+
 .face-tabs { display: flex; gap: 4px; margin-bottom: 16px; }
 .face-tab {
   display: flex; align-items: center; gap: 6px;
@@ -351,14 +390,18 @@ async function confirmDelete(l) {
 }
 .face-tab.active .tab-count { background: rgba(108,122,255,0.15); color: var(--accent-primary); }
 
-/* Grid */
 .items-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 12px;
 }
 
-/* Tile */
+.items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .item-tile {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
@@ -366,14 +409,56 @@ async function confirmDelete(l) {
   padding: 12px;
   cursor: pointer;
   display: flex;
-  gap: 12px;
-  align-items: flex-start;
+  flex-direction: column;
+  gap: 8px;
   position: relative;
   transition: border-color 120ms, background 120ms;
 }
 .item-tile:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
 
-/* Thumbnail */
+.item-tile--list {
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10px 12px;
+}
+.item-tile--list .tile-title-row {
+  order: 2;
+  flex: 1 1 200px;
+  min-width: 0;
+}
+.item-tile--list .tile-body {
+  order: 1;
+  flex: 0 0 auto;
+}
+.item-tile--list .tile-actions {
+  order: 3;
+  position: static;
+  margin-left: auto;
+  align-self: center;
+}
+
+.tile-title-row { width: 100%; }
+
+.tile-name {
+  width: 100%;
+  font-weight: 600;
+  font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  cursor: text;
+}
+
+.tile-rename-input {
+  font-size: 13px; font-weight: 600; width: 100%; box-sizing: border-box;
+  background: var(--bg-deep); color: var(--text-primary);
+  border: 1px solid var(--accent-primary); border-radius: 3px;
+  padding: 2px 6px; outline: none;
+}
+
+.tile-body { display: flex; gap: 12px; width: 100%; align-items: flex-start; }
+
 .tile-thumb {
   flex-shrink: 0;
   background: #fff;
@@ -399,23 +484,10 @@ async function confirmDelete(l) {
 .ph-dims { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); font-weight: 600; }
 .ph-hint { font-size: 8px; color: var(--text-muted); text-align: center; line-height: 1.3; }
 
-/* Info */
-.tile-info { flex: 1; min-width: 0; padding-top: 2px; padding-bottom: 28px; display: flex; flex-direction: column; gap: 4px; }
-.tile-name {
-  font-weight: 600; font-size: 13px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  cursor: text;
-}
-.tile-rename-input {
-  font-size: 13px; font-weight: 600; width: 100%;
-  background: var(--bg-deep); color: var(--text-primary);
-  border: 1px solid var(--accent-primary); border-radius: 3px;
-  padding: 1px 4px; outline: none;
-}
+.tile-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .tile-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
 .tile-size { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
 
-/* Verso config (recto tiles) */
 .tile-verso-config { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
 .verso-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
 .verso-select {
@@ -425,14 +497,12 @@ async function confirmDelete(l) {
 }
 .verso-select:focus { border-color: var(--accent-primary); }
 
-/* Verso badge (verso tiles) */
 .tile-verso-badge {
   font-size: 9px; font-weight: 700; letter-spacing: 0.06em;
   color: var(--accent-primary); font-family: var(--font-mono);
   margin-top: 2px;
 }
 
-/* Actions */
 .tile-actions { position: absolute; bottom: 8px; right: 8px; display: flex; gap: 2px; }
 .act-btn {
   width: 22px; height: 22px;
@@ -444,7 +514,6 @@ async function confirmDelete(l) {
 .act-btn:hover { color: var(--text-primary); border-color: var(--accent-primary); background: var(--bg-tertiary); }
 .act-del:hover { color: #ef4444; border-color: #ef4444; }
 
-/* Dimensions row (modals) */
 .dims-row { display: flex; align-items: center; gap: 5px; }
 .dim-input {
   width: 58px; padding: 4px 6px; font-size: 12px; text-align: center;
@@ -469,7 +538,6 @@ async function confirmDelete(l) {
 }
 .btn-swap:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
 
-/* Modal hint */
 .modal-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 8px; line-height: 1.5; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }

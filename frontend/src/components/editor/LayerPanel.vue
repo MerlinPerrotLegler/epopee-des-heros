@@ -67,11 +67,11 @@
             v-else
             class="layer-name-input"
             v-model="editName"
-            @blur="finishRename(row)"
-            @keydown.enter="finishRename(row)"
+            :ref="layerRenameRef"
+            @blur="onLayerRenameBlur(row)"
+            @keydown.enter.prevent="finishRename(row)"
             @keydown.escape="editingId = null"
             @click.stop
-            autofocus
           />
 
           <!-- Opacity badge -->
@@ -109,6 +109,7 @@
           <!-- Delete -->
           <button
             class="btn-icon btn-sm act-del"
+            @mousedown.prevent
             @click.stop="store.removeItem(row.id)"
             title="Supprimer"
           >✕</button>
@@ -237,7 +238,22 @@ function startRename(row) {
   editName.value  = getDisplayName(row)
 }
 
+function layerRenameRef(el) {
+  if (!el) return
+  requestAnimationFrame(() => {
+    el.focus()
+    el.select()
+  })
+}
+
+function onLayerRenameBlur(row) {
+  setTimeout(() => {
+    if (editingId.value === row.id) finishRename(row)
+  }, 0)
+}
+
 function finishRename(row) {
+  if (editingId.value !== row.id) return
   if (editName.value.trim()) store.updateItem(row.id, { name: editName.value.trim() })
   editingId.value = null
 }
