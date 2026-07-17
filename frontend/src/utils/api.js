@@ -148,6 +148,25 @@ export const api = {
   updateMedia: (id, data) => request(`/media/${id}`, { method: 'PATCH', body: data }),
   deleteMedia: (id) => request(`/media/${id}`, { method: 'DELETE' }),
 
+  // Pictos
+  getPictoTags: () => request('/picto-tags'),
+  createPictoTag: (data) => request('/picto-tags', { method: 'POST', body: data }),
+  updatePictoTag: (id, data) => request(`/picto-tags/${id}`, { method: 'PATCH', body: data }),
+  deletePictoTag: (id) => request(`/picto-tags/${id}`, { method: 'DELETE' }),
+
+  getPictos: (tagIds) => {
+    const q = new URLSearchParams()
+    ;(tagIds || []).forEach((t) => q.append('tag', t))
+    const qs = q.toString()
+    return request(qs ? `/pictos?${qs}` : '/pictos')
+  },
+  createPictoLink: (data) => request('/pictos', { method: 'POST', body: data }),
+  updatePicto: (id, data) => request(`/pictos/${id}`, { method: 'PATCH', body: data }),
+  deletePicto: (id) => request(`/pictos/${id}`, { method: 'DELETE' }),
+  createPictoUpload: (formData) =>
+    fetch(`${BASE}/pictos`, { method: 'POST', body: formData, credentials: 'include' })
+      .then(async (r) => { if (!r.ok) throw new Error(await r.text()); return r.json() }),
+
   // Card Types
   getCardTypes: () => request('/card-types'),
   createCardType: (data) => request('/card-types', { method: 'POST', body: data }),
