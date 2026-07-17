@@ -161,6 +161,6 @@ CREATE TABLE media (
 
 ## 11. Notes
 
-- Les médias sont stockés en BLOB dans SQLite (pas sur le disque) pour simplifier le déploiement
+- Les médias sont stockés en **BLOB** dans la table `media` (`content`) ; le disque (`DATA_DIR/uploads/`) sert de cache optionnel
 - Les polices sont injectées dynamiquement avec `@font-face` au chargement de la vue
 - `PATCH /api/media/:id` existait déjà avant l'implémentation du renommage inline

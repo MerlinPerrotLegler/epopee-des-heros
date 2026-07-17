@@ -113,6 +113,7 @@ async function runMysqlMigrations(pool) {
     holder_username VARCHAR(255) NOT NULL,
     expires_at BIGINT NOT NULL
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter('ALTER TABLE media ADD COLUMN content LONGBLOB NULL')
 }
 
 function initSqliteSync() {
@@ -218,6 +219,9 @@ function initSqliteSync() {
       holder_username TEXT NOT NULL,
       expires_at INTEGER NOT NULL
     )`)
+  } catch {}
+  try {
+    sqliteDb.exec('ALTER TABLE media ADD COLUMN content BLOB')
   } catch {}
   seedInitialAdminIfNeededSync(sqliteDb)
   adapter = createSqliteAdapter(sqliteDb)

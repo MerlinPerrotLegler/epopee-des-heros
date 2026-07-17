@@ -5,21 +5,22 @@
  *
  * Convention :
  *  - Les fichiers sources vivent dans  <DATA_DIR>/seeds/
- *  - Ils sont copiés dans               <DATA_DIR>/uploads/  avec un nom fixe "builtin-<fichier>"
+ *  - Le contenu est stocké en BLOB dans la table `media` (source de vérité)
+ *  - Un cache disque optionnel est écrit dans <DATA_DIR>/uploads/
  *  - Un enregistrement est créé dans la table `media` avec l'ID fixe "builtin-<nomSansExt>"
  *  - Un dossier spécial "Ressources intégrées" (id='builtin') regroupe ces assets
  *
  * Pour ajouter un nouvel asset par défaut, déposez simplement le fichier dans data/seeds/.
  */
 
-import { existsSync, copyFileSync, readdirSync } from 'fs'
+import { existsSync, readFileSync, readdirSync } from 'fs'
 import { join, extname } from 'path'
 import { getDb, getSqliteSync } from './database.js'
 import { DATA_DIR } from '../paths.js'
 import { insertOrIgnoreInto, useMysql } from './sqlDialect.js'
+import { insertMediaRecord } from '../services/mediaStorage.js'
 
 const SEEDS_DIR = join(DATA_DIR, 'seeds')
-const UPLOADS_DIR = join(DATA_DIR, 'uploads')
 
 const MIME_MAP = {
   '.jpg':  'image/jpeg',
@@ -28,6 +29,28 @@ const MIME_MAP = {
   '.webp': 'image/webp',
   '.svg':  'image/svg+xml',
   '.gif':  'image/gif',
+}
+
+async function seedFile(db, file) {
+  const ext = extname(file).toLowerCase()
+  const mime = MIME_MAP[ext]
+  if (!mime) return
+
+  const destFile = `builtin-${file}`
+  const id = destFile
+  const buffer = readFileSync(join(SEEDS_DIR, file))
+
+  const existing = await db.prepare('SELECT id FROM media WHERE id = ?').get(id)
+  if (existing) return
+
+  await insertMediaRecord(db, {
+    id,
+    filename: destFile,
+    original_name: file,
+    mime_type: mime,
+    folder_id: 'builtin',
+    buffer,
+  })
 }
 
 export async function seedBuiltins() {
@@ -43,53 +66,19 @@ export async function seedBuiltins() {
       VALUES ('builtin', 'Ressources intégrées', 'root')
     `).run()
 
-    const stmt = db.prepare(`
-      ${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, folder_id)
-      VALUES (?, ?, ?, ?, 'builtin')
-    `)
-
     for (const file of files) {
-      const ext = extname(file).toLowerCase()
-      const mime = MIME_MAP[ext]
-      if (!mime) continue
-
-      const destFile = `builtin-${file}`
-      const id = destFile
-
-      const destPath = join(UPLOADS_DIR, destFile)
-      if (!existsSync(destPath)) {
-        copyFileSync(join(SEEDS_DIR, file), destPath)
-      }
-
-      await stmt.run(id, destFile, file, mime)
+      await seedFile(db, file)
     }
     return
   }
 
-  const db = getSqliteSync()
-  db.prepare(`
-    INSERT OR IGNORE INTO media_folders (id, name, parent_id)
+  const db = getDb()
+  await db.prepare(`
+    ${insertOrIgnoreInto()} media_folders (id, name, parent_id)
     VALUES ('builtin', 'Ressources intégrées', 'root')
   `).run()
 
-  const stmt = db.prepare(`
-    INSERT OR IGNORE INTO media (id, filename, original_name, mime_type, folder_id)
-    VALUES (?, ?, ?, ?, 'builtin')
-  `)
-
   for (const file of files) {
-    const ext = extname(file).toLowerCase()
-    const mime = MIME_MAP[ext]
-    if (!mime) continue
-
-    const destFile = `builtin-${file}`
-    const id = destFile
-
-    const destPath = join(UPLOADS_DIR, destFile)
-    if (!existsSync(destPath)) {
-      copyFileSync(join(SEEDS_DIR, file), destPath)
-    }
-
-    stmt.run(id, destFile, file, mime)
+    await seedFile(db, file)
   }
 }

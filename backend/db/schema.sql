@@ -54,6 +54,7 @@ CREATE TABLE IF NOT EXISTS media (
   width_px INTEGER,
   height_px INTEGER,
   folder_id TEXT NOT NULL DEFAULT 'default' REFERENCES media_folders(id) ON DELETE SET DEFAULT,
+  content BLOB,
   created_at TEXT DEFAULT (datetime('now'))
 );
 

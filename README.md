@@ -25,17 +25,17 @@ npm start
 # → Tout sur http://localhost:3001
 ```
 
-### Base SQLite et déploiement
+### Base de données et déploiement
 
-La base (`card-designer.db`) et les **uploads** sont dans le dossier **`DATA_DIR`** (par défaut `backend/data/`, ignoré par Git).
+**Layouts, composants, instances** : en production Hostinger, configurez **MySQL** (`DATABASE_URL` ou `MYSQL_*` dans `.env`) — la base survit aux redéploiements.
 
-Sur beaucoup d’hébergeurs, **chaque déploiement utilise un système de fichiers neuf** : l’ancienne base n’y est plus, l’app en crée une **vide** au démarrage — ce n’est pas un bug du code, c’est l’absence de **stockage persistant**.
+**Médias (images, polices)** : les fichiers binaires sont stockés en **BLOB** dans la table `media` (colonne `content`), pas uniquement sur le disque. La route `/uploads/:filename` sert d’abord le cache disque local, puis le BLOB en base. Ainsi les médias survivent aux redéploiements Hostinger même si le dossier `backend/data/uploads/` est recréé vide.
 
-**À faire en production :** monter un volume disque (ou un dossier persistant fourni par l’hébergeur) et définir dans l’environnement :
+En développement local (SQLite), le même mécanisme s’applique : `card-designer.db` + BLOB dans `media.content`. Le dossier `backend/data/` reste ignoré par Git.
 
-`DATA_DIR=/chemin/vers/ce/dossier/persistant`
+Au démarrage, un **backfill** migre automatiquement vers la base les fichiers encore présents sur disque sans BLOB (`backfillBlobsFromDisk`).
 
-(même valeur d’un déploiement à l’autre, **en dehors** du répertoire recréé à chaque build).
+**Note :** les médias uploadés *avant* ce correctif et déjà perdus du disque Hostinger ne peuvent pas être récupérés automatiquement — il faut les ré-uploader une fois le nouveau code déployé.
 
 ## Architecture
 

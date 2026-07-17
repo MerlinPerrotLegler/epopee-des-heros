@@ -1,13 +1,13 @@
 import { Router } from 'express';
 import { getDb } from '../db/database.js';
 import multer from 'multer';
-import { join, extname } from 'path';
-import { existsSync, mkdirSync, writeFileSync, unlinkSync } from 'fs';
 import { createHash, randomUUID } from 'crypto';
-import { insertOrIgnoreInto } from '../db/sqlDialect.js';
-import { UPLOADS_DIR } from '../paths.js';
-
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true });
+import { extname } from 'path';
+import {
+  MEDIA_LIST_COLUMNS,
+  deleteDiskCache,
+  insertMediaRecord,
+} from '../services/mediaStorage.js';
 
 // Use memory storage so we can compute SHA1 before writing to disk
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -53,9 +53,9 @@ router.get('/', async (req, res) => {
   const { folder_id } = req.query;
   let rows;
   if (folder_id) {
-    rows = await db.prepare('SELECT * FROM media WHERE folder_id = ? ORDER BY original_name').all(folder_id);
+    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE folder_id = ? ORDER BY original_name`).all(folder_id);
   } else {
-    rows = await db.prepare('SELECT * FROM media ORDER BY original_name').all();
+    rows = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media ORDER BY original_name`).all();
   }
   res.json(rows);
 });
@@ -65,16 +65,13 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
   const folder_id = req.body.folder_id || 'default';
   const results = [];
 
-  const insertSql = `${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, width_px, height_px, folder_id) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-  const insertStmt = db.prepare(insertSql);
-  const selectStmt = db.prepare('SELECT * FROM media WHERE id = ?');
+  const selectStmt = db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ?`);
 
   for (const file of req.files) {
     // id = filename (with ext) so /uploads/${mediaId} works directly in atom renderers
     const sha1 = createHash('sha1').update(file.buffer).digest('hex');
     const ext = extname(file.originalname).toLowerCase();
     const filename = `${sha1}${ext}`;
-    const filepath = join(UPLOADS_DIR, filename);
 
     // Dedup by id=filename
     const existing = await selectStmt.get(filename);
@@ -83,11 +80,14 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
       continue;
     }
 
-    if (!existsSync(filepath)) {
-      writeFileSync(filepath, file.buffer);
-    }
-
-    await insertStmt.run(filename, filename, file.originalname, file.mimetype, null, null, folder_id);
+    await insertMediaRecord(db, {
+      id: filename,
+      filename,
+      original_name: file.originalname,
+      mime_type: file.mimetype,
+      folder_id,
+      buffer: file.buffer,
+    });
     results.push({ id: filename, filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
   }
 
@@ -100,7 +100,7 @@ router.patch('/:id', async (req, res) => {
   await db.prepare('UPDATE media SET folder_id = COALESCE(?, folder_id), original_name = COALESCE(?, original_name) WHERE id = ?').run(
     folder_id, original_name, req.params.id,
   );
-  const row = await db.prepare('SELECT * FROM media WHERE id = ?').get(req.params.id);
+  const row = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ?`).get(req.params.id);
   res.json(row);
 });
 
@@ -108,8 +108,7 @@ router.delete('/:id', async (req, res) => {
   const db = getDb();
   const row = await db.prepare('SELECT filename FROM media WHERE id = ?').get(req.params.id);
   if (row) {
-    const filepath = join(UPLOADS_DIR, row.filename);
-    if (existsSync(filepath)) unlinkSync(filepath);
+    deleteDiskCache(row.filename);
   }
   await db.prepare('DELETE FROM media WHERE id = ?').run(req.params.id);
   res.json({ ok: true });

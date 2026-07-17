@@ -3,12 +3,8 @@
  * Handles prompt construction, OpenAI call, image download/save, DB resolution.
  */
 import { createHash, randomUUID } from 'crypto'
-import { join } from 'path'
-import { writeFileSync, existsSync, mkdirSync } from 'fs'
-import { insertOrIgnoreInto, parseJsonColumn } from '../db/sqlDialect.js'
-import { UPLOADS_DIR } from '../paths.js'
-
-if (!existsSync(UPLOADS_DIR)) mkdirSync(UPLOADS_DIR, { recursive: true })
+import { parseJsonColumn } from '../db/sqlDialect.js'
+import { insertMediaRecord } from './mediaStorage.js'
 
 // ── Prompt construction ──────────────────────────────────────────────────────
 
@@ -105,22 +101,23 @@ export async function callOpenAI(apiKey, prompt, resolution, stylePreset) {
 // ── Image save → media record ────────────────────────────────────────────────
 
 /**
- * Save buffer to uploads dir, create media record in DB.
+ * Save buffer to DB (+ cache disque), create media record.
  * Returns the media id (= filename, sha1-based, compatible with params.mediaId).
  */
 export async function saveGeneratedImage(buffer, label, db) {
   const sha1 = createHash('sha1').update(buffer).digest('hex')
   const filename = `${sha1}.png`
-  const filepath = join(UPLOADS_DIR, filename)
-
-  if (!existsSync(filepath)) {
-    writeFileSync(filepath, buffer)
-  }
 
   const existing = await db.prepare('SELECT id FROM media WHERE id = ?').get(filename)
   if (!existing) {
-    const sql = `${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, folder_id) VALUES (?, ?, ?, ?, ?)`
-    await db.prepare(sql).run(filename, filename, `${label}_ai_generated.png`, 'image/png', 'default')
+    await insertMediaRecord(db, {
+      id: filename,
+      filename,
+      original_name: `${label}_ai_generated.png`,
+      mime_type: 'image/png',
+      folder_id: 'default',
+      buffer,
+    })
   }
 
   return filename // = media.id

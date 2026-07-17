@@ -50,6 +50,7 @@ CREATE TABLE IF NOT EXISTS media (
   width_px INT NULL,
   height_px INT NULL,
   folder_id VARCHAR(64) NOT NULL DEFAULT 'default',
+  content LONGBLOB NULL,
   created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
   CONSTRAINT fk_media_folder FOREIGN KEY (folder_id) REFERENCES media_folders(id) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

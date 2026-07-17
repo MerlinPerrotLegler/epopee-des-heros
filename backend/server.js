@@ -8,8 +8,9 @@ import { existsSync, mkdirSync } from 'fs';
 import { DATA_DIR, UPLOADS_DIR } from './paths.js';
 
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
-import { closeDb, initDatabase } from './db/database.js';
+import { closeDb, initDatabase, getDb } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
+import { backfillBlobsFromDisk } from './services/mediaStorage.js';
 
 import authRouter from './routes/auth.js';
 import layoutsRouter from './routes/layouts.js';
@@ -25,6 +26,7 @@ import importJobsRouter from './routes/importJobs.js';
 import missingMediaRouter from './routes/missingMedia.js';
 import locksRouter from './routes/locks.js';
 import adminUsersRouter from './routes/adminUsers.js';
+import uploadsRouter from './routes/uploads.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -75,7 +77,8 @@ app.use(session({
 }));
 
 // Serve uploaded media files (pas d'auth — les <img> du navigateur n'envoient pas de session)
-app.use('/uploads', express.static(UPLOADS_DIR));
+// Disque cache d'abord, fallback BLOB MySQL/SQLite
+app.use('/uploads', uploadsRouter);
 
 // Routes publiques
 app.use('/api/auth', authRouter);
@@ -144,6 +147,7 @@ process.on('SIGTERM', () => { closeDb(); process.exit(0); });
 
 async function main() {
   await initDatabase();
+  await backfillBlobsFromDisk(getDb());
   await seedBuiltins();
 
   app.listen(PORT, () => {
