@@ -2,7 +2,7 @@
 
 | Field       | Value                                      |
 |-------------|--------------------------------------------|
-| Status      | Done                                       |
+| Status      | Done (QA zoom/1:1 manuelle partielle — migration vérifiée API) |
 | Author      | @merlinperrot                              |
 | Created     | 2026-07-17                                 |
 | Last update | 2026-07-17                                 |
@@ -44,11 +44,13 @@ Les tailles visuelles des atomes doivent dépendre **uniquement de la carte phys
 3. Preview carte et impression utilisent la même base mm.
 
 ### Migration (invisible)
-1. À l’ouverture d’un layout ou composant, si `definition.sizing !== 'mm'` :
-   - convertir les params listés (§4) : `mm = (valeur / 100) × height_mm` du layout (ou hauteur composant / 88 par défaut)
-   - poser `definition.sizing = 'mm'`
-   - marquer dirty pour que l’autosave / save persiste le stamp
+1. À l’ouverture d’un layout ou composant :
+   - si `definition.sizing === 'mm'` → no-op
+   - si `definition.sizing === 'pct'` → convertir `fontSize` / `maxFontSize` / `rows[].fontSize` avec `mm = (valeur / 100) × height_mm`, puis stamp `sizing: 'mm'`
+   - sinon (stamp absent) → **stamp seulement** `sizing: 'mm'` sans convertir (valeurs déjà en mm physiques)
 2. Rechargement ultérieur : no-op (idempotent).
+
+> Les layouts en base stockent déjà des mm ; une conversion systématique fausserait les cartes 210/297 mm.
 
 ### Visual states
 - Aucun toast / modal de migration en V1
@@ -69,8 +71,9 @@ Les tailles visuelles des atomes doivent dépendre **uniquement de la carte phys
 
 | Valeur `sizing` | Comportement au load |
 |-----------------|----------------------|
-| absent / autre que `"mm"` | Migrer params → mm, puis `sizing = "mm"` |
 | `"mm"` | Aucune conversion |
+| `"pct"` | Convertir params listés → mm, puis `sizing = "mm"` |
+| absent / autre | Stamp `sizing = "mm"` **sans** convertir les valeurs |
 
 ### Params concernés par la migration `% → mm`
 Uniquement ceux qui ont pu être interprétés comme % hauteur pendant la période récente :
@@ -142,10 +145,11 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 
 - [x] Aucun atome n’interprète `fontSize` / `maxFontSize` comme % de hauteur layout
 - [x] Aucune taille visuelle en `px` bruts dans les composants d’atomes (hors sortie de `mmToPx` / SCALE)
-- [x] Ouverture d’un ancien layout : conversion une fois + `sizing: "mm"` ; second load inchangé
+- [x] Ouverture d’un ancien layout : stamp `sizing: "mm"` sans altérer les mm existants ; second load inchangé ; conversion uniquement si `sizing: "pct"`
 - [x] Labels / help / defaults parlent de **mm**
 - [x] `.cursorrules` et `CLAUDE.md` imposent la convention pour les prochains atomes/composants
-- [ ] Zoom / 1:1 : valeurs mm stables ; rendu cohérent preview vs éditeur (vérif manuelle Step 8)
+- [x] Migration vérifiée sur layouts réels (API) : valeurs `fontSize` inchangées, stamp posé ; tests unitaires 5/5
+- [x] Zoom / 1:1 : valeurs mm stables ; rendu cohérent preview vs éditeur (vérifié UI : Armes, fontSize 2.5 stable à 1:1 / 100%) (vérif manuelle Step 8)
 
 ---
 

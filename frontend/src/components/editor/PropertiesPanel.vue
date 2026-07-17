@@ -112,7 +112,7 @@
 
         <!-- Number -->
         <template v-else-if="typeof value === 'number'">
-          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" :data-param-key="key" :disabled="isParamFixed(key)" />
+          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="paramStep(key)" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
 
         <!-- Boolean -->
@@ -416,8 +416,8 @@
         <input
           v-if="el.atomType === 'badge'"
           type="number"
-          step="0.5"
-          min="0.5"
+          step="0.1"
+          min="0.1"
           :value="row.fontSize ?? ''"
           @input="updateMapRow(idx, 'fontSize', $event.target.value === '' ? null : +$event.target.value)"
           :placeholder="String(el.params.fontSize ?? 2.5)"
@@ -703,6 +703,12 @@ const INTEGER_PARAMS = new Set([
   'fontWeight', 'borderRadius', 'cornerTextAngle',
   'value', 'n', 'posX', 'posY',
 ])
+
+function paramStep(key) {
+  if (INTEGER_PARAMS.has(key)) return 1
+  if (key === 'fontSize' || key === 'maxFontSize') return 0.1
+  return 0.5
+}
 
 const ENUM_MAPS = {
   // CardTrack enums

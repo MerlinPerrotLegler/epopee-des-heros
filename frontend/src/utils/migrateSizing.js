@@ -1,4 +1,11 @@
-// frontend/src/utils/migrateSizing.js
+/**
+ * Sizing migration for layout/component definitions (TSD-022).
+ *
+ * - `sizing: 'mm'` → no-op
+ * - `sizing: 'pct'` → convert fontSize/maxFontSize/rows[].fontSize with
+ *   mm = (value / 100) * heightMm, then stamp `sizing: 'mm'`
+ * - missing / other → stamp `sizing: 'mm'` only (values already physical mm)
+ */
 export const REF_HEIGHT_MM = 88
 export const PCT_SIZE_PARAMS = ['fontSize', 'maxFontSize']
 
@@ -65,12 +72,20 @@ export function migrateDefinitionSizing(definition, heightMm) {
     return { definition: def, changed: false }
   }
 
-  const h = Number(heightMm)
-  const height = Number.isFinite(h) && h > 0 ? h : REF_HEIGHT_MM
-  const { layers } = walkLayers(def.layers || [], height)
+  // Explicit percent era — convert then stamp
+  if (def.sizing === 'pct') {
+    const h = Number(heightMm)
+    const height = Number.isFinite(h) && h > 0 ? h : REF_HEIGHT_MM
+    const { layers } = walkLayers(def.layers || [], height)
+    return {
+      definition: { ...def, layers, sizing: 'mm' },
+      changed: true,
+    }
+  }
 
+  // Missing stamp: data is already physical mm — stamp only
   return {
-    definition: { ...def, layers, sizing: 'mm' },
-    changed: true, // stamp always applied when missing
+    definition: { ...def, sizing: 'mm' },
+    changed: true,
   }
 }
