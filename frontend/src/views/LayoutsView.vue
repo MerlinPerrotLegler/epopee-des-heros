@@ -49,7 +49,7 @@
         :class="{ 'item-tile--list': viewMode === 'list' }"
         @click="openEditor(l)"
       >
-        <!-- Titre pleine largeur -->
+        <!-- Titre pleine largeur + taille mm -->
         <div class="tile-title-row" @click.stop>
           <input
             v-if="renamingId === l.id"
@@ -62,6 +62,7 @@
             @click.stop
           />
           <div v-else class="tile-name" @dblclick.stop="startRename(l)" :title="l.name">{{ l.name }}</div>
+          <span class="tile-dims" :title="`${l.width_mm} × ${l.height_mm} mm`">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
         </div>
 
         <div class="tile-body">
@@ -69,7 +70,7 @@
           <div class="tile-thumb" :style="thumbStyle(l)">
             <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" alt="" />
             <div v-else class="thumb-placeholder">
-              <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
+              <span class="ph-dims">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
               <span class="ph-hint">Ouvrir et sauvegarder pour générer</span>
             </div>
           </div>
@@ -79,7 +80,7 @@
             <div class="tile-meta">
               <span class="badge">{{ l.card_type }}</span>
               <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
-              <span class="tile-size">{{ l.width_mm }}×{{ l.height_mm }} mm</span>
+              <span class="tile-size">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
             </div>
 
             <!-- Verso link config (recto tiles only) -->
@@ -415,10 +416,17 @@ async function confirmDelete(l) {
   align-self: center;
 }
 
-.tile-title-row { width: 100%; }
+.tile-title-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
 
 .tile-name {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 600;
   font-size: 13px;
   line-height: 1.4;
@@ -427,8 +435,24 @@ async function confirmDelete(l) {
   cursor: text;
 }
 
+.tile-dims {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+
 .tile-rename-input {
-  font-size: 13px; font-weight: 600; width: 100%; box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px; font-weight: 600; box-sizing: border-box;
   background: var(--bg-deep); color: var(--text-primary);
   border: 1px solid var(--accent-primary); border-radius: 3px;
   padding: 2px 6px; outline: none;

@@ -31,6 +31,9 @@
             @click.stop
           />
           <div v-else class="tile-name" @dblclick.stop="startRename(item)" :title="item.name">{{ item.name }}</div>
+          <span class="tile-dims" :title="`${item.width_mm || 30} × ${item.height_mm || 20} mm`">
+            {{ item.width_mm || 30 }} × {{ item.height_mm || 20 }} mm
+          </span>
         </div>
 
         <div class="tile-body">
@@ -38,7 +41,7 @@
         <div class="tile-thumb" :style="thumbStyle(item)">
           <img v-if="item.thumbnail" :src="item.thumbnail" class="thumb-img" />
           <div v-else class="thumb-placeholder">
-            <span class="ph-dims">{{ item.width_mm || '?' }}×{{ item.height_mm || '?' }}</span>
+            <span class="ph-dims">{{ item.width_mm || 30 }} × {{ item.height_mm || 20 }} mm</span>
             <span class="ph-hint">Ouvrir et sauvegarder pour générer</span>
           </div>
         </div>
@@ -47,7 +50,7 @@
         <div class="tile-info">
           <div class="tile-meta">
             <span class="badge">Composant</span>
-            <span v-if="item.width_mm" class="tile-size">{{ item.width_mm }}×{{ item.height_mm }} mm</span>
+            <span class="tile-size">{{ item.width_mm || 30 }} × {{ item.height_mm || 20 }} mm</span>
             <span class="tile-size">{{ countElements(item.definition) }} élém.</span>
           </div>
         </div>
@@ -209,19 +212,41 @@ async function remove(item) {
 }
 .item-tile:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
 
-.tile-title-row { width: 100%; }
+.tile-title-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
 .tile-body { display: flex; gap: 12px; width: 100%; align-items: flex-start; }
 
 .tile-name {
-  width: 100%;
+  flex: 1 1 auto;
+  min-width: 0;
   font-weight: 600; font-size: 13px;
   line-height: 1.4;
   white-space: normal;
   word-break: break-word;
   cursor: text;
 }
+.tile-dims {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
 .tile-rename-input {
-  font-size: 13px; font-weight: 600; width: 100%; box-sizing: border-box;
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px; font-weight: 600; box-sizing: border-box;
   background: var(--bg-deep); color: var(--text-primary);
   border: 1px solid var(--accent-primary); border-radius: 3px;
   padding: 2px 6px; outline: none;

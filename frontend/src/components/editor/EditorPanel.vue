@@ -45,7 +45,7 @@
           >
             <span>◧</span>
             <span>{{ comp.name }}</span>
-            <span class="comp-size" v-if="comp.width_mm">{{ comp.width_mm }}×{{ comp.height_mm }}</span>
+            <span class="comp-size">{{ comp.width_mm || 30 }} × {{ comp.height_mm || 20 }} mm</span>
           </button>
         </div>
       </div>

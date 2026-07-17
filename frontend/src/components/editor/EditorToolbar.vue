@@ -20,7 +20,7 @@
       <span v-else class="toolbar-title">{{ store.layout?.name || '…' }}</span>
       <span class="badge" v-if="store.mode === 'component'">Composant</span>
       <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
-      <span class="badge" v-if="store.layout">{{ store.layout.width_mm }}×{{ store.layout.height_mm }}mm</span>
+      <span class="badge" v-if="store.layout">{{ store.layout.width_mm }} × {{ store.layout.height_mm }} mm</span>
       <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>
       <button
         v-if="store.mode === 'layout' && store.layout"
