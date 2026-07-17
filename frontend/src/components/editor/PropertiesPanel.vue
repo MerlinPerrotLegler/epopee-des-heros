@@ -292,35 +292,47 @@
       </div>
     </div>
 
-    <!-- ── Section iconMap : tableau valeur -> image ─────────────────────── -->
-    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'iconMap'">
-      <div class="panel-section-title">Tableau valeur → image</div>
+    <!-- ── Section iconMap / badge : tableau valeur -> image (± label) ───── -->
+    <div class="panel-section" v-if="el.type === 'atom' && (el.atomType === 'iconMap' || el.atomType === 'badge')">
+      <div class="panel-section-title">
+        {{ el.atomType === 'badge' ? 'Checklist valeur → image + label' : 'Tableau valeur → image' }}
+      </div>
       <div
-        v-for="(row, idx) in iconMapRows"
+        v-for="(row, idx) in mapRows"
         :key="`row-${idx}`"
         class="map-row"
+        :class="{ 'map-row--badge': el.atomType === 'badge' }"
       >
         <input
           :value="row.value || ''"
-          @input="updateIconMapRow(idx, 'value', $event.target.value)"
-          placeholder="valeur (ex: rare)"
+          @input="updateMapRow(idx, 'value', $event.target.value)"
+          placeholder="valeur (ex: belle)"
+          style="flex:1"
+        />
+        <input
+          v-if="el.atomType === 'badge'"
+          :value="row.label || ''"
+          @input="updateMapRow(idx, 'label', $event.target.value)"
+          placeholder="label affiché"
           style="flex:1"
         />
         <input
           :value="row.mediaId || ''"
-          @input="updateIconMapRow(idx, 'mediaId', $event.target.value || null)"
+          @input="updateMapRow(idx, 'mediaId', $event.target.value || null)"
           placeholder="media ID"
           style="flex:1; font-family:var(--font-mono); font-size:10px"
         />
-        <MediaPicker :model-value="row.mediaId || null" @update:model-value="updateIconMapRow(idx, 'mediaId', $event || null)" />
-        <button class="clear-btn" @click="removeIconMapRow(idx)">✕</button>
+        <MediaPicker :model-value="row.mediaId || null" @update:model-value="updateMapRow(idx, 'mediaId', $event || null)" />
+        <button class="clear-btn" @click="removeMapRow(idx)">✕</button>
       </div>
 
       <div class="field-row" style="margin-top:6px">
-        <button class="clear-btn" @click="addIconMapRow">+ Ajouter une ligne</button>
+        <button class="clear-btn" @click="addMapRow">+ Ajouter une ligne</button>
       </div>
       <div class="param-help" style="margin-top:4px">
-        Astuce: liez <code>value</code> (ex: <code v-pre>{{card.rarity}}</code>) et l’atome affichera l’image de la ligne correspondante.
+        Astuce: liez <code>value</code> (ex: <code v-pre>{{card.guilde}}</code>) —
+        l’atome affichera {{ el.atomType === 'badge' ? 'l’image et le label' : 'l’image' }} de la ligne correspondante.
+        Placez les images dans un dossier média « badges ».
       </div>
     </div>
   </div>
@@ -428,7 +440,7 @@ const effectiveParams = computed(() => {
   return { ...defaults, ...el.value.params }
 })
 
-const iconMapRows = computed(() => {
+const mapRows = computed(() => {
   const rows = el.value?.params?.rows
   return Array.isArray(rows) ? rows : []
 })
@@ -449,18 +461,21 @@ function updateParamJson(key, raw) {
   } catch { /* ignore invalid JSON */ }
 }
 
-function updateIconMapRow(index, key, value) {
-  const rows = [...iconMapRows.value]
+function updateMapRow(index, key, value) {
+  const rows = [...mapRows.value]
   rows[index] = { ...(rows[index] || {}), [key]: value }
   updateParam('rows', rows)
 }
 
-function addIconMapRow() {
-  updateParam('rows', [...iconMapRows.value, { value: '', mediaId: null }])
+function addMapRow() {
+  const blank = el.value?.atomType === 'badge'
+    ? { value: '', mediaId: null, label: '' }
+    : { value: '', mediaId: null }
+  updateParam('rows', [...mapRows.value, blank])
 }
 
-function removeIconMapRow(index) {
-  const rows = [...iconMapRows.value]
+function removeMapRow(index) {
+  const rows = [...mapRows.value]
   rows.splice(index, 1)
   updateParam('rows', rows)
 }
@@ -517,7 +532,7 @@ function isColorParam(key, value) {
 }
 
 // Params whose value is always a media ID
-const MEDIA_PARAMS = new Set(['mediaId', 'svgMediaId', 'iconMediaId', 'textureMediaId', 'overlayMediaId'])
+const MEDIA_PARAMS = new Set(['mediaId', 'svgMediaId', 'iconMediaId', 'textureMediaId', 'overlayMediaId', 'fallbackMediaId'])
 const MULTILINE_PARAMS = new Set(['text', 'description', 'content', 'body', 'notes'])
 
 function isMediaParam(key) {
@@ -694,6 +709,10 @@ function isParamFixed(paramKey) {
   align-items: center;
   gap: 4px;
   margin-bottom: 4px;
+  flex-wrap: wrap;
+}
+.map-row--badge {
+  flex-wrap: wrap;
 }
 
 .properties-empty {

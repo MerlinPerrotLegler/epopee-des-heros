@@ -37,36 +37,45 @@
 
         <div class="typed-value">
           <div
-            v-if="selectedAtom === 'iconMap' && key === 'rows'"
+            v-if="(selectedAtom === 'iconMap' || selectedAtom === 'badge') && key === 'rows'"
             class="rows-editor"
           >
             <div
-              v-for="(row, idx) in iconMapRows()"
+              v-for="(row, idx) in mapRows()"
               :key="`cfg-row-${idx}`"
               class="rows-editor-line"
+              :class="{ 'rows-editor-line--badge': selectedAtom === 'badge' }"
             >
               <input
                 type="text"
                 :value="row.value || ''"
-                @input="updateIconMapRow(idx, 'value', $event.target.value)"
+                @input="updateMapRow(idx, 'value', $event.target.value)"
                 :disabled="!isFixedEnabled(key)"
                 placeholder="valeur"
               />
               <input
+                v-if="selectedAtom === 'badge'"
+                type="text"
+                :value="row.label || ''"
+                @input="updateMapRow(idx, 'label', $event.target.value)"
+                :disabled="!isFixedEnabled(key)"
+                placeholder="label"
+              />
+              <input
                 type="text"
                 :value="row.mediaId || ''"
-                @input="updateIconMapRow(idx, 'mediaId', $event.target.value || null)"
+                @input="updateMapRow(idx, 'mediaId', $event.target.value || null)"
                 :disabled="!isFixedEnabled(key)"
                 placeholder="media ID"
                 class="mono"
               />
               <MediaPicker
                 :model-value="row.mediaId || null"
-                @update:model-value="updateIconMapRow(idx, 'mediaId', $event || null)"
+                @update:model-value="updateMapRow(idx, 'mediaId', $event || null)"
               />
-              <button class="line-btn" @click="removeIconMapRow(idx)" :disabled="!isFixedEnabled(key)">✕</button>
+              <button class="line-btn" @click="removeMapRow(idx)" :disabled="!isFixedEnabled(key)">✕</button>
             </div>
-            <button class="line-btn add" @click="addIconMapRow" :disabled="!isFixedEnabled(key)">+ Ligne</button>
+            <button class="line-btn add" @click="addMapRow" :disabled="!isFixedEnabled(key)">+ Ligne</button>
           </div>
 
           <ColorPickerAlpha
@@ -219,23 +228,26 @@ async function toggleHidden(key) {
   await configStore.setAtomParamRule(selectedAtom.value, key, { hidden: !paramRule(key).hidden })
 }
 
-function iconMapRows() {
+function mapRows() {
   const rows = typedValue('rows')
   return Array.isArray(rows) ? rows : []
 }
 
-async function updateIconMapRow(index, field, value) {
-  const rows = [...iconMapRows()]
+async function updateMapRow(index, field, value) {
+  const rows = [...mapRows()]
   rows[index] = { ...(rows[index] || {}), [field]: value }
   await onTypedValueChange('rows', rows)
 }
 
-async function addIconMapRow() {
-  await onTypedValueChange('rows', [...iconMapRows(), { value: '', mediaId: null }])
+async function addMapRow() {
+  const blank = selectedAtom.value === 'badge'
+    ? { value: '', mediaId: null, label: '' }
+    : { value: '', mediaId: null }
+  await onTypedValueChange('rows', [...mapRows(), blank])
 }
 
-async function removeIconMapRow(index) {
-  const rows = [...iconMapRows()]
+async function removeMapRow(index) {
+  const rows = [...mapRows()]
   rows.splice(index, 1)
   await onTypedValueChange('rows', rows)
 }
@@ -272,6 +284,7 @@ async function removeIconMapRow(index) {
 .eye-btn.hidden { color: #ef4444; border-color: #ef4444; }
 .rows-editor { display: flex; flex-direction: column; gap: 4px; }
 .rows-editor-line { display: grid; grid-template-columns: 1fr 1fr auto auto; gap: 4px; align-items: center; }
+.rows-editor-line--badge { grid-template-columns: 1fr 1fr 1fr auto auto; }
 .line-btn {
   border: 1px solid var(--border-subtle);
   border-radius: 6px;

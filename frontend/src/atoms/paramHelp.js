@@ -78,11 +78,17 @@ export const PARAM_HELP = {
   // ── AtomIcon ───────────────────────────────────────────────────────────────
   // (mediaId, svgContent, color, opacity déjà définis)
 
+  // ── AtomIconMap / AtomBadge ────────────────────────────────────────────────
+  rows:            'Table de correspondance : une ligne par valeur (clé checklist → média ± label)',
+  fallbackMediaId: 'Image affichée si aucune ligne ne correspond à la valeur',
+  fallbackLabel:   'Texte affiché si aucune ligne ne correspond (atome Badge)',
+  showIcon:        'Afficher l\'image / icône associée à la valeur',
+
   // ── AtomPastille ───────────────────────────────────────────────────────────
   // (text, bgColor, textColor, fontSize, borderRadius, borderWidth, borderColor)
 
-  // ── AtomDice8 / AtomDice12 ─────────────────────────────────────────────────
-  value:         'Valeur numérique affichée sur le dé',
+  // ── AtomDice8 / AtomDice12 / iconMap / badge ───────────────────────────────
+  value:         'Valeur (dé, ou clé de checklist pour iconMap/badge — souvent bindée)',
 
   // ── AtomCaracteristique ────────────────────────────────────────────────────
   stat:          'Statistique affichée (FOR, DEX, INI, CHA, MAG, DEV, VIE)',
@@ -107,7 +113,7 @@ export const PARAM_HELP = {
 
   // ── AtomCardType ───────────────────────────────────────────────────────────
   type:          'Type de carte à afficher (equipement, quete, etc.)',
-  showIcon:      'Afficher l\'icône du type de carte',
+  // showIcon déjà défini plus haut (iconMap/badge/cardType)
 
   // ── AtomCounter ────────────────────────────────────────────────────────────
   prefix:        'Caractère ou texte affiché avant la valeur, ex : #',

@@ -141,6 +141,33 @@ export const ATOM_TYPES = {
     defaultSize: { width_mm: 8, height_mm: 8 },
   },
 
+  // Checklist valeur → image + label (ex. guilde, rareté). Binder `value`.
+  badge: {
+    label: 'Badge',
+    icon: '🏷',
+    defaultParams: {
+      value: '',
+      rows: [
+        { value: '', mediaId: null, label: '' },
+      ],
+      fallbackMediaId: null,
+      fallbackLabel: '',
+      layout: 'horizontal', // horizontal | vertical
+      gap: 1,               // mm entre image et label
+      iconSize: 6,          // mm — côté de l’icône
+      fit: 'contain',       // cover | contain | fill | none
+      showIcon: true,
+      showLabel: true,
+      fontSize: 2.5,        // mm
+      fontFamily: null,     // null → config globale / héritage
+      fontWeight: 400,
+      color: null,          // null → config globale
+      textAlign: 'left',
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 24, height_mm: 8 },
+  },
+
   pastille: {
     label: 'Pastille',
     icon: '●',
