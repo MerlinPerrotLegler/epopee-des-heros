@@ -29,6 +29,7 @@ import locksRouter from './routes/locks.js';
 import adminUsersRouter from './routes/adminUsers.js';
 import uploadsRouter from './routes/uploads.js';
 import specsRouter from './routes/specs.js';
+import pictoTagsRouter from './routes/pictoTags.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -94,6 +95,7 @@ app.use('/api/layouts', layoutsRouter);
 app.use('/api/components', componentsRouter);
 app.use('/api/cards', cardsRouter);
 app.use('/api/media', mediaRouter);
+app.use('/api/picto-tags', pictoTagsRouter);
 app.use('/api/snapshots', snapshotsRouter);
 app.use('/api/card-types', cardTypesRouter);
 app.use('/api/export', exportRouter);
