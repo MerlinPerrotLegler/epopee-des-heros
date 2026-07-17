@@ -1,5 +1,5 @@
 <template>
-  <div :style="{ width:'100%', height:'100%', background: params.bgColor, border: `1px ${params.borderStyle || 'dashed'} ${params.borderColor}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${mmToPx(2)}px`, color: params.borderColor }">
+  <div :style="{ width:'100%', height:'100%', background: params.bgColor, border: `${mmToPx(params.borderWidth ?? 0.4)}px ${params.borderStyle || 'dashed'} ${params.borderColor}`, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: `${mmToPx(2)}px`, color: params.borderColor }">
     {{ params.label || '?' }}
   </div>
 </template>

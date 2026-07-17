@@ -64,8 +64,8 @@
               <input
                 v-if="selectedAtom === 'badge'"
                 type="number"
-                step="0.5"
-                min="0.5"
+                step="0.1"
+                min="0.1"
                 :value="row.fontSize ?? ''"
                 @input="updateMapRow(idx, 'fontSize', $event.target.value === '' ? null : +$event.target.value)"
                 :disabled="!isFixedEnabled(key)"
@@ -219,7 +219,9 @@ function controlType(key) {
   return 'text'
 }
 function numberStep(key) {
-  return INTEGER_PARAMS.has(key) ? 1 : 0.5
+  if (INTEGER_PARAMS.has(key)) return 1
+  if (key === 'fontSize' || key === 'maxFontSize') return 0.1
+  return 0.5
 }
 function typedValue(key) {
   const rule = paramRule(key)

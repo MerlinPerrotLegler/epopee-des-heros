@@ -25,6 +25,7 @@
         <h1>Bibliothèque média</h1>
         <div class="tab-bar">
           <button class="tab-btn" :class="{ active: activeTab === 'library' }" @click="activeTab = 'library'">Médias</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'pictorgame' }" @click="activeTab = 'pictorgame'">Pictorgame</button>
           <button class="tab-btn" :class="{ active: activeTab === 'missing' }" @click="activeTab = 'missing'">Manquants</button>
         </div>
       </div>
@@ -34,6 +35,11 @@
         <input ref="fileInput" type="file" multiple accept="image/*" style="display:none" @change="upload" />
       </div>
     </header>
+
+    <!-- Pictorgame tab -->
+    <div v-if="activeTab === 'pictorgame'" class="pictorgame-tab">
+      <PictorgamePanel />
+    </div>
 
     <!-- Missing media tab -->
     <div v-if="activeTab === 'missing'" class="missing-tab">
@@ -160,6 +166,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 import MissingMediaList from '@/components/media/MissingMediaList.vue'
+import PictorgamePanel from '@/components/media/PictorgamePanel.vue'
 import { useInlineRename } from '@/composables/useInlineRename.js'
 
 const activeTab     = ref('library')
@@ -342,7 +349,7 @@ async function onDropToFolder(targetFolderId) {
 .tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); font-weight: 600; }
 
-.missing-tab { padding: 8px 0; }
+.missing-tab, .pictorgame-tab { padding: 8px 0; }
 .media-layout { display: flex; gap: 16px; }
 
 /* Model download banner */

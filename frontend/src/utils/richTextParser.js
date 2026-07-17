@@ -91,6 +91,7 @@ export function parseFML(expr) {
  *   { type: 'resource', resource: string, amount: string }
  *   { type: 'stat',     stat: string, modifier: string }
  *   { type: 'svg',      name: string }
+ *   { type: 'picto',    ref: string, withLabel: boolean }
  *   { type: 'math',     expr: string, block: boolean }
  */
 
@@ -99,7 +100,7 @@ export function parseFML(expr) {
 //   2. /D12 avant /D8 (sinon /D1 matcherait en partiel)
 //   3. /SVG avant /S...stat (aucun stat ne commence par S mais prudence)
 //   4. stats listées explicitement
-const TOKEN_RE = /(\$\$\$[\s\S]+?\$\$\$|\$\$[^$]+?\$\$|\/D12\{[^}]*\}|\/D8\{[^}]*\}|\/R\{[^}]*\}|\/(FOR|DEX|INI|CHA|MAG|DEV|VIE|DEF)(?:\{[^}]*\})?|\/SVG\{[^}]*\})/g
+const TOKEN_RE = /(\$\$\$[\s\S]+?\$\$\$|\$\$[^$]+?\$\$|\/D12\{[^}]*\}|\/D8\{[^}]*\}|\/R\{[^}]*\}|\/(FOR|DEX|INI|CHA|MAG|DEV|VIE|DEF)(?:\{[^}]*\})?|\/SVG\{[^}]*\}|\\[a-zA-Z0-9_-]+|\/[a-zA-Z0-9_-]+)/g
 
 export function tokenize(content) {
   if (!content) return []
@@ -135,12 +136,16 @@ export function tokenize(content) {
       }
     } else if (raw.startsWith('/SVG{')) {
       tokens.push({ type: 'svg', name: raw.slice(5, -1).trim() })
-    } else {
-      // stat : /FOR or /FOR{+1}
+    } else if (/^\/(FOR|DEX|INI|CHA|MAG|DEV|VIE|DEF)(?:\{[^}]*\})?$/.test(raw)) {
+      // stat : /FOR or /FOR{+1} — before /ref picto branch
       const braceIdx = raw.indexOf('{')
       const stat     = braceIdx === -1 ? raw.slice(1) : raw.slice(1, braceIdx)
       const modifier = braceIdx === -1 ? '' : raw.slice(braceIdx + 1, -1)
       tokens.push({ type: 'stat', stat, modifier })
+    } else if (raw.startsWith('\\')) {
+      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: true })
+    } else if (/^\/[a-zA-Z0-9_-]+$/.test(raw)) {
+      tokens.push({ type: 'picto', ref: raw.slice(1), withLabel: false })
     }
 
     lastIndex = TOKEN_RE.lastIndex

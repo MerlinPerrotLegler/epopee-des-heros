@@ -27,6 +27,7 @@ export function useDragAndDrop(store, mmScale) {
     startEl = { x: el.x_mm, y: el.y_mm, w: el.width_mm, h: el.height_mm }
 
     store.selectedElementId = elementId
+    store.refreshGuides(el)
 
     document.addEventListener('mousemove', onDragMove)
     document.addEventListener('mouseup', onDragEnd)
@@ -45,6 +46,7 @@ export function useDragAndDrop(store, mmScale) {
     currentElementId = elementId
     startMouse = { x: e.clientX, y: e.clientY }
     startEl = { x: el.x_mm, y: el.y_mm, w: el.width_mm, h: el.height_mm }
+    store.refreshGuides(el)
 
     document.addEventListener('mousemove', onResizeMove)
     document.addEventListener('mouseup', onResizeEnd)
@@ -59,11 +61,13 @@ export function useDragAndDrop(store, mmScale) {
     const newY = store.snap(startEl.y + dy)
 
     store.updateElement(currentElementId, { x_mm: newX, y_mm: newY }, { noHistory: true })
+    store.refreshGuides(findElement(currentElementId))
   }
 
   function onDragEnd() {
     isDragging.value = false
     currentElementId = null
+    store.clearGuides()
     document.removeEventListener('mousemove', onDragMove)
     document.removeEventListener('mouseup', onDragEnd)
   }
@@ -91,12 +95,14 @@ export function useDragAndDrop(store, mmScale) {
     }
 
     store.updateElement(currentElementId, { x_mm: x, y_mm: y, width_mm: w, height_mm: h }, { noHistory: true })
+    store.refreshGuides(findElement(currentElementId))
   }
 
   function onResizeEnd() {
     isResizing.value = false
     resizeHandle.value = null
     currentElementId = null
+    store.clearGuides()
     document.removeEventListener('mousemove', onResizeMove)
     document.removeEventListener('mouseup', onResizeEnd)
   }

@@ -92,7 +92,7 @@
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !isParamHidden(key)"
+        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !(el.atomType === 'picto' && (key === 'tag' || key === 'ref')) && !isParamHidden(key)"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -112,7 +112,7 @@
 
         <!-- Number -->
         <template v-else-if="typeof value === 'number'">
-          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="INTEGER_PARAMS.has(key) ? 1 : 0.5" :data-param-key="key" :disabled="isParamFixed(key)" />
+          <input type="number" :value="value" @input="updateParam(key, +$event.target.value)" :step="paramStep(key)" :data-param-key="key" :disabled="isParamFixed(key)" />
         </template>
 
         <!-- Boolean -->
@@ -317,6 +317,73 @@
       </div>
     </div>
 
+    <!-- ── Section picto : catalogue tag → ref ─────────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'picto'">
+      <div class="panel-section-title">Catalogue Pictorgame</div>
+
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Tag</label>
+          <span v-if="PARAM_HELP.tag" class="param-help">{{ PARAM_HELP.tag }}</span>
+        </div>
+        <div class="field-row">
+          <template v-if="isPictoParamBinding(el.params.tag)">
+            <input
+              :value="el.params.tag || ''"
+              @input="updateParam('tag', $event.target.value)"
+              :disabled="isParamFixed('tag')"
+              style="flex:1; font-family:var(--font-mono); font-size:10px"
+            />
+          </template>
+          <select
+            v-else
+            :value="el.params.tag || ''"
+            @change="updateParam('tag', $event.target.value || '')"
+            :disabled="isParamFixed('tag')"
+            style="flex:1"
+          >
+            <option value="">— tous —</option>
+            <option v-for="t in pictosStore.tags" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
+            <option
+              v-if="el.params.tag && !pictosStore.tags.some(t => String(t.id) === String(el.params.tag))"
+              :value="el.params.tag"
+            >{{ el.params.tag }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Ref</label>
+          <span v-if="PARAM_HELP.ref" class="param-help">{{ PARAM_HELP.ref }}</span>
+        </div>
+        <div class="field-row">
+          <template v-if="isPictoParamBinding(el.params.ref)">
+            <input
+              :value="el.params.ref || ''"
+              @input="updateParam('ref', $event.target.value)"
+              :disabled="isParamFixed('ref')"
+              style="flex:1; font-family:var(--font-mono); font-size:10px"
+            />
+          </template>
+          <select
+            v-else
+            :value="el.params.ref || ''"
+            @change="updateParam('ref', $event.target.value || '')"
+            :disabled="isParamFixed('ref')"
+            style="flex:1"
+          >
+            <option value="">— choisir —</option>
+            <option v-for="opt in pictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            <option
+              v-if="el.params.ref && !pictoRefOptions.some(o => o.value === el.params.ref)"
+              :value="el.params.ref"
+            >{{ el.params.ref }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Section iconMap / badge : tableau valeur -> image (± label) ───── -->
     <div class="panel-section" v-if="el.type === 'atom' && (el.atomType === 'iconMap' || el.atomType === 'badge')">
       <div class="panel-section-title">
@@ -349,8 +416,8 @@
         <input
           v-if="el.atomType === 'badge'"
           type="number"
-          step="0.5"
-          min="0.5"
+          step="0.1"
+          min="0.1"
           :value="row.fontSize ?? ''"
           @input="updateMapRow(idx, 'fontSize', $event.target.value === '' ? null : +$event.target.value)"
           :placeholder="String(el.params.fontSize ?? 2.5)"
@@ -423,10 +490,11 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from 'vue'
+import { computed, ref, onMounted, watch } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
+import { usePictosStore } from '@/stores/pictos.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
@@ -464,6 +532,26 @@ const selectedGroup = computed(() => {
   return item?.kind === 'group' ? item : null
 })
 const fontsStore = useFontsStore()
+const pictosStore = usePictosStore()
+
+watch(
+  () => el.value?.atomType,
+  (atomType) => {
+    if (atomType === 'picto') pictosStore.load()
+  },
+  { immediate: true },
+)
+
+const pictoRefOptions = computed(() =>
+  pictosStore.pictosForTag(el.value?.params?.tag).map((p) => ({
+    value: p.picto_ref,
+    label: `${p.picto_ref} - ${p.picto_label || '—'}`,
+  })),
+)
+
+function isPictoParamBinding(value) {
+  return typeof value === 'string' && value.includes('{{')
+}
 
 const typeLabel = computed(() => {
   if (!el.value) return ''
@@ -616,6 +704,12 @@ const INTEGER_PARAMS = new Set([
   'value', 'n', 'posX', 'posY',
 ])
 
+function paramStep(key) {
+  if (INTEGER_PARAMS.has(key)) return 1
+  if (key === 'fontSize' || key === 'maxFontSize') return 0.1
+  return 0.5
+}
+
 const ENUM_MAPS = {
   // CardTrack enums
   startCorner:     ['topLeft', 'topRight', 'bottomRight', 'bottomLeft'],
@@ -640,6 +734,7 @@ const ENUM_MAPS = {
   stat:            ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
   svgPosition:     ['front', 'behind'],
   tier:            ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
+  view:            ['icon', 'horizontal', 'vertical', 'horizontal-inverse', 'vertical-inverse', 'text'],
 }
 
 function getEnumOptions(key) {

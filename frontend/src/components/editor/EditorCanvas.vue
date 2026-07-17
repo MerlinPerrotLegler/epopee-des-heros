@@ -160,6 +160,14 @@
             ></div>
           </template>
         </div>
+
+        <AlignmentGuidesOverlay
+          v-if="store.guidesActive"
+          :guides="store.activeGuides"
+          :width-mm="cardW"
+          :height-mm="cardH"
+          :zoom="store.zoom"
+        />
       </div>
     </div>
 
@@ -184,7 +192,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, provide } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
@@ -193,10 +201,10 @@ import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import DrawingToolbar from './DrawingToolbar.vue'
+import AlignmentGuidesOverlay from './AlignmentGuidesOverlay.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
-import { LAYOUT_HEIGHT_MM_KEY } from '@/atoms/components/useLayoutRelativeFont.js'
 
 const store = useEditorStore()
 const containerRef    = ref(null)
@@ -212,9 +220,6 @@ const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
-
-// Hauteur layout pour tailles de texte relatives (% → mm)
-provide(LAYOUT_HEIGHT_MM_KEY, cardH)
 
 const rulerLen = computed(() => Math.max(mmToPx(cardW.value) + 200, 1000))
 
@@ -428,6 +433,11 @@ watch(() => store.requestFit, handleFitRequest)
 
 // Cas ouverture : EditorCanvas monte APRÈS que loadLayout a posé requestFit
 // (EditorView a un v-if="!store.loading" qui cache le canvas pendant le chargement)
+function onKeyUp(e) {
+  if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+  store.scheduleGuidesClear()
+}
+
 // Arrow-key movement of selected layer / group
 function onKeyDown(e) {
   const tag = document.activeElement?.tagName
@@ -449,16 +459,21 @@ function onKeyDown(e) {
   const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
   const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0
   store.moveSelected(dx, dy)
+  if (store.selectedElement) store.refreshGuides(store.selectedElement)
+  store.scheduleGuidesClear()
 }
 
 onMounted(() => {
   handleFitRequest(store.requestFit)
   store.registerCaptureCallback(captureThumbnail)
   window.addEventListener('keydown', onKeyDown)
+  window.addEventListener('keyup', onKeyUp)
 })
 onBeforeUnmount(() => {
   store.unregisterCaptureCallback()
   window.removeEventListener('keydown', onKeyDown)
+  window.removeEventListener('keyup', onKeyUp)
+  store.clearGuides()
 })
 
 let panning = false

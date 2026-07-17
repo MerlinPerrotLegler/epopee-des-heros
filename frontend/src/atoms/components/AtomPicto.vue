@@ -1,27 +1,28 @@
 <template>
-  <div class="badge-wrap" :style="wrapStyle">
+  <div class="picto-wrap" :style="wrapStyle">
     <img
       v-if="showIcon && resolvedMediaId"
-      class="badge-icon"
+      class="picto-icon"
       :src="`/uploads/${resolvedMediaId}`"
-      :style="imgStyle"
+      :style="iconStyle"
       alt=""
     />
     <div
       v-else-if="showIcon"
-      class="badge-icon badge-icon--empty"
+      class="picto-icon picto-icon--empty"
       :style="emptyIconStyle"
     >?</div>
     <span
       v-if="showLabel"
-      class="badge-label"
+      class="picto-label"
       :style="labelStyle"
     >{{ resolvedLabel }}</span>
   </div>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, watch } from 'vue'
+import { usePictosStore } from '@/stores/pictos.js'
 import { useAtomScale } from './useAtomScale.js'
 
 const props = defineProps({
@@ -31,38 +32,43 @@ const props = defineProps({
   zoom: { type: Number, default: 1 },
 })
 
+const pictosStore = usePictosStore()
 const { mmToPx } = useAtomScale(props)
 
-const rows = computed(() => Array.isArray(props.params.rows) ? props.params.rows : [])
-const normalizedValue = computed(() => String(props.params.value ?? '').trim())
+function ensureLoaded() {
+  pictosStore.load()
+}
 
-const matchedRow = computed(() => {
-  const want = normalizedValue.value
-  if (!want) return null
-  return rows.value.find((r) => {
-    const key = String(r?.value ?? '').trim() || String(r?.label ?? '').trim()
-    return key === want
-  }) || null
+onMounted(ensureLoaded)
+watch(() => props.params.ref, ensureLoaded)
+
+const resolvedRef = computed(() => String(props.params.ref ?? '').trim())
+
+const matchedPicto = computed(() => {
+  if (!resolvedRef.value) return null
+  return pictosStore.byRef(resolvedRef.value)
 })
 
-const resolvedMediaId = computed(() =>
-  matchedRow.value?.mediaId || props.params.fallbackMediaId || null
-)
+const resolvedMediaId = computed(() => matchedPicto.value?.id ?? null)
 
 const resolvedLabel = computed(() => {
-  if (matchedRow.value) {
-    const lab = matchedRow.value.label
-    if (lab != null && String(lab).trim() !== '') return String(lab)
-    // fallback: show the checklist key if no label set
-    return matchedRow.value.value || ''
-  }
-  return props.params.fallbackLabel || normalizedValue.value || ''
+  const lab = matchedPicto.value?.picto_label
+  if (lab != null && String(lab).trim() !== '') return String(lab)
+  return resolvedRef.value || ''
 })
 
-const showIcon = computed(() => props.params.showIcon !== false)
-const showLabel = computed(() => props.params.showLabel !== false)
+const view = computed(() => props.params.view || 'horizontal')
 
-const isVertical = computed(() => props.params.layout === 'vertical')
+const showIcon = computed(() => view.value !== 'text')
+const showLabel = computed(() => view.value !== 'icon')
+
+const isVertical = computed(() =>
+  view.value === 'vertical' || view.value === 'vertical-inverse'
+)
+
+const isInverse = computed(() =>
+  view.value === 'horizontal-inverse' || view.value === 'vertical-inverse'
+)
 
 const wrapStyle = computed(() => ({
   flexDirection: isVertical.value ? 'column' : 'row',
@@ -78,38 +84,36 @@ const iconMm = computed(() => {
   return Math.min(props.height_mm || 8, props.width_mm || 8)
 })
 
-const imgStyle = computed(() => ({
+const iconOrder = computed(() => (isInverse.value ? 2 : 1))
+const labelOrder = computed(() => (isInverse.value ? 1 : 2))
+
+const imgBaseStyle = computed(() => ({
   width: `${mmToPx(iconMm.value)}px`,
   height: `${mmToPx(iconMm.value)}px`,
   objectFit: props.params.fit || 'contain',
   flexShrink: 0,
+  order: iconOrder.value,
 }))
 
-const emptyIconStyle = computed(() => ({
-  width: `${mmToPx(iconMm.value)}px`,
-  height: `${mmToPx(iconMm.value)}px`,
-  flexShrink: 0,
-}))
+const iconStyle = imgBaseStyle
+const emptyIconStyle = imgBaseStyle
 
-const resolvedFontSizeMm = computed(() => {
-  const rowFs = matchedRow.value?.fontSize
-  if (rowFs != null && rowFs !== '') return Number(rowFs)
-  return Number(props.params.fontSize ?? 2.8)
-})
+const resolvedFontSizeMm = computed(() => Number(props.params.fontSize ?? 2.8))
 
 const labelStyle = computed(() => ({
   fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,
   fontFamily: props.params.fontFamily || 'inherit',
   fontWeight: props.params.fontWeight ?? 400,
   color: props.params.color || 'inherit',
-  textAlign: 'center',
+  textAlign: props.params.textAlign || 'left',
   lineHeight: 1.2,
   minWidth: 0,
+  order: labelOrder.value,
 }))
 </script>
 
 <style scoped>
-.badge-wrap {
+.picto-wrap {
   width: 100%;
   height: 100%;
   display: flex;
@@ -117,7 +121,7 @@ const labelStyle = computed(() => ({
   box-sizing: border-box;
 }
 
-.badge-label {
+.picto-label {
   white-space: normal;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -125,7 +129,7 @@ const labelStyle = computed(() => ({
   flex: 1;
 }
 
-.badge-icon--empty {
+.picto-icon--empty {
   border: 1px dashed var(--border-default);
   color: var(--text-muted);
   display: flex;

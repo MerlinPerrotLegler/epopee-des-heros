@@ -148,6 +148,42 @@ export const api = {
   updateMedia: (id, data) => request(`/media/${id}`, { method: 'PATCH', body: data }),
   deleteMedia: (id) => request(`/media/${id}`, { method: 'DELETE' }),
 
+  // Pictos
+  getPictoTags: () => request('/picto-tags'),
+  createPictoTag: (data) => request('/picto-tags', { method: 'POST', body: data }),
+  updatePictoTag: (id, data) => request(`/picto-tags/${id}`, { method: 'PATCH', body: data }),
+  deletePictoTag: (id) => request(`/picto-tags/${id}`, { method: 'DELETE' }),
+
+  getPictos: (tagIds) => {
+    const q = new URLSearchParams()
+    ;(tagIds || []).forEach((t) => q.append('tag', t))
+    const qs = q.toString()
+    return request(qs ? `/pictos?${qs}` : '/pictos')
+  },
+  createPictoLink: (data) => request('/pictos', { method: 'POST', body: data }),
+  updatePicto: (id, data) => request(`/pictos/${id}`, { method: 'PATCH', body: data }),
+  deletePicto: (id) => request(`/pictos/${id}`, { method: 'DELETE' }),
+  createPictoUpload: (formData) => {
+    return fetch(`${BASE}/pictos`, {
+      method: 'POST',
+      body: formData,
+      credentials: 'include',
+    }).then(async (r) => {
+      if (r.status === 401) {
+        const loc = `${window.location.pathname}${window.location.search}`
+        if (!loc.startsWith('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+        }
+        throw new Error('Non authentifié')
+      }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }))
+        throw new Error(err.error || `API error ${r.status}`)
+      }
+      return r.json()
+    })
+  },
+
   // Card Types
   getCardTypes: () => request('/card-types'),
   createCardType: (data) => request('/card-types', { method: 'POST', body: data }),

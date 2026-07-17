@@ -10,6 +10,7 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useAtomScale } from './useAtomScale.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -18,10 +19,12 @@ const props = defineProps({
   zoom: { type: Number, default: 1 }
 })
 
+const { mmToPx } = useAtomScale(props)
+
 const containerStyle = computed(() => ({
   width: '100%',
   height: '100%',
-  borderRadius: props.params.borderRadius ? `${props.params.borderRadius}px` : '0',
+  borderRadius: props.params.borderRadius ? `${mmToPx(props.params.borderRadius)}px` : '0',
   opacity: props.params.opacity ?? 1,
   overflow: 'hidden',
   display: 'flex',

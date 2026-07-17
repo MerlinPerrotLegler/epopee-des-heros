@@ -1,5 +1,5 @@
 <template>
-  <div style="display:flex;align-items:center;gap:2px;width:100%;height:100%;" :style="containerStyle">
+  <div :style="containerStyle">
     <span :style="{ color: RESOURCE_TYPES[params.resourceType]?.color, fontSize: '1.2em' }">
       {{ RESOURCE_TYPES[params.resourceType]?.icon || '●' }}
     </span>
@@ -15,6 +15,11 @@ import { RESOURCE_TYPES, FONT_FAMILY } from '@/atoms/index.js'
 const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
 const { mmToPx } = useAtomScale(props)
 const containerStyle = computed(() => ({
+  display: 'flex',
+  alignItems: 'center',
+  gap: `${mmToPx(0.5)}px`,
+  width: '100%',
+  height: '100%',
   color: props.params.color,
   fontSize: `${mmToPx(props.params.fontSize || 2.5)}px`,
   fontFamily: props.params.fontFamily || FONT_FAMILY,

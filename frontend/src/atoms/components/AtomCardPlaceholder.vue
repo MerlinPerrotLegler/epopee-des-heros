@@ -30,7 +30,7 @@ const containerStyle = computed(() => {
     height:         '100%',
     background:     props.params.bgColor || 'rgba(108,122,255,0.1)',
     border:         `${bw}px ${props.params.borderStyle || 'dashed'} ${props.params.borderColor || '#6c7aff'}`,
-    borderRadius:   `${props.params.borderRadius ?? 4}px`,
+    borderRadius:   `${mmToPx(props.params.borderRadius ?? 1)}px`,
     display:        'flex',
     flexDirection:  'column',
     alignItems:     'center',
@@ -54,7 +54,7 @@ const labelStyle = computed(() => ({
   fontWeight: 500,
   textAlign:  'center',
   lineHeight:  1.2,
-  padding:    '0 4px',
+  padding:    `0 ${mmToPx(1)}px`,
   wordBreak:  'break-word',
 }))
 </script>

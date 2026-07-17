@@ -46,7 +46,7 @@ export const PARAM_HELP = {
 
   // ── Communs à plusieurs atomes ─────────────────────────────────────────────
   text:          'Texte affiché. Peut contenir une référence de données, ex : {nom.texte}',
-  fontSize:      'Taille du texte en % de la hauteur du layout en cours (ex. 3 → 3 % de height_mm)',
+  fontSize:      'Taille du texte en millimètres (ex. 3 → 3 mm sur la carte imprimée)',
   fontWeight:    'Graisse du texte : 400 = normal, 700 = gras, 900 = très gras',
   fontFamily:    'Police de caractères utilisée',
   color:         'Couleur du texte ou du tracé',
@@ -58,7 +58,7 @@ export const PARAM_HELP = {
   lineHeight:    'Interligne : 1.0 = serré, 1.5 = aéré',
   overflow:      'Comportement si le texte dépasse la zone : caché, visible, ou tronqué avec …',
   opacity:       'Transparence : 0 = invisible, 1 = totalement opaque',
-  borderRadius:  'Arrondi des coins en pixels (0 = angles droits)',
+  borderRadius:  'Arrondi des coins en millimètres (0 = angles droits)',
   borderWidth:   'Épaisseur de la bordure en millimètres (0 = pas de bordure)',
   borderColor:   'Couleur de la bordure',
   borderStyle:   'Style de la bordure : plein, tirets, pointillés',
@@ -77,6 +77,11 @@ export const PARAM_HELP = {
 
   // ── AtomIcon ───────────────────────────────────────────────────────────────
   // (mediaId, svgContent, color, opacity déjà définis)
+
+  // ── AtomPicto ──────────────────────────────────────────────────────────────
+  tag:             'Tag Pictorgame pour filtrer la liste des refs dans le panneau propriétés',
+  ref:             'Référence stable du picto dans le catalogue (ex. or, une-main)',
+  view:            'Mode d\'affichage : icône seule, horizontal, vertical, inversé, ou texte seul',
 
   // ── AtomIconMap / AtomBadge ────────────────────────────────────────────────
   rows:            'Table de correspondance : une ligne par valeur (clé checklist → média ± label)',
@@ -123,7 +128,7 @@ export const PARAM_HELP = {
 
   // ── AtomText (auto-size) ──────────────────────────────────────────────────
   autoSize:      'Agrandit automatiquement le texte pour occuper tout l\'espace disponible',
-  maxFontSize:   'Taille max en % de la hauteur du layout (avec autoSize)',
+  maxFontSize:   'Taille max en millimètres (avec autoSize)',
 
   // ── AtomImage ─────────────────────────────────────────────────────────────
   fit:           'Ajustement de l\'image dans son cadre : remplir, contenir, ou étirer',

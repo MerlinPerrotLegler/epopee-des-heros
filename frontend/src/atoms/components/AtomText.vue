@@ -7,7 +7,6 @@
 <script setup>
 import { computed, ref, watch, nextTick, onMounted } from 'vue'
 import { useAtomScale } from './useAtomScale.js'
-import { useLayoutRelativeFontMm, useLayoutScale } from './useLayoutRelativeFont.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -16,9 +15,8 @@ const props = defineProps({
   zoom:      { type: Number, default: 1 },
 })
 const { mmToPx } = useAtomScale(props)
-const layoutScale = useLayoutScale()
-const fontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.fontSize || 2.8))
-const maxFontSizeMm = useLayoutRelativeFontMm(computed(() => props.params.maxFontSize ?? 12))
+const fontSizeMm = computed(() => Number(props.params.fontSize || 2.8))
+const maxFontSizeMm = computed(() => Number(props.params.maxFontSize ?? 12))
 
 const textEl     = ref(null)
 const autoFontPx = ref(null)
@@ -67,7 +65,7 @@ onMounted(fitTextSize)
 watch(
   () => [props.params.text, props.params.autoSize, props.params.maxFontSize,
          props.params.fontFamily, props.params.fontWeight, props.params.lineHeight,
-         props.width_mm, props.height_mm, props.zoom, layoutScale.value],
+         props.width_mm, props.height_mm, props.zoom],
   () => nextTick(fitTextSize),
 )
 
