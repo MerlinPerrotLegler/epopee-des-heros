@@ -24,7 +24,10 @@ router.post('/', async (req, res) => {
     await db.prepare('INSERT INTO fonts (id, family, url) VALUES (?, ?, ?)').run(id, family, fontUrl)
     res.status(201).json({ id, family, url: fontUrl })
   } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.status(409).json({ error: 'Font already added' })
+    const msg = e.message || ''
+    if (msg.includes('UNIQUE') || msg.includes('Duplicate')) {
+      return res.status(409).json({ error: 'Font already added' })
+    }
     throw e
   }
 })

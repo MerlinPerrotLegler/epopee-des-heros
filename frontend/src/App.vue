@@ -66,7 +66,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted } from 'vue'
+import { onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useEditorStore } from '@/stores/editor.js'
 import { useConfigStore } from '@/stores/config.js'
@@ -95,10 +95,25 @@ async function onLogout() {
   await router.push('/login')
 }
 
+async function loadAppData() {
+  if (!auth.isAuthenticated) return
+  await Promise.allSettled([
+    configStore.load(),
+    fontsStore.load({ force: !fontsStore.loaded }),
+  ])
+}
+
+// Charger config/polices seulement une fois authentifié (évite 401 au login + reload manquant après connexion)
+watch(
+  () => [auth.ready, auth.isAuthenticated],
+  ([ready, ok]) => {
+    if (ready && ok) loadAppData()
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
-  configStore.load()
-  fontsStore.load()
 })
 onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
 </script>

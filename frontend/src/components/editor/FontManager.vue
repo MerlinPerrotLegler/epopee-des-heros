@@ -22,9 +22,9 @@
     </p>
 
     <!-- Liste des polices enregistrées -->
-    <div v-if="fontsStore.fonts.length" class="fm-list">
+    <div v-if="fontsStore.fonts.length" class="fm-list" :key="fontsStore.generation">
       <div v-for="font in fontsStore.fonts" :key="font.id" class="fm-item">
-        <span class="fm-family" :style="{ fontFamily: font.family }">{{ font.family }}</span>
+        <span class="fm-family" :style="{ fontFamily: `'${font.family}', sans-serif` }">{{ font.family }}</span>
         <button class="fm-del" @click="removeFont(font.id)" title="Supprimer">✕</button>
       </div>
     </div>
@@ -33,7 +33,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useFontsStore } from '@/stores/fonts.js'
 
 const fontsStore = useFontsStore()
@@ -41,6 +41,12 @@ const fontsStore = useFontsStore()
 const familyInput = ref('')
 const adding = ref(false)
 const error = ref('')
+
+onMounted(() => {
+  if (!fontsStore.loaded) {
+    fontsStore.load().catch((e) => { error.value = e.message })
+  }
+})
 
 async function addFont() {
   const family = familyInput.value.trim()
@@ -58,7 +64,12 @@ async function addFont() {
 }
 
 async function removeFont(id) {
-  await fontsStore.remove(id)
+  error.value = ''
+  try {
+    await fontsStore.remove(id)
+  } catch (e) {
+    error.value = e.message || 'Suppression impossible'
+  }
 }
 </script>
 

@@ -33,7 +33,15 @@ async function request(path, options = {}) {
     const err = await res.json().catch(() => ({ error: res.statusText }))
     throw new Error(err.error || `API error ${res.status}`)
   }
-  return res.json()
+  // 204 No Content / corps vide (ex. DELETE polices) — ne pas appeler res.json()
+  if (res.status === 204) return null
+  const text = await res.text()
+  if (!text) return null
+  try {
+    return JSON.parse(text)
+  } catch {
+    return text
+  }
 }
 
 /** Verrou layout : 409 = déjà pris (ne pas throw) */
