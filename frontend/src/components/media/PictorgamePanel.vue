@@ -1,6 +1,8 @@
 <template>
   <div class="pictorgame-panel">
-    <div class="pg-layout">
+    <div v-if="initialLoading" class="pg-loading">Chargement…</div>
+    <div v-else-if="initialLoadError" class="pg-load-error">{{ initialLoadError }}</div>
+    <div v-else class="pg-layout">
       <!-- Tags sidebar -->
       <aside class="pg-tags">
         <div class="pg-tags-header">
@@ -201,7 +203,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
 import { api } from '@/utils/api.js'
 import { usePictosStore } from '@/stores/pictos.js'
 
@@ -225,7 +227,23 @@ const pictoFormError = ref('')
 const savingPicto = ref(false)
 const confirmDeletePicto = ref(null)
 
+const initialLoading = ref(true)
+const initialLoadError = ref(null)
+const uploadBlobUrl = ref(null)
+
 const REF_RE = /^[a-zA-Z0-9_-]+$/
+
+function revokeUploadBlobUrl() {
+  if (uploadBlobUrl.value) {
+    URL.revokeObjectURL(uploadBlobUrl.value)
+    uploadBlobUrl.value = null
+  }
+}
+
+watch(uploadFile, (file) => {
+  revokeUploadBlobUrl()
+  if (file) uploadBlobUrl.value = URL.createObjectURL(file)
+})
 
 const filteredPictos = computed(() => {
   if (!activeFilterTags.value.length) return pictosStore.pictos
@@ -242,8 +260,8 @@ const pictoFormModeTitle = computed(() => {
 
 const pictoFormPreviewSrc = computed(() => {
   if (!pictoForm.value) return null
-  if (pictoFormMode.value === 'upload' && uploadFile.value) {
-    return URL.createObjectURL(uploadFile.value)
+  if (pictoFormMode.value === 'upload' && uploadBlobUrl.value) {
+    return uploadBlobUrl.value
   }
   if (pictoFormMode.value === 'link' && linkSourceId.value) {
     const m = linkableMedia.value.find((x) => x.id === linkSourceId.value)
@@ -364,6 +382,7 @@ function closePictoForm() {
   uploadFile.value = null
   linkSourceId.value = null
   pictoFormError.value = ''
+  revokeUploadBlobUrl()
 }
 
 function validatePictoForm() {
@@ -440,11 +459,23 @@ function showToast(msg, type = 'success') {
   setTimeout(() => { toasts.value = toasts.value.filter((t) => t.id !== id) }, 4000)
 }
 
-onMounted(() => pictosStore.load())
+onMounted(async () => {
+  try {
+    await pictosStore.load()
+  } catch (e) {
+    initialLoadError.value = e.message || 'Impossible de charger les pictos'
+  } finally {
+    initialLoading.value = false
+  }
+})
+
+onUnmounted(revokeUploadBlobUrl)
 </script>
 
 <style scoped>
 .pictorgame-panel { padding: 0; }
+.pg-loading, .pg-load-error { text-align: center; padding: 40px; min-height: 200px; color: var(--text-muted); font-size: 12px; }
+.pg-load-error { color: #ef4444; }
 .pg-layout { display: flex; gap: 16px; min-height: 400px; }
 
 .pg-tags { width: 200px; flex-shrink: 0; }
