@@ -75,18 +75,36 @@ router.patch('/:id', async (req, res) => {
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
   const { name, card_type, width_mm, height_mm, back_layout_id, is_back, shape } = req.body;
-  const newShape = shape !== undefined ? (shape === 'hexagon' ? 'hexagon' : 'rectangle') : null;
+  const merged = {
+    name: name !== undefined ? name : existing.name,
+    card_type: card_type !== undefined ? card_type : existing.card_type,
+    width_mm: width_mm !== undefined ? width_mm : existing.width_mm,
+    height_mm: height_mm !== undefined ? height_mm : existing.height_mm,
+    is_back: is_back !== undefined ? (is_back ? 1 : 0) : existing.is_back,
+    back_layout_id: back_layout_id !== undefined ? (back_layout_id || null) : existing.back_layout_id,
+    shape: shape !== undefined ? (shape === 'hexagon' ? 'hexagon' : 'rectangle') : (existing.shape || 'rectangle'),
+  };
+
   await db.prepare(`UPDATE layouts SET
-    name = COALESCE(?, name),
-    card_type = COALESCE(?, card_type),
-    width_mm = COALESCE(?, width_mm),
-    height_mm = COALESCE(?, height_mm),
-    is_back = COALESCE(?, is_back),
+    name = ?,
+    card_type = ?,
+    width_mm = ?,
+    height_mm = ?,
+    is_back = ?,
     back_layout_id = ?,
-    shape = COALESCE(?, shape),
+    shape = ?,
     updated_at = CURRENT_TIMESTAMP
     WHERE id = ?`,
-  ).run(name, card_type, width_mm, height_mm, is_back != null ? (is_back ? 1 : 0) : null, back_layout_id !== undefined ? (back_layout_id || null) : existing.back_layout_id, newShape, req.params.id);
+  ).run(
+    merged.name,
+    merged.card_type,
+    merged.width_mm,
+    merged.height_mm,
+    merged.is_back,
+    merged.back_layout_id,
+    merged.shape,
+    req.params.id,
+  );
 
   const row = await db.prepare('SELECT * FROM layouts WHERE id = ?').get(req.params.id);
   row.definition = parseJsonColumn(row.definition);

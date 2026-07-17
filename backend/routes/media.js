@@ -31,8 +31,15 @@ router.post('/folders', async (req, res) => {
 
 router.patch('/folders/:id', async (req, res) => {
   const db = getDb();
+  const existing = await db.prepare('SELECT * FROM media_folders WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
   const { name, parent_id } = req.body;
-  await db.prepare('UPDATE media_folders SET name = COALESCE(?, name), parent_id = COALESCE(?, parent_id) WHERE id = ?').run(name, parent_id, req.params.id);
+  await db.prepare('UPDATE media_folders SET name = ?, parent_id = ? WHERE id = ?').run(
+    name !== undefined ? name : existing.name,
+    parent_id !== undefined ? parent_id : existing.parent_id,
+    req.params.id,
+  );
   const row = await db.prepare('SELECT * FROM media_folders WHERE id = ?').get(req.params.id);
   res.json(row);
 });
@@ -95,9 +102,14 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
 
 router.patch('/:id', async (req, res) => {
   const db = getDb();
+  const existing = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ?`).get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
   const { folder_id, original_name } = req.body;
-  await db.prepare('UPDATE media SET folder_id = COALESCE(?, folder_id), original_name = COALESCE(?, original_name) WHERE id = ?').run(
-    folder_id, original_name, req.params.id,
+  await db.prepare('UPDATE media SET folder_id = ?, original_name = ? WHERE id = ?').run(
+    folder_id !== undefined ? folder_id : existing.folder_id,
+    original_name !== undefined ? original_name : existing.original_name,
+    req.params.id,
   );
   const row = await db.prepare(`SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ?`).get(req.params.id);
   res.json(row);

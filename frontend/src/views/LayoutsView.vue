@@ -101,6 +101,7 @@
 
         <!-- Actions -->
         <div class="tile-actions" @click.stop>
+          <button type="button" class="act-btn" title="Configurer" @mousedown.prevent @click="openEdit(l)">⚙</button>
           <button type="button" class="act-btn" title="Renommer" @mousedown.prevent @click="startRename(l)">✎</button>
           <button type="button" class="act-btn" title="Dupliquer" @mousedown.prevent @click="duplicate(l)">⧉</button>
           <button type="button" class="act-btn act-del" title="Supprimer" @mousedown.prevent @click="confirmDelete(l)">✕</button>
@@ -113,49 +114,23 @@
       <p v-else>Aucun layout. Créez-en un pour commencer à designer vos cartes.</p>
     </div>
 
-    <!-- Create Layout Modal -->
-    <div class="modal-overlay" v-if="showCreate" @click.self="showCreate = false">
-      <div class="modal">
-        <h3>Nouveau layout</h3>
-        <div class="field-row"><label>Nom</label><input v-model="form.name" placeholder="Carte équipement" /></div>
-        <div class="field-row">
-          <label>Type</label>
-          <select v-model="form.card_type">
-            <option v-for="t in cardTypes" :key="t.code" :value="t.code">{{ t.label }}</option>
-          </select>
-        </div>
-        <div class="field-row">
-          <label>Forme hexagonale</label>
-          <input type="checkbox" v-model="form.is_hexagonal" style="width:auto;cursor:pointer" />
-        </div>
-        <div class="field-row">
-          <label>Dimensions</label>
-          <div class="dims-row">
-            <input type="number" v-model.number="form.width_mm" min="10" max="500" class="dim-input" placeholder="Larg." />
-            <span class="dim-sep">×</span>
-            <input v-if="form.is_hexagonal" type="text" :value="form.height_mm" readonly class="dim-input dim-input-readonly" title="Calculé automatiquement (ratio hexagonal)" />
-            <input v-else type="number" v-model.number="form.height_mm" min="10" max="500" class="dim-input" placeholder="Haut." />
-            <span class="dim-unit">mm</span>
-            <button v-if="!form.is_hexagonal" type="button" class="btn-swap" title="Échanger largeur / hauteur" @click="swapDims(form)">⇄</button>
-          </div>
-        </div>
-        <div class="field-row">
-          <label>Dos de carte</label>
-          <input type="checkbox" v-model="form.is_back" style="width:auto;cursor:pointer" />
-        </div>
-        <div v-if="!form.is_back" class="field-row">
-          <label>Verso lié</label>
-          <select v-model="form.back_layout_id">
-            <option :value="null">— Aucun —</option>
-            <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
-          </select>
-        </div>
-        <div class="modal-actions">
-          <button class="btn-ghost" @click="showCreate = false">Annuler</button>
-          <button class="btn-primary" @click="create" :disabled="!form.name">Créer</button>
-        </div>
-      </div>
-    </div>
+    <LayoutSettingsModal
+      :open="showCreate"
+      :layout="null"
+      :card-types="cardTypes"
+      :verso-layouts="versoLayouts"
+      :save-fn="createFromPayload"
+      @close="showCreate = false"
+    />
+
+    <LayoutSettingsModal
+      :open="!!editingLayout"
+      :layout="editingLayout"
+      :card-types="cardTypes"
+      :verso-layouts="versoLayouts"
+      :save-fn="saveEditFromPayload"
+      @close="editingLayout = null"
+    />
 
     <!-- Create Verso Modal (from recto tile) -->
     <div class="modal-overlay" v-if="versoCreateTarget" @click.self="cancelCreateVerso">
@@ -189,26 +164,22 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/utils/api.js'
-import { hexHeightFromWidth, isHexLayout } from '@/utils/hexGeometry.js'
+import { isHexLayout } from '@/utils/hexGeometry.js'
 import { useInlineRename } from '@/composables/useInlineRename.js'
+import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
 
 const router = useRouter()
 const layouts    = ref([])
 const cardTypes  = ref([])
 const showCreate = ref(false)
+const editingLayout = ref(null)
 const search     = ref('')
 const sortKey    = ref('name')
 const faceTab    = ref('recto')
 const viewMode   = ref('grid')
-
-const form = ref({ name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false })
-
-watch(() => [form.value.is_hexagonal, form.value.width_mm], ([isHex, w]) => {
-  if (isHex) form.value.height_mm = hexHeightFromWidth(w)
-})
 
 const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
 const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
@@ -224,8 +195,8 @@ const {
 } = useInlineRename(
   (item) => item.name,
   async (item, name) => {
-    await api.updateLayout(item.id, { name })
-    item.name = name
+    const updated = await api.updateLayout(item.id, { name })
+    item.name = updated.name ?? name
   },
 )
 
@@ -259,29 +230,35 @@ function thumbStyle(l) {
   return { width: `${MAX}px`, height: `${Math.round(MAX * ratio)}px` }
 }
 
+function openEdit(l) {
+  editingLayout.value = l
+}
+
+async function createFromPayload(payload) {
+  const layout = await api.createLayout(payload)
+  layouts.value.push(layout)
+  return layout
+}
+
+async function saveEditFromPayload(payload) {
+  const id = editingLayout.value?.id
+  if (!id) throw new Error('Layout introuvable')
+  const updated = await api.updateLayout(id, payload)
+  const idx = layouts.value.findIndex(x => x.id === id)
+  if (idx !== -1) {
+    layouts.value[idx] = { ...layouts.value[idx], ...updated }
+  }
+  return updated
+}
+
+const versoCreateTarget = ref(null)
+const versoForm = ref({ name: '', card_type: 'dos', width_mm: 63, height_mm: 88 })
+
 function swapDims(obj) {
   const tmp = obj.width_mm
   obj.width_mm = obj.height_mm
   obj.height_mm = tmp
 }
-
-async function create() {
-  const layout = await api.createLayout({
-    name: form.value.name,
-    card_type: form.value.card_type,
-    width_mm: form.value.width_mm,
-    height_mm: form.value.height_mm,
-    is_back: form.value.is_back,
-    back_layout_id: form.value.is_back ? null : form.value.back_layout_id,
-    shape: form.value.is_hexagonal ? 'hexagon' : 'rectangle',
-  })
-  layouts.value.push(layout)
-  showCreate.value = false
-  form.value = { name: '', card_type: 'equipement', width_mm: 63, height_mm: 88, is_back: false, back_layout_id: null, is_hexagonal: false }
-}
-
-const versoCreateTarget = ref(null)
-const versoForm = ref({ name: '', card_type: 'dos', width_mm: 63, height_mm: 88 })
 
 function onVersoSelectChange(l, value) {
   if (value === '__create__') {
@@ -514,14 +491,6 @@ async function confirmDelete(l) {
 .act-btn:hover { color: var(--text-primary); border-color: var(--accent-primary); background: var(--bg-tertiary); }
 .act-del:hover { color: #ef4444; border-color: #ef4444; }
 
-.dims-row { display: flex; align-items: center; gap: 5px; }
-.dim-input {
-  width: 58px; padding: 4px 6px; font-size: 12px; text-align: center;
-  background: var(--bg-deep); border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm); color: var(--text-primary); outline: none;
-}
-.dim-input:focus { border-color: var(--accent-primary); }
-.dim-input-readonly { opacity: 0.55; cursor: not-allowed; }
 .dim-fixed {
   width: 40px; text-align: center; font-size: 12px;
   font-family: var(--font-mono); color: var(--text-secondary);
@@ -539,6 +508,7 @@ async function confirmDelete(l) {
 .btn-swap:hover { color: var(--accent-primary); border-color: var(--accent-primary); }
 
 .modal-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 8px; line-height: 1.5; }
+.dims-row { display: flex; align-items: center; gap: 5px; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-muted); }
 </style>

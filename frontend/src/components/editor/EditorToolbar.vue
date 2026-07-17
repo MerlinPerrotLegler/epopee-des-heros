@@ -9,11 +9,27 @@
     <div class="toolbar-left">
       <router-link :to="store.mode === 'component' ? '/components' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
       <span class="toolbar-divider"></span>
-      <span class="toolbar-title">{{ store.layout?.name || '…' }}</span>
+      <button
+        v-if="store.mode === 'layout' && store.layout"
+        type="button"
+        class="toolbar-title toolbar-title-btn"
+        title="Modifier la configuration"
+        :disabled="store.readOnly || !store.layoutLockHeld"
+        @click="showSettings = true"
+      >{{ store.layout?.name || '…' }}</button>
+      <span v-else class="toolbar-title">{{ store.layout?.name || '…' }}</span>
       <span class="badge" v-if="store.mode === 'component'">Composant</span>
       <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }}×{{ store.layout.height_mm }}mm</span>
       <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>
+      <button
+        v-if="store.mode === 'layout' && store.layout"
+        type="button"
+        class="btn-icon btn-sm"
+        title="Configurer le layout"
+        :disabled="store.readOnly || !store.layoutLockHeld"
+        @click="showSettings = true"
+      >⚙</button>
       <span class="save-indicator" v-if="store.dirty">● non sauvegardé</span>
     </div>
     <div class="toolbar-center">
@@ -43,12 +59,52 @@
       </button>
     </div>
     </div>
+
+    <LayoutSettingsModal
+      :open="showSettings"
+      :layout="store.layout"
+      :card-types="cardTypes"
+      :verso-layouts="versoLayouts"
+      :save-fn="saveLayoutMeta"
+      @close="showSettings = false"
+    />
   </div>
 </template>
 
 <script setup>
+import { ref, computed, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { api } from '@/utils/api.js'
+import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
+
 const store = useEditorStore()
+const showSettings = ref(false)
+const cardTypes = ref([])
+const allLayouts = ref([])
+
+const versoLayouts = computed(() => allLayouts.value.filter(l => l.is_back && l.id !== store.layout?.id))
+
+onMounted(async () => {
+  if (store.mode !== 'layout') return
+  try {
+    ;[cardTypes.value, allLayouts.value] = await Promise.all([
+      api.getCardTypes(),
+      api.getLayouts(),
+    ])
+  } catch (e) {
+    console.error('Failed to load layout settings data', e)
+  }
+})
+
+async function saveLayoutMeta(payload) {
+  if (!store.layout?.id) throw new Error('Layout introuvable')
+  const updated = await api.updateLayout(store.layout.id, payload)
+  store.applyLayoutMeta(updated)
+  const idx = allLayouts.value.findIndex(l => l.id === updated.id)
+  if (idx !== -1) allLayouts.value[idx] = { ...allLayouts.value[idx], ...updated }
+  else allLayouts.value.push(updated)
+  return updated
+}
 </script>
 
 <style scoped>
@@ -93,13 +149,33 @@ const store = useEditorStore()
   gap: 8px;
 }
 
-.toolbar-left { flex: 1; }
+.toolbar-left { flex: 1; min-width: 0; }
 .toolbar-center { flex-shrink: 0; }
 .toolbar-right { flex: 1; justify-content: flex-end; }
 
 .toolbar-title {
   font-weight: 600;
   font-size: 14px;
+}
+.toolbar-title-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
+  color: inherit;
+  cursor: pointer;
+  padding: 2px 6px;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.toolbar-title-btn:hover:not(:disabled) {
+  border-color: var(--accent-primary);
+  color: var(--accent-primary);
+}
+.toolbar-title-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
 }
 
 .toolbar-divider {

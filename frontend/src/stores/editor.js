@@ -309,6 +309,15 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  /** Met à jour les métadonnées du layout ouvert (nom, dims, type…) sans toucher à la definition. */
+  function applyLayoutMeta(meta) {
+    if (!layout.value || !meta) return
+    const keys = ['name', 'card_type', 'width_mm', 'height_mm', 'is_back', 'back_layout_id', 'shape', 'updated_at']
+    for (const k of keys) {
+      if (meta[k] !== undefined) layout.value[k] = meta[k]
+    }
+  }
+
   async function _preloadComponents() {
     const ids = new Set()
     for (const el of allElements.value) {
@@ -659,7 +668,7 @@ export const useEditorStore = defineStore('editor', () => {
     readOnly, layoutLockHolder, layoutLockHeld,
     enterLayoutEditor, leaveLayoutEditor,
     history, canUndo, undo, _snapshot,
-    loadLayout, loadComponent, saveDefinition, markDirty,
+    loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta,
     // Group/item ops
     addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
     moveItemToGroup, moveGroupBy, reorderItemAroundTarget,

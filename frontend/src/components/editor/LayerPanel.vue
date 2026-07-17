@@ -242,7 +242,8 @@ function layerRenameRef(el) {
   if (!el) return
   requestAnimationFrame(() => {
     el.focus()
-    el.select()
+    const len = el.value?.length ?? 0
+    el.setSelectionRange(len, len)
   })
 }
 
