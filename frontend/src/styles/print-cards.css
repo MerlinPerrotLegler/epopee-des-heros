@@ -13,6 +13,12 @@
 
 @media print {
   /* Critical: overflow ancestors clip print content — reset before painting */
+  html, body, #app {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
   .app-shell,
   .app-main,
   .cards-view,
