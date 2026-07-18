@@ -35,7 +35,6 @@ const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
   width_mm:  { type: Number,  default: 40 },
   height_mm: { type: Number,  default: 4 },
-  zoom:      { type: Number,  default: 1 },
 })
 
 const SCALE = 10

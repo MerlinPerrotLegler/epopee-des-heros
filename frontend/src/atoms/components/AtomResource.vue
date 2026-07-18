@@ -10,18 +10,17 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 import { RESOURCE_TYPES, FONT_FAMILY } from '@/atoms/index.js'
-const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
-const { mmToPx } = useAtomScale(props)
+const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number })
 const containerStyle = computed(() => ({
   display: 'flex',
   alignItems: 'center',
-  gap: `${mmToPx(0.5)}px`,
+  gap: mmCss(0.5),
   width: '100%',
   height: '100%',
   color: props.params.color,
-  fontSize: `${mmToPx(props.params.fontSize || 2.5)}px`,
+  fontSize: mmCss(props.params.fontSize || 2.5),
   fontFamily: props.params.fontFamily || FONT_FAMILY,
 }))
 </script>

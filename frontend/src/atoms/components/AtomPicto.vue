@@ -23,17 +23,16 @@
 <script setup>
 import { computed, onMounted, watch } from 'vue'
 import { usePictosStore } from '@/stores/pictos.js'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
   width_mm: Number,
   height_mm: Number,
-  zoom: { type: Number, default: 1 },
 })
 
 const pictosStore = usePictosStore()
-const { mmToPx } = useAtomScale(props)
+
 
 function ensureLoaded() {
   pictosStore.load()
@@ -72,7 +71,7 @@ const isInverse = computed(() =>
 
 const wrapStyle = computed(() => ({
   flexDirection: isVertical.value ? 'column' : 'row',
-  gap: `${mmToPx(props.params.gap ?? 1)}px`,
+  gap: mmCss(props.params.gap ?? 1),
   opacity: props.params.opacity ?? 1,
   justifyContent: 'center',
   alignItems: 'center',
@@ -88,8 +87,8 @@ const iconOrder = computed(() => (isInverse.value ? 2 : 1))
 const labelOrder = computed(() => (isInverse.value ? 1 : 2))
 
 const imgBaseStyle = computed(() => ({
-  width: `${mmToPx(iconMm.value)}px`,
-  height: `${mmToPx(iconMm.value)}px`,
+  width: mmCss(iconMm.value),
+  height: mmCss(iconMm.value),
   objectFit: props.params.fit || 'contain',
   flexShrink: 0,
   order: iconOrder.value,
@@ -101,7 +100,7 @@ const emptyIconStyle = imgBaseStyle
 const resolvedFontSizeMm = computed(() => Number(props.params.fontSize ?? 2.8))
 
 const labelStyle = computed(() => ({
-  fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,
+  fontSize: mmCss(resolvedFontSizeMm.value),
   fontFamily: props.params.fontFamily || 'inherit',
   fontWeight: props.params.fontWeight ?? 400,
   color: props.params.color || 'inherit',
@@ -109,8 +108,7 @@ const labelStyle = computed(() => ({
   lineHeight: 1.2,
   minWidth: 0,
   order: labelOrder.value,
-}))
-</script>
+}))</script>
 
 <style scoped>
 .picto-wrap {

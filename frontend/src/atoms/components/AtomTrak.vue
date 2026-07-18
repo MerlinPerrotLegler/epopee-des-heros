@@ -69,16 +69,12 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 }
 })
-
-const { mmToPx } = useAtomScale(props)
 
 // Liste des numéros à afficher
 const cells = computed(() => {

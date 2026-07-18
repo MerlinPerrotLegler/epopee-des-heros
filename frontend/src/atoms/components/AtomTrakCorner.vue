@@ -61,7 +61,6 @@ const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 },
 })
 
 // viewBox 0-100 ; on met fontSize et borderWidth à l'échelle

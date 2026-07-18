@@ -78,16 +78,14 @@
 import { computed } from 'vue'
 import { buildFramePaths, estimateTitleGapWidth } from '@/utils/frameStrokes.js'
 import { buildCornerOrnaments } from '@/utils/cornerOrnaments.js'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  { type: Number, default: 50 },
   height_mm: { type: Number, default: 20 },
-  zoom:      { type: Number, default: 1 },
 })
 
-const { mmToPx } = useAtomScale(props)
 
 const SCALE = 10
 
@@ -139,16 +137,16 @@ const cornerOrnaments = computed(() => {
 const titleStyle = computed(() => {
   const align = props.params.titleAlign || 'center'
   return {
-    fontSize: `${mmToPx(fontSizeMm.value)}px`,
+    fontSize: mmCss(fontSizeMm.value),
     fontFamily: props.params.fontFamily || 'inherit',
     fontWeight: props.params.fontWeight ?? 600,
     color: props.params.titleColor || props.params.color || 'inherit',
     textAlign: align,
-    top: `${mmToPx(Math.max(0.1, fontSizeMm.value * 0.06))}px`,
+    top: mmCss(Math.max(0.1, fontSizeMm.value * 0.06)),
     left: '50%',
     transform: 'translateX(-50%)',
-    maxWidth: `${mmToPx(Math.max(8, titleGapWidth.value / SCALE))}px`,
-    padding: `0 ${mmToPx(0.8)}px`,
+    maxWidth: mmCss(Math.max(8, titleGapWidth.value / SCALE)),
+    padding: `0 ${mmCss(0.8)}`,
     background: props.params.titleBgColor || 'transparent',
     lineHeight: 1.1,
     whiteSpace: 'nowrap',

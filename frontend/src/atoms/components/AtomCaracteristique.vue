@@ -19,23 +19,22 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 import { STAT_TYPES, FONT_FAMILY } from '@/atoms/index.js'
 
-const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
-const { mmToPx } = useAtomScale(props)
+const props = defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number })
 
 const stat = computed(() => (props.params.stat || 'FOR').toUpperCase().slice(0, 3))
 const effectiveFontMm = computed(() => Number(props.params.fontSize || 3))
 const wrapStyle = computed(() => ({
   // Hauteur pilotée par la taille de police pour garder un rendu cohérent
-  height: `${Math.max(1, mmToPx(effectiveFontMm.value * 1.35))}px`,
+  height: mmCss(Math.max(1, effectiveFontMm.value * 1.35)),
 }))
 
 const rectStyle = computed(() => ({
   background: 'transparent',
   color: props.params.textColor ?? STAT_TYPES[props.params.stat]?.color ?? '#1a1a2e',
-  fontSize: `${mmToPx(effectiveFontMm.value)}px`,
+  fontSize: mmCss(effectiveFontMm.value),
   fontFamily: props.params.fontFamily || FONT_FAMILY,
   fontWeight: props.params.fontWeight || 700,
 }))

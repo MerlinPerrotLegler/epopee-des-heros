@@ -9,7 +9,6 @@ const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 },
 })
 
 const rootStyle = computed(() => {

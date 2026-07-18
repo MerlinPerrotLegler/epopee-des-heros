@@ -31,7 +31,6 @@ const props = defineProps({
   params:     { type: Object,  default: () => ({}) },
   width_mm:   Number,
   height_mm:  Number,
-  zoom:       { type: Number,  default: 1 },
   liveStroke: { type: Object,  default: null },  // { d, color, opacity }
 })
 

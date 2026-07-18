@@ -6,30 +6,28 @@
 
 <script setup>
 import { computed, ref, watch, nextTick, onMounted } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss, CSS_PX_PER_MM } from '@/utils/cssMm.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 },
 })
-const { mmToPx } = useAtomScale(props)
 const fontSizeMm = computed(() => Number(props.params.fontSize || 2.8))
 const maxFontSizeMm = computed(() => Number(props.params.maxFontSize ?? 12))
 
 const textEl     = ref(null)
-const autoFontPx = ref(null)
+const autoFontMm = ref(null)
 
-// ── Auto-size : binary search via a hidden probe element ──────────────────
+// ── Auto-size : binary search via a hidden probe (CSS reference px, no zoom) ─
 function fitTextSize() {
-  if (!props.params.autoSize) { autoFontPx.value = null; return }
+  if (!props.params.autoSize) { autoFontMm.value = null; return }
 
   const text        = props.params.text || 'Texte…'
-  const maxFontPx_  = mmToPx(maxFontSizeMm.value)
+  const maxFontPx_  = maxFontSizeMm.value * CSS_PX_PER_MM
   const minFontPx   = 4
-  const containerW  = mmToPx(props.width_mm)
-  const containerH  = mmToPx(props.height_mm)
+  const containerW  = props.width_mm * CSS_PX_PER_MM
+  const containerH  = props.height_mm * CSS_PX_PER_MM
   if (!containerW || !containerH) return
 
   // Create an off-screen probe with identical styles
@@ -58,14 +56,14 @@ function fitTextSize() {
     }
   }
   document.body.removeChild(probe)
-  autoFontPx.value = best
+  autoFontMm.value = best / CSS_PX_PER_MM
 }
 
 onMounted(fitTextSize)
 watch(
   () => [props.params.text, props.params.autoSize, props.params.maxFontSize,
          props.params.fontFamily, props.params.fontWeight, props.params.lineHeight,
-         props.width_mm, props.height_mm, props.zoom],
+         props.width_mm, props.height_mm],
   () => nextTick(fitTextSize),
 )
 
@@ -79,12 +77,12 @@ const containerStyle = computed(() => ({
 }))
 
 const textStyle = computed(() => {
-  const fontSizePx = props.params.autoSize && autoFontPx.value
-    ? autoFontPx.value
-    : mmToPx(fontSizeMm.value)
+  const fontSize = props.params.autoSize && autoFontMm.value != null
+    ? mmCss(autoFontMm.value)
+    : mmCss(fontSizeMm.value)
   return {
     fontFamily:   props.params.fontFamily || 'Outfit',
-    fontSize:     `${fontSizePx}px`,
+    fontSize,
     fontWeight:   props.params.fontWeight || 400,
     color:        props.params.color || '#333',
     textAlign:    props.params.textAlign || 'center',

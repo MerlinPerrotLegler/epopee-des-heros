@@ -22,7 +22,6 @@
             :params="diePenParams(token.value, 8)"
             :width_mm="dieSize"
             :height_mm="dieSize"
-            :zoom="zoom"
           />
         </span>
 
@@ -35,9 +34,9 @@
             :params="diePenParams(token.value, 12)"
             :width_mm="dieSize"
             :height_mm="dieSize"
-            :zoom="zoom"
           />
         </span>
+
 
         <!-- ── Ressource ──────────────────────────────────────────────── -->
         <span v-else-if="token.type === 'resource'" class="rt-resource" :style="[inlineTagStyle, resourceStyle()]">
@@ -93,22 +92,19 @@ import { tokenize, parseFML }    from '@/utils/richTextParser.js'
 import { RESOURCE_TYPES, STAT_TYPES } from '@/atoms/index.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { usePictosStore } from '@/stores/pictos.js'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 import AtomDice8  from './AtomDice8.vue'
 import AtomDice12 from './AtomDice12.vue'
-
-const MM_TO_PX = 3.7795275591
 
 // ── Props ─────────────────────────────────────────────────────────────────────
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 },
 })
 
-const { mmToPx } = useAtomScale(props)
 const configStore = useConfigStore()
+
 const pictosStore = usePictosStore()
 pictosStore.load()
 
@@ -132,28 +128,25 @@ const tokens = computed(() => tokenize(p.value.content || ''))
 // ── Styles ────────────────────────────────────────────────────────────────────
 const containerStyle = computed(() => ({
   display:    'inline',       // inline flow — le parent (canvas-element) est sized
-  fontSize:   `${mmToPx(fontSize_mm.value)}px`,
+  fontSize:   mmCss(fontSize_mm.value),
   fontFamily: fontFamily.value,
   color:      color.value,
   lineHeight: p.value.lineHeight || 1.5,
   textAlign:  p.value.align || 'left',
-  padding:    `${mmToPx(padding_mm.value)}px`,
+  padding:    mmCss(padding_mm.value),
   wordBreak:  'break-word',
   overflowWrap: 'break-word',
   whiteSpace: 'pre-wrap',
 }))
 
-// Die span : inline-block, vertical-align middle, sized in px
-const dieSpanStyle = computed(() => {
-  const px = dieSize.value * MM_TO_PX * (props.zoom || 1)
-  return {
-    display:       'inline-block',
-    width:         `${px}px`,
-    height:        `${px}px`,
-    verticalAlign: 'middle',
-    flexShrink:    '0',
-  }
-})
+// Die span : inline-block, vertical-align middle, sized in CSS mm
+const dieSpanStyle = computed(() => ({
+  display:       'inline-block',
+  width:         mmCss(dieSize.value),
+  height:        mmCss(dieSize.value),
+  verticalAlign: 'middle',
+  flexShrink:    '0',
+}))
 
 // Inline tag (resource, stat) base style — matches surrounding em-scale
 const inlineTagStyle = computed(() => ({
@@ -201,7 +194,7 @@ function resourceIcon(type)  { return RESOURCE_TYPES[type]?.icon  || '●'   }
 function resourceStyle() {
   return {
     fontFamily: getFixedAtomParam('resource', 'fontFamily', fontFamily.value),
-    fontSize: `${mmToPx(getFixedAtomParam('resource', 'fontSize', fontSize_mm.value))}px`,
+    fontSize: mmCss(getFixedAtomParam('resource', 'fontSize', fontSize_mm.value)),
   }
 }
 
@@ -219,7 +212,7 @@ function statStyle(stat) {
     borderRadius:  '0',
     padding:       '0',
     fontWeight:    '700',
-    fontSize:      `${mmToPx(getFixedAtomParam('caracteristique', 'fontSize', 3))}px`,
+    fontSize:      mmCss(getFixedAtomParam('caracteristique', 'fontSize', 3)),
     fontFamily:    getFixedAtomParam('caracteristique', 'fontFamily', fontFamily.value),
     letterSpacing: '0.04em',
     lineHeight:    '1.3em',

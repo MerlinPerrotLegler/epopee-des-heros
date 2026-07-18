@@ -7,5 +7,5 @@
 </template>
 
 <script setup>
-defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number, zoom: { type: Number, default: 1 } })
+defineProps({ params: { type: Object, default: () => ({}) }, width_mm: Number, height_mm: Number })
 </script>

@@ -138,7 +138,6 @@ const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
   width_mm:  { type: Number,  default: 63 },
   height_mm: { type: Number,  default: 88 },
-  zoom:      { type: Number,  default: 1  },
   selected:  { type: Boolean, default: false },   // passé par AtomRenderer/EditorCanvas
 })
 

@@ -22,16 +22,14 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
   width_mm: Number,
   height_mm: Number,
-  zoom: { type: Number, default: 1 },
 })
 
-const { mmToPx } = useAtomScale(props)
 
 const rows = computed(() => Array.isArray(props.params.rows) ? props.params.rows : [])
 const normalizedValue = computed(() => String(props.params.value ?? '').trim())
@@ -66,7 +64,7 @@ const isVertical = computed(() => props.params.layout === 'vertical')
 
 const wrapStyle = computed(() => ({
   flexDirection: isVertical.value ? 'column' : 'row',
-  gap: `${mmToPx(props.params.gap ?? 1)}px`,
+  gap: mmCss(props.params.gap ?? 1),
   opacity: props.params.opacity ?? 1,
   justifyContent: 'center',
   alignItems: 'center',
@@ -79,15 +77,15 @@ const iconMm = computed(() => {
 })
 
 const imgStyle = computed(() => ({
-  width: `${mmToPx(iconMm.value)}px`,
-  height: `${mmToPx(iconMm.value)}px`,
+  width: mmCss(iconMm.value),
+  height: mmCss(iconMm.value),
   objectFit: props.params.fit || 'contain',
   flexShrink: 0,
 }))
 
 const emptyIconStyle = computed(() => ({
-  width: `${mmToPx(iconMm.value)}px`,
-  height: `${mmToPx(iconMm.value)}px`,
+  width: mmCss(iconMm.value),
+  height: mmCss(iconMm.value),
   flexShrink: 0,
 }))
 
@@ -98,7 +96,7 @@ const resolvedFontSizeMm = computed(() => {
 })
 
 const labelStyle = computed(() => ({
-  fontSize: `${mmToPx(resolvedFontSizeMm.value)}px`,
+  fontSize: mmCss(resolvedFontSizeMm.value),
   fontFamily: props.params.fontFamily || 'inherit',
   fontWeight: props.params.fontWeight ?? 400,
   color: props.params.color || 'inherit',

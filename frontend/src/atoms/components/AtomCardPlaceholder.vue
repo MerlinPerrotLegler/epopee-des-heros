@@ -13,48 +13,46 @@
 
 <script setup>
 import { computed } from 'vue'
-import { useAtomScale } from './useAtomScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
-  zoom:      { type: Number, default: 1 },
 })
-const { mmToPx } = useAtomScale(props)
 
 const containerStyle = computed(() => {
-  const bw = mmToPx(props.params.borderWidth ?? 0.4)
+  const bw = mmCss(props.params.borderWidth ?? 0.4)
   return {
     width:          '100%',
     height:         '100%',
     background:     props.params.bgColor || 'rgba(108,122,255,0.1)',
-    border:         `${bw}px ${props.params.borderStyle || 'dashed'} ${props.params.borderColor || '#6c7aff'}`,
-    borderRadius:   `${mmToPx(props.params.borderRadius ?? 1)}px`,
+    border:         `${bw} ${props.params.borderStyle || 'dashed'} ${props.params.borderColor || '#6c7aff'}`,
+    borderRadius:   mmCss(props.params.borderRadius ?? 1),
     display:        'flex',
     flexDirection:  'column',
     alignItems:     'center',
     justifyContent: 'center',
-    gap:            `${mmToPx(1)}px`,
+    gap:            mmCss(1),
     boxSizing:      'border-box',
   }
 })
 
 const iconStyle = computed(() => ({
-  width:      `${mmToPx(props.params.iconSize || 6)}px`,
-  height:     `${mmToPx(props.params.iconSize || 6)}px`,
+  width:      mmCss(props.params.iconSize || 6),
+  height:     mmCss(props.params.iconSize || 6),
   objectFit:  'contain',
   opacity:    0.7,
 }))
 
 const labelStyle = computed(() => ({
-  fontSize:   `${mmToPx(props.params.fontSize || 2.5)}px`,
+  fontSize:   mmCss(props.params.fontSize || 2.5),
   color:      props.params.textColor || props.params.borderColor || '#6c7aff',
   fontFamily: 'Outfit, sans-serif',
   fontWeight: 500,
   textAlign:  'center',
   lineHeight:  1.2,
-  padding:    `0 ${mmToPx(1)}px`,
+  padding:    `0 ${mmCss(1)}`,
   wordBreak:  'break-word',
 }))
 </script>

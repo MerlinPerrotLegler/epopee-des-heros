@@ -17,7 +17,6 @@ const props = defineProps({
   params: { type: Object, default: () => ({}) },
   width_mm: Number,
   height_mm: Number,
-  zoom: { type: Number, default: 1 },
 })
 
 const rows = computed(() => Array.isArray(props.params.rows) ? props.params.rows : [])
