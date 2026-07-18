@@ -26,7 +26,7 @@ Cette mise à jour est **non négociable** — même si la session était courte
 - **Zoom / pan** : uniquement `transform: translate(...) scale(...)` sur le viewport (TSD-025).
 - **Pointeur** : `clientPointToCardMm` / `clientDeltaToCardMm`.
 - `fontSize`, paddings, gaps, bordures, épaisseurs : **mm physiques** — pas de % hauteur layout.
-- Écran / règles / fit : `CSS_PX_PER_MM` (`96/25.4`) — pas pour le DOM carte. `useMmScale` = screen-only déprécié.
+- Écran / règles / fit : `CSS_PX_PER_MM` (`96/25.4`) — pas pour le DOM carte.
 - Snap par défaut : 1 mm
 - Framework : **Vue 3** Composition API + Pinia. Ne pas utiliser React, Options API, ou vue-class-component.
 - Backend : Express.js + better-sqlite3. Pas d'ORM.

@@ -181,7 +181,7 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 ## 11. Notes & references
 
 - Affichage : CSS `mm` + viewport transform — **TSD-025** ; helpers `mmCss` / `CSS_PX_PER_MM` dans `frontend/src/utils/cssMm.js`
-- `useMmScale.js` : screen/ruler only (déprécié pour rendu carte) ; `useAtomScale` supprimé
+- `useAtomScale` / `useMmScale` supprimés ; écran / règles via `CSS_PX_PER_MM` dans `cssMm.js`
 - TSD-003 mentionnait déjà `fontSize` en mm ; le détour % est à annuler
 - TSD-020 (richText) : `fontSize` et `padding` en mm — alignés
 - Related : TSD-001 (canvas mm), TSD-021 (picto), TSD-025 (pipeline affichage)

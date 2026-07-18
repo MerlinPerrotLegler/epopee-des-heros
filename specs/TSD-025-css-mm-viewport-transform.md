@@ -30,19 +30,18 @@ Design détaillé + décisions :
 Plan d’implémentation (tasks 1–8) :  
 `docs/superpowers/plans/2026-07-18-mm-css-viewport-transform.md`
 
-Helpers : `frontend/src/utils/cssMm.js`  
-`useMmScale.js` = helpers **écran / règles** seulement — interdit pour le rendu carte.
+Helpers : `frontend/src/utils/cssMm.js` (`mmCss`, `CSS_PX_PER_MM`, pointeur → mm).
 
 ---
 
 ## 3. Acceptance (design §9)
 
-- [x] Zoom : texte ne dérive plus vs boîtes
+- [ ] Zoom : texte ne dérive plus vs boîtes — pending browser QA
 - [x] Valeurs mm panneau propriétés stables
 - [x] Grille / snap / guides / poignées / flèches dans le monde mm
-- [x] Drag / resize OK à plusieurs zooms
-- [x] Preview = mêmes proportions que l’éditeur
-- [x] Print : chrome masqué ; cartes non coupées (`break-inside: avoid`)
+- [ ] Drag / resize OK à plusieurs zooms — pending browser QA
+- [ ] Preview = mêmes proportions que l’éditeur — pending browser QA
+- [ ] Print : chrome masqué ; cartes non coupées (`break-inside: avoid`) — pending browser QA
 - [x] Aucun chemin rendu carte `mm * zoom` → px (règles / fit / html2canvas OK)
 
 ---

@@ -20,6 +20,13 @@ describe('clientPointToCardMm', () => {
     assert.ok(Math.abs(x_mm - 50) < 1e-9)
     assert.ok(Math.abs(y_mm - 0) < 1e-9)
   })
+
+  it('returns zeros when rect has non-positive size', () => {
+    const cardEl = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }),
+    }
+    assert.deepEqual(clientPointToCardMm(cardEl, 10, 20, 100, 140), { x_mm: 0, y_mm: 0 })
+  })
 })
 
 describe('clientDeltaToCardMm', () => {
@@ -30,5 +37,12 @@ describe('clientDeltaToCardMm', () => {
     const { dx_mm, dy_mm } = clientDeltaToCardMm(cardEl, 20, 40, 100, 200)
     assert.ok(Math.abs(dx_mm - 10) < 1e-9)
     assert.ok(Math.abs(dy_mm - 20) < 1e-9)
+  })
+
+  it('returns zeros when rect has non-positive size', () => {
+    const cardEl = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: -1 }),
+    }
+    assert.deepEqual(clientDeltaToCardMm(cardEl, 20, 40, 100, 200), { dx_mm: 0, dy_mm: 0 })
   })
 })

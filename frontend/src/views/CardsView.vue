@@ -315,10 +315,32 @@ async function ensurePrintLayouts(cardList) {
 }
 
 /**
- * Wait for Vue to mount CardPreviews and for a paint frame before print.
- * Remaining race: nested AtomRenderer/component media fetches may still be in-flight
- * after this window; a first print can rarely miss late-loading images.
+ * Wait for Vue to mount CardPreviews, a paint frame, then images inside `.print-sheet`.
+ * Image wait uses decode/load with a ~2s timeout fallback so print is not blocked forever.
  */
+function waitForPrintImages(timeoutMs = 2000) {
+  const sheet = document.querySelector('.print-sheet')
+  if (!sheet) return Promise.resolve()
+  const imgs = [...sheet.querySelectorAll('img')]
+  if (!imgs.length) return Promise.resolve()
+
+  const waitOne = (img) => {
+    if (img.complete && img.naturalWidth > 0) {
+      return img.decode?.().catch(() => {}) ?? Promise.resolve()
+    }
+    return new Promise((resolve) => {
+      const done = () => resolve()
+      img.addEventListener('load', done, { once: true })
+      img.addEventListener('error', done, { once: true })
+    }).then(() => img.decode?.().catch(() => {}))
+  }
+
+  return Promise.race([
+    Promise.all(imgs.map(waitOne)),
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+  ])
+}
+
 async function waitForPrintReady() {
   await nextTick()
   await nextTick()
@@ -326,6 +348,7 @@ async function waitForPrintReady() {
     requestAnimationFrame(() => requestAnimationFrame(resolve))
   })
   await new Promise(r => setTimeout(r, 300))
+  await waitForPrintImages(2000)
 }
 
 async function printCardSheets() {

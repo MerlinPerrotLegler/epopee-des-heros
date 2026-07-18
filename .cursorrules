@@ -21,7 +21,7 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 - **Rendu carte** : longueurs en CSS `mm` via `mmCss()` (`frontend/src/utils/cssMm.js`). Interdit : `px` dérivés de `mm × zoom` pour le DOM carte.
 - **Zoom / pan** : uniquement `transform: translate(...) scale(...)` sur le wrapper viewport (éditeur / preview). Jamais de facteur zoom dans les styles atomes / éléments.
 - **Pointeur → mm** : `clientPointToCardMm` / `clientDeltaToCardMm` (via `getBoundingClientRect()` de la surface carte).
-- **Écran seulement** : `CSS_PX_PER_MM` (règles, fit-to-view) ; `useMmScale` est déprécié pour le rendu carte.
+- **Écran seulement** : `CSS_PX_PER_MM` (règles, fit-to-view) — pas pour le DOM carte.
 - **Tailles atomes (fontSize, padding, gap, borderWidth, thickness, borderRadius, letterSpacing, …)** : toujours en **mm physiques**. Interdit : `px` CSS en dur pour une taille ; `%` de `layout.height_mm` pour ces params. Ratios unitless (`lineHeight`, `opacity`, `diceScale`) et `%` CSS de position (`posX`/`posY`) restent autorisés.
 - Les éléments sont positionnés par `x_mm`, `y_mm`, `width_mm`, `height_mm` relatifs à l'origine du layout.
 - Le data binding utilise le pattern `{{nameInLayout.paramName}}`. Les données des instances de cartes sont un flat object `{ "path.to.param": "value" }`.

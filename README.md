@@ -66,8 +66,9 @@ card-designer/
 ├── frontend/
 │   └── src/
 │       ├── atoms/index.js     # Registre des types d'atomes
+│       ├── utils/
+│       │   └── cssMm.js       # mmCss, CSS_PX_PER_MM, pointeur → mm
 │       ├── composables/
-│       │   ├── useMmScale.js  # Conversion mm ↔ px
 │       │   └── useDragAndDrop.js  # Drag, resize, snap
 │       ├── components/editor/
 │       │   ├── EditorCanvas.vue   # Canvas principal (carte + grille)

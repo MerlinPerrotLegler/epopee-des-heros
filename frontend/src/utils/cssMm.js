@@ -8,6 +8,9 @@ export function mmCss(n) {
 
 export function clientPointToCardMm(cardEl, clientX, clientY, cardWidthMm, cardHeightMm) {
   const rect = cardEl.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return { x_mm: 0, y_mm: 0 }
+  }
   return {
     x_mm: ((clientX - rect.left) / rect.width) * cardWidthMm,
     y_mm: ((clientY - rect.top) / rect.height) * cardHeightMm,
@@ -16,6 +19,9 @@ export function clientPointToCardMm(cardEl, clientX, clientY, cardWidthMm, cardH
 
 export function clientDeltaToCardMm(cardEl, dxPx, dyPx, cardWidthMm, cardHeightMm) {
   const rect = cardEl.getBoundingClientRect()
+  if (rect.width <= 0 || rect.height <= 0) {
+    return { dx_mm: 0, dy_mm: 0 }
+  }
   return {
     dx_mm: (dxPx / rect.width) * cardWidthMm,
     dy_mm: (dyPx / rect.height) * cardHeightMm,
