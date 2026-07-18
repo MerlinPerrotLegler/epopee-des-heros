@@ -16,7 +16,6 @@
           :params="el.params || {}"
           :width_mm="el.width_mm"
           :height_mm="el.height_mm"
-          :zoom="effectiveZoom"
         />
       </div>
     </div>
@@ -26,14 +25,13 @@
 <script setup>
 import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
-import { useMmScale } from '@/composables/useMmScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 import AtomRenderer from './AtomRenderer.vue'
 
 const props = defineProps({
   componentId: { type: String, required: true },
   width_mm:    { type: Number, required: true },
   height_mm:   { type: Number, required: true },
-  zoom:        { type: Number, default: 1 },
 })
 
 const store = useEditorStore()
@@ -66,17 +64,9 @@ const elements = computed(() => {
   return []
 })
 
-// Scale factor to fit component into the allocated space
+// Scale factor to fit component into the allocated space (CSS scale, not zoomed mmToPx)
 const scaleX = computed(() => props.width_mm / compW.value)
 const scaleY = computed(() => props.height_mm / compH.value)
-
-// Use the zoom ref for useMmScale — pass effective zoom = store.zoom
-const zoomRef = computed(() => props.zoom)
-const { mmToPx } = useMmScale(zoomRef)
-
-// The zoom used for rendering atoms inside the component
-// = layout zoom * component scale
-const effectiveZoom = computed(() => props.zoom * Math.min(scaleX.value, scaleY.value))
 
 const outerStyle = computed(() => ({
   width: '100%',
@@ -89,8 +79,8 @@ const innerStyle = computed(() => ({
   position: 'absolute',
   top: 0,
   left: 0,
-  width:  `${mmToPx(compW.value)}px`,
-  height: `${mmToPx(compH.value)}px`,
+  width:  mmCss(compW.value),
+  height: mmCss(compH.value),
   transformOrigin: 'top left',
   transform: `scale(${scaleX.value}, ${scaleY.value})`,
   pointerEvents: 'none',
@@ -100,10 +90,10 @@ const innerStyle = computed(() => ({
 function elStyle(el) {
   return {
     position: 'absolute',
-    left:   `${mmToPx(el.x_mm)}px`,
-    top:    `${mmToPx(el.y_mm)}px`,
-    width:  `${mmToPx(el.width_mm)}px`,
-    height: `${mmToPx(el.height_mm)}px`,
+    left:   mmCss(el.x_mm),
+    top:    mmCss(el.y_mm),
+    width:  mmCss(el.width_mm),
+    height: mmCss(el.height_mm),
     transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
   }
 }

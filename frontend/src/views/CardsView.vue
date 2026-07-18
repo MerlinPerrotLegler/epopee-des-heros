@@ -183,6 +183,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { getBindablePaths } from '@/utils/binding.js'
+import { CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import ImportWizard from '@/components/cards/ImportWizard.vue'
 import CardPreview from '@/components/cards/CardPreview.vue'
@@ -295,8 +296,8 @@ async function openPreview(card) {
     const layout = await api.getLayout(card.layout_id)
     const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
     previewLayout.value = { ...layout, definition: def }
-    // Fit card into ~340px height
-    previewZoom.value = Math.round((340 / ((layout.height_mm || 88) * 3.7795)) * 100) / 100
+    // Fit card into ~340px height (outer CSS scale; card itself uses physical mm)
+    previewZoom.value = Math.round((340 / ((layout.height_mm || 88) * CSS_PX_PER_MM)) * 100) / 100
   } catch {
     previewLayout.value = null
   } finally {

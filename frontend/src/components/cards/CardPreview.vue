@@ -12,13 +12,11 @@
           :params="resolvedParams(el)"
           :width_mm="el.width_mm"
           :height_mm="el.height_mm"
-          :zoom="zoom"
         />
         <InlineComponentRenderer
           v-else-if="el.type === 'component'"
           :element="el"
           :cache="componentsCache"
-          :zoom="zoom"
         />
       </div>
     </div>
@@ -27,7 +25,7 @@
 
 <script setup>
 import { ref, computed, watch, defineComponent, h } from 'vue'
-import { useMmScale } from '@/composables/useMmScale.js'
+import { mmCss } from '@/utils/cssMm.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
@@ -37,9 +35,6 @@ const props = defineProps({
   data:   { type: Object, default: () => ({}) },
   zoom:   { type: Number, default: 1 },
 })
-
-const zoomRef = computed(() => props.zoom)
-const { mmToPx } = useMmScale(zoomRef)
 
 const cardW = computed(() => props.layout.width_mm || 63)
 const cardH = computed(() => Number(props.layout.height_mm) || 88)
@@ -90,27 +85,29 @@ function resolvedParams(el) {
   return resolveElementParams(el, props.data)
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
+// ── Styles: physical CSS mm + optional outer preview zoom ───────────────────
 const outerStyle = computed(() => ({
-  width:    `${mmToPx(cardW.value)}px`,
-  height:   `${mmToPx(cardH.value)}px`,
+  width:    mmCss(cardW.value),
+  height:   mmCss(cardH.value),
+  transform: `scale(${props.zoom})`,
+  transformOrigin: 'top left',
   flexShrink: 0,
 }))
 
 const cardStyle = computed(() => ({
   position: 'relative',
-  width:    `${mmToPx(cardW.value)}px`,
-  height:   `${mmToPx(cardH.value)}px`,
+  width:    mmCss(cardW.value),
+  height:   mmCss(cardH.value),
   overflow: 'hidden',
 }))
 
 function elementStyle(el) {
   return {
     position: 'absolute',
-    left:    `${mmToPx(el.x_mm)}px`,
-    top:     `${mmToPx(el.y_mm)}px`,
-    width:   `${mmToPx(el.width_mm)}px`,
-    height:  `${mmToPx(el.height_mm)}px`,
+    left:    mmCss(el.x_mm),
+    top:     mmCss(el.y_mm),
+    width:   mmCss(el.width_mm),
+    height:  mmCss(el.height_mm),
     transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
     opacity: el._layerOpacity != null ? el._layerOpacity : undefined,
   }
@@ -122,12 +119,8 @@ const InlineComponentRenderer = defineComponent({
   props: {
     element: { type: Object, required: true },
     cache:   { type: Object, required: true },
-    zoom:    { type: Number, default: 1 },
   },
   setup(p) {
-    const zoomR = computed(() => p.zoom)
-    const { mmToPx: mmToPxInner } = useMmScale(zoomR)
-
     const comp = computed(() => p.cache[p.element.componentId] ?? null)
     const compW = computed(() => comp.value?.width_mm || 60)
     const compH = computed(() => comp.value?.height_mm || 40)
@@ -148,7 +141,6 @@ const InlineComponentRenderer = defineComponent({
 
     const scaleX = computed(() => p.element.width_mm / compW.value)
     const scaleY = computed(() => p.element.height_mm / compH.value)
-    const effectiveZoom = computed(() => p.zoom * Math.min(scaleX.value, scaleY.value))
 
     return () => {
       if (!comp.value) {
@@ -160,8 +152,8 @@ const InlineComponentRenderer = defineComponent({
         h('div', {
           style: {
             position: 'absolute', top: 0, left: 0,
-            width:  `${mmToPxInner(compW.value)}px`,
-            height: `${mmToPxInner(compH.value)}px`,
+            width:  mmCss(compW.value),
+            height: mmCss(compH.value),
             transformOrigin: 'top left',
             transform: `scale(${scaleX.value}, ${scaleY.value})`,
             pointerEvents: 'none',
@@ -170,10 +162,10 @@ const InlineComponentRenderer = defineComponent({
           key: el.id,
           style: {
             position: 'absolute',
-            left:   `${mmToPxInner(el.x_mm)}px`,
-            top:    `${mmToPxInner(el.y_mm)}px`,
-            width:  `${mmToPxInner(el.width_mm)}px`,
-            height: `${mmToPxInner(el.height_mm)}px`,
+            left:   mmCss(el.x_mm),
+            top:    mmCss(el.y_mm),
+            width:  mmCss(el.width_mm),
+            height: mmCss(el.height_mm),
           }
         }, [
           h(AtomRenderer, {
@@ -181,7 +173,6 @@ const InlineComponentRenderer = defineComponent({
             params: el.params || {},
             width_mm: el.width_mm,
             height_mm: el.height_mm,
-            zoom: effectiveZoom.value,
           })
         ])))
       ])
