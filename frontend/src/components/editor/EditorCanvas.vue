@@ -11,19 +11,20 @@
       <svg
         v-if="isHex"
         class="hex-inactive-overlay"
-        :width="mmToPx(cardW)"
-        :height="mmToPx(cardH)"
+        :width="mmCss(cardW)"
+        :height="mmCss(cardH)"
+        :viewBox="`0 0 ${cardW} ${cardH}`"
         style="pointer-events:none; position:absolute; top:0; left:0; z-index:5"
       >
         <path
           :d="`
-            M0,0 H${mmToPx(cardW)} V${mmToPx(cardH)} H0 Z
-            M${mmToPx(cardW)*0.5},0
-            L${mmToPx(cardW)},${mmToPx(cardH)*0.25}
-            L${mmToPx(cardW)},${mmToPx(cardH)*0.75}
-            L${mmToPx(cardW)*0.5},${mmToPx(cardH)}
-            L0,${mmToPx(cardH)*0.75}
-            L0,${mmToPx(cardH)*0.25} Z
+            M0,0 H${cardW} V${cardH} H0 Z
+            M${cardW*0.5},0
+            L${cardW},${cardH*0.25}
+            L${cardW},${cardH*0.75}
+            L${cardW*0.5},${cardH}
+            L0,${cardH*0.75}
+            L0,${cardH*0.25} Z
           `"
           fill="rgba(0,0,0,0.38)"
           fill-rule="evenodd"
@@ -42,20 +43,22 @@
         <svg
           v-if="store.showGrid"
           class="grid-overlay"
-          :width="mmToPx(cardW)" :height="mmToPx(cardH)"
+          :width="mmCss(cardW)"
+          :height="mmCss(cardH)"
+          :viewBox="`0 0 ${cardW} ${cardH}`"
         >
           <defs>
             <pattern
               id="grid-pattern"
-              :width="mmToPx(store.snapGrid)"
-              :height="mmToPx(store.snapGrid)"
+              :width="store.snapGrid"
+              :height="store.snapGrid"
               patternUnits="userSpaceOnUse"
             >
               <path
-                :d="`M ${mmToPx(store.snapGrid)} 0 L 0 0 0 ${mmToPx(store.snapGrid)}`"
+                :d="`M ${store.snapGrid} 0 L 0 0 0 ${store.snapGrid}`"
                 fill="none"
                 stroke="rgba(108,122,255,0.08)"
-                stroke-width="0.5"
+                stroke-width="0.05"
               />
             </pattern>
           </defs>
@@ -83,7 +86,6 @@
             :params="resolvedParams(el)"
             :width_mm="el.width_mm"
             :height_mm="el.height_mm"
-            :zoom="store.zoom"
             :selected="store.selectedElementId === el.id"
             :live-stroke="(drawingMode.active.value && drawingMode.drawingElementId.value === el.id) ? drawingMode.liveStroke.value : null"
           />
@@ -94,7 +96,6 @@
             :component-id="el.componentId"
             :width_mm="el.width_mm"
             :height_mm="el.height_mm"
-            :zoom="store.zoom"
           />
 
           <!-- Icône verrou déplacement — atome drawing sélectionné, hors mode dessin -->
@@ -166,7 +167,6 @@
           :guides="store.activeGuides"
           :width-mm="cardW"
           :height-mm="cardH"
-          :zoom="store.zoom"
         />
       </div>
     </div>
@@ -194,10 +194,10 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
-import { useMmScale } from '@/composables/useMmScale.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
+import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import DrawingToolbar from './DrawingToolbar.vue'
@@ -212,24 +212,26 @@ const cardBoundaryRef = ref(null)
 
 const drawingMode = useDrawingMode(store, () => store.zoom)
 
-const zoom = computed(() => store.zoom)
-const { mmToPx, pxToMm } = useMmScale(zoom)
-const dragDrop = useDragAndDrop(store, { pxToMm })
+// Temporary bridge until Task 3 rewrites useDragAndDrop for clientDeltaToCardMm
+const mmScale = {
+  pxToMm: (px) => px / (CSS_PX_PER_MM * store.zoom),
+}
+const dragDrop = useDragAndDrop(store, mmScale)
 
 const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
 
-const rulerLen = computed(() => Math.max(mmToPx(cardW.value) + 200, 1000))
+const rulerLen = computed(() => Math.max(cardW.value * CSS_PX_PER_MM * store.zoom + 200, 1000))
 
 const hTicks = computed(() => {
   const ticks = []
-  const maxMm = Math.ceil(pxToMm(rulerLen.value))
+  const maxMm = Math.ceil(rulerLen.value / (CSS_PX_PER_MM * store.zoom))
   for (let mm = 0; mm <= maxMm; mm += store.snapGrid) {
     ticks.push({
       mm,
-      px: mmToPx(mm) + store.panX,
+      px: store.panX + mm * CSS_PX_PER_MM * store.zoom,
       major: mm % 10 === 0
     })
   }
@@ -237,24 +239,25 @@ const hTicks = computed(() => {
 })
 
 const viewportStyle = computed(() => ({
-  transform: `translate(${store.panX}px, ${store.panY}px)`
+  transform: `translate(${store.panX}px, ${store.panY}px) scale(${store.zoom})`,
+  transformOrigin: '0 0',
 }))
 
 const isHex = computed(() => isHexLayout(store.layout))
 const hexClip = hexClipPathCss()
 
 const cardStyle = computed(() => ({
-  width: `${mmToPx(cardW.value)}px`,
-  height: `${mmToPx(cardH.value)}px`,
+  width: mmCss(cardW.value),
+  height: mmCss(cardH.value),
   clipPath: isHex.value ? hexClip : undefined,
 }))
 
 function elementStyle(el) {
   return {
-    left: `${mmToPx(el.x_mm)}px`,
-    top: `${mmToPx(el.y_mm)}px`,
-    width: `${mmToPx(el.width_mm)}px`,
-    height: `${mmToPx(el.height_mm)}px`,
+    left: mmCss(el.x_mm),
+    top: mmCss(el.y_mm),
+    width: mmCss(el.width_mm),
+    height: mmCss(el.height_mm),
     transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
     opacity: el._layerOpacity != null ? el._layerOpacity : undefined,
   }
@@ -287,8 +290,8 @@ function onElementMouseDown(e, el) {
     const cardEl = containerRef.value?.querySelector('.card-boundary')
     if (cardEl) {
       const cardRect = cardEl.getBoundingClientRect()
-      const relX_mm  = pxToMm(e.clientX - cardRect.left) - el.x_mm
-      const relY_mm  = pxToMm(e.clientY - cardRect.top)  - el.y_mm
+      const relX_mm  = mmScale.pxToMm(e.clientX - cardRect.left) - el.x_mm
+      const relY_mm  = mmScale.pxToMm(e.clientY - cardRect.top)  - el.y_mm
       const idx = hitTestCardTrackCell(el.params || {}, el.width_mm, el.height_mm, relX_mm, relY_mm)
       if (idx !== null) {
         store.activeCellIdx = idx
@@ -344,9 +347,9 @@ function onDropAdd(e) {
   if (!payload || !cardBoundaryRef.value) return
 
   // Position de drop en mm dans la carte (coordonnées relatives au card-boundary)
-  const rect = cardBoundaryRef.value.getBoundingClientRect()
-  const dropXmm = pxToMm(e.clientX - rect.left)
-  const dropYmm = pxToMm(e.clientY - rect.top)
+  const { x_mm: dropXmm, y_mm: dropYmm } = clientPointToCardMm(
+    cardBoundaryRef.value, e.clientX, e.clientY, cardW.value, cardH.value
+  )
 
   let element = null
   if (payload.kind === 'atom' && payload.atomType) {
@@ -378,7 +381,6 @@ function onDropAdd(e) {
   store.updateElement(created.id, { x_mm: x, y_mm: y }, { noHistory: true })
 }
 
-const PX_PER_MM  = 3.7795
 const RULER_SIZE = 40
 const FIT_PAD    = 48 // espace autour de la carte en mode fit
 
@@ -388,16 +390,16 @@ function applyFit(mode) {
   const ch = containerRef.value.offsetHeight - RULER_SIZE
   if (mode === 'fit') {
     const fz = Math.min(
-      (cw - FIT_PAD * 2) / (cardW.value * PX_PER_MM),
-      (ch - FIT_PAD * 2) / (cardH.value * PX_PER_MM)
+      (cw - FIT_PAD * 2) / (cardW.value * CSS_PX_PER_MM),
+      (ch - FIT_PAD * 2) / (cardH.value * CSS_PX_PER_MM)
     )
     store.zoom = fz
-    store.panX = (cw - cardW.value * PX_PER_MM * fz) / 2
-    store.panY = (ch - cardH.value * PX_PER_MM * fz) / 2
+    store.panX = (cw - cardW.value * CSS_PX_PER_MM * fz) / 2
+    store.panY = (ch - cardH.value * CSS_PX_PER_MM * fz) / 2
   } else if (mode === '1:1') {
     store.zoom = 1
-    store.panX = (cw - cardW.value * PX_PER_MM) / 2
-    store.panY = (ch - cardH.value * PX_PER_MM) / 2
+    store.panX = (cw - cardW.value * CSS_PX_PER_MM) / 2
+    store.panY = (ch - cardH.value * CSS_PX_PER_MM) / 2
   }
 }
 
