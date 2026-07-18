@@ -1,23 +1,25 @@
 <template>
-  <div class="card-preview" :style="outerStyle">
-    <div class="card-boundary" :style="cardStyle">
-      <div
-        v-for="el in elements" :key="el.id"
-        class="preview-element"
-        :style="elementStyle(el)"
-      >
-        <AtomRenderer
-          v-if="el.type === 'atom'"
-          :atomType="el.atomType"
-          :params="resolvedParams(el)"
-          :width_mm="el.width_mm"
-          :height_mm="el.height_mm"
-        />
-        <InlineComponentRenderer
-          v-else-if="el.type === 'component'"
-          :element="el"
-          :cache="componentsCache"
-        />
+  <div class="card-preview-shell" :style="shellStyle">
+    <div class="card-preview" :style="outerStyle">
+      <div class="card-boundary" :style="cardStyle">
+        <div
+          v-for="el in elements" :key="el.id"
+          class="preview-element"
+          :style="elementStyle(el)"
+        >
+          <AtomRenderer
+            v-if="el.type === 'atom'"
+            :atomType="el.atomType"
+            :params="resolvedParams(el)"
+            :width_mm="el.width_mm"
+            :height_mm="el.height_mm"
+          />
+          <InlineComponentRenderer
+            v-else-if="el.type === 'component'"
+            :element="el"
+            :cache="componentsCache"
+          />
+        </div>
       </div>
     </div>
   </div>
@@ -25,7 +27,7 @@
 
 <script setup>
 import { ref, computed, watch, defineComponent, h } from 'vue'
-import { mmCss } from '@/utils/cssMm.js'
+import { mmCss, CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
@@ -85,13 +87,20 @@ function resolvedParams(el) {
   return resolveElementParams(el, props.data)
 }
 
-// ── Styles: physical CSS mm + optional outer preview zoom ───────────────────
+// ── Styles: sized shell (layout box) + physical CSS mm + outer preview zoom ─
+const shellStyle = computed(() => ({
+  width: `${cardW.value * CSS_PX_PER_MM * props.zoom}px`,
+  height: `${cardH.value * CSS_PX_PER_MM * props.zoom}px`,
+  overflow: 'hidden',
+  position: 'relative',
+  flexShrink: 0,
+}))
+
 const outerStyle = computed(() => ({
-  width:    mmCss(cardW.value),
-  height:   mmCss(cardH.value),
+  width: mmCss(cardW.value),
+  height: mmCss(cardH.value),
   transform: `scale(${props.zoom})`,
   transformOrigin: 'top left',
-  flexShrink: 0,
 }))
 
 const cardStyle = computed(() => ({
@@ -182,6 +191,10 @@ const InlineComponentRenderer = defineComponent({
 </script>
 
 <style scoped>
+.card-preview-shell {
+  display: inline-block;
+}
+
 .card-preview {
   display: inline-block;
   background: white;
