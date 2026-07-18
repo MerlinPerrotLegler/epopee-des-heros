@@ -10,10 +10,10 @@
  */
 import { ref, computed } from 'vue'
 import { buildStroke } from '@/utils/calligraphyStroke.js'
+import { clientPointToCardMm } from '@/utils/cssMm.js'
 
 // SCALE : 1 mm = 10 SVG units (cohérent avec tous les autres atomes SVG)
-const SCALE      = 10
-const PX_PER_MM  = 3.7795
+const SCALE = 10
 
 export const DEFAULT_PENS = [
   { name: 'Sergent-major', color: '#2a1a0a', opacity: 1.0,  nibWidth: 1.5, nibAngle: 45, pressureScale: 0.6, smoothing: 0.5 },
@@ -24,10 +24,9 @@ export const DEFAULT_PENS = [
 ]
 
 /**
- * @param {Object} store   — Pinia editor store
- * @param {Function} getZoom — returns current zoom value
+ * @param {Object} store — Pinia editor store
  */
-export function useDrawingMode(store, getZoom) {
+export function useDrawingMode(store) {
   const active            = ref(false)
   const drawingElementId  = ref(null)
   const activePenIdx      = ref(0)
@@ -81,21 +80,23 @@ export function useDrawingMode(store, getZoom) {
   }
 
   // ── Coordinate conversion : screen → SVG atom units ───────────────────────
-  function toAtomSvg(clientX, clientY, cardBoundaryEl, el, zoom) {
+  function toAtomSvg(clientX, clientY, cardBoundaryEl, el) {
     // Accept both a raw DOM element and a Vue ref wrapper (safety net)
     const domEl = cardBoundaryEl && cardBoundaryEl.nodeType === 1
       ? cardBoundaryEl
       : cardBoundaryEl?.value ?? null
     if (!domEl) return null
-    const rect         = domEl.getBoundingClientRect()
-    // Screen pixel position relative to the atom's top-left corner
-    const atomRelX_px  = clientX - rect.left - el.x_mm * PX_PER_MM * zoom
-    const atomRelY_px  = clientY - rect.top  - el.y_mm * PX_PER_MM * zoom
-    // Convert to SVG units: (screen_px / (PX_PER_MM * zoom)) * SCALE
-    return {
-      x: atomRelX_px / (PX_PER_MM * zoom) * SCALE,
-      y: atomRelY_px / (PX_PER_MM * zoom) * SCALE,
-    }
+    const { x_mm, y_mm } = clientPointToCardMm(
+      domEl,
+      clientX,
+      clientY,
+      store.layout?.width_mm || 63,
+      Number(store.layout?.height_mm) || 88
+    )
+    const localXmm = x_mm - el.x_mm
+    const localYmm = y_mm - el.y_mm
+    // Existing SVG internal SCALE: mm → SVG units
+    return { x: localXmm * SCALE, y: localYmm * SCALE }
   }
 
   // ── Build live preview from currentPoints ─────────────────────────────────
@@ -114,7 +115,7 @@ export function useDrawingMode(store, getZoom) {
   // ── Pointer Events ────────────────────────────────────────────────────────
   function onPointerDown(e, cardBoundaryEl) {
     if (!active.value || !drawingElement.value) return
-    const pt = toAtomSvg(e.clientX, e.clientY, cardBoundaryEl, drawingElement.value, getZoom())
+    const pt = toAtomSvg(e.clientX, e.clientY, cardBoundaryEl, drawingElement.value)
     if (!pt) return
     isDrawing           = true
     currentPoints.value = [{ ...pt, t: e.timeStamp, pressure: e.pressure ?? 0.5 }]
@@ -125,7 +126,7 @@ export function useDrawingMode(store, getZoom) {
 
   function onPointerMove(e, cardBoundaryEl) {
     if (!active.value || !isDrawing || !drawingElement.value) return
-    const pt = toAtomSvg(e.clientX, e.clientY, cardBoundaryEl, drawingElement.value, getZoom())
+    const pt = toAtomSvg(e.clientX, e.clientY, cardBoundaryEl, drawingElement.value)
     if (!pt) return
     currentPoints.value.push({ ...pt, t: e.timeStamp, pressure: e.pressure ?? 0.5 })
     rebuildLive()

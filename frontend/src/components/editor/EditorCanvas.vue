@@ -210,18 +210,19 @@ const store = useEditorStore()
 const containerRef    = ref(null)
 const cardBoundaryRef = ref(null)
 
-const drawingMode = useDrawingMode(store, () => store.zoom)
-
-// Temporary bridge until Task 3 rewrites useDragAndDrop for clientDeltaToCardMm
-const mmScale = {
-  pxToMm: (px) => px / (CSS_PX_PER_MM * store.zoom),
-}
-const dragDrop = useDragAndDrop(store, mmScale)
+const drawingMode = useDrawingMode(store)
 
 const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
+
+const dragDrop = useDragAndDrop(
+  store,
+  () => cardBoundaryRef.value,
+  () => cardW.value,
+  () => cardH.value
+)
 
 const rulerLen = computed(() => Math.max(cardW.value * CSS_PX_PER_MM * store.zoom + 200, 1000))
 
@@ -287,11 +288,13 @@ function onElementMouseDown(e, el) {
 
   // Clic sur une case d'un CardTrack déjà sélectionné → sélection de case
   if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' && el.atomType === 'cardTrack') {
-    const cardEl = containerRef.value?.querySelector('.card-boundary')
+    const cardEl = cardBoundaryRef.value
     if (cardEl) {
-      const cardRect = cardEl.getBoundingClientRect()
-      const relX_mm  = mmScale.pxToMm(e.clientX - cardRect.left) - el.x_mm
-      const relY_mm  = mmScale.pxToMm(e.clientY - cardRect.top)  - el.y_mm
+      const { x_mm, y_mm } = clientPointToCardMm(
+        cardEl, e.clientX, e.clientY, cardW.value, cardH.value
+      )
+      const relX_mm = x_mm - el.x_mm
+      const relY_mm = y_mm - el.y_mm
       const idx = hitTestCardTrackCell(el.params || {}, el.width_mm, el.height_mm, relX_mm, relY_mm)
       if (idx !== null) {
         store.activeCellIdx = idx

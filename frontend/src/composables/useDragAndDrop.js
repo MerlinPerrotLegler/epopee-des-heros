@@ -1,10 +1,16 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
+import { clientDeltaToCardMm } from '@/utils/cssMm.js'
 
 /**
  * Composable for drag-and-drop with snap grid.
  * Works with mm coordinates snapped to grid.
+ *
+ * @param {object} store
+ * @param {() => HTMLElement|null} getCardEl
+ * @param {() => number} getCardWidthMm
+ * @param {() => number} getCardHeightMm
  */
-export function useDragAndDrop(store, mmScale) {
+export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm) {
   const isDragging = ref(false)
   const isResizing = ref(false)
   const resizeHandle = ref(null) // 'n','s','e','w','ne','nw','se','sw'
@@ -54,11 +60,18 @@ export function useDragAndDrop(store, mmScale) {
 
   function onDragMove(e) {
     if (!isDragging.value || !currentElementId) return
-    const dx = mmScale.pxToMm(e.clientX - startMouse.x)
-    const dy = mmScale.pxToMm(e.clientY - startMouse.y)
+    const cardEl = getCardEl()
+    if (!cardEl) return
+    const { dx_mm, dy_mm } = clientDeltaToCardMm(
+      cardEl,
+      e.clientX - startMouse.x,
+      e.clientY - startMouse.y,
+      getCardWidthMm(),
+      getCardHeightMm()
+    )
 
-    const newX = store.snap(startEl.x + dx)
-    const newY = store.snap(startEl.y + dy)
+    const newX = store.snap(startEl.x + dx_mm)
+    const newY = store.snap(startEl.y + dy_mm)
 
     store.updateElement(currentElementId, { x_mm: newX, y_mm: newY }, { noHistory: true })
     store.refreshGuides(findElement(currentElementId))
@@ -74,22 +87,29 @@ export function useDragAndDrop(store, mmScale) {
 
   function onResizeMove(e) {
     if (!isResizing.value || !currentElementId) return
-    const dx = mmScale.pxToMm(e.clientX - startMouse.x)
-    const dy = mmScale.pxToMm(e.clientY - startMouse.y)
+    const cardEl = getCardEl()
+    if (!cardEl) return
+    const { dx_mm, dy_mm } = clientDeltaToCardMm(
+      cardEl,
+      e.clientX - startMouse.x,
+      e.clientY - startMouse.y,
+      getCardWidthMm(),
+      getCardHeightMm()
+    )
     const handle = resizeHandle.value
     const MIN_SIZE = 2 // mm
 
     let { x, y, w, h } = startEl
 
-    if (handle.includes('e')) w = Math.max(MIN_SIZE, store.snap(w + dx))
-    if (handle.includes('w')) { 
-      const newW = Math.max(MIN_SIZE, store.snap(w - dx))
+    if (handle.includes('e')) w = Math.max(MIN_SIZE, store.snap(w + dx_mm))
+    if (handle.includes('w')) {
+      const newW = Math.max(MIN_SIZE, store.snap(w - dx_mm))
       x = store.snap(x + (w - newW))
       w = newW
     }
-    if (handle.includes('s')) h = Math.max(MIN_SIZE, store.snap(h + dy))
+    if (handle.includes('s')) h = Math.max(MIN_SIZE, store.snap(h + dy_mm))
     if (handle.includes('n')) {
-      const newH = Math.max(MIN_SIZE, store.snap(h - dy))
+      const newH = Math.max(MIN_SIZE, store.snap(h - dy_mm))
       y = store.snap(y + (h - newH))
       h = newH
     }
