@@ -46,7 +46,11 @@
           </div>
           <div class="pg-toolbar-actions">
             <button class="btn-ghost btn-sm" @click="openLinkPicker">+ Lier média</button>
-            <button class="btn-primary btn-sm" @click="uploadInput?.click()">+ Upload picto</button>
+            <label class="rembg-toggle" title="Traiter l'image avant ouverture du formulaire">
+              <input type="checkbox" v-model="removeBgOnUpload" :disabled="!!processingId" />
+              Supprimer le fond
+            </label>
+            <button class="btn-primary btn-sm" :disabled="!!processingId" @click="uploadInput?.click()">+ Upload picto</button>
             <input ref="uploadInput" type="file" accept="image/*" style="display:none" @change="onUploadFile" />
           </div>
         </div>
@@ -231,6 +235,10 @@ const initialLoading = ref(true)
 const initialLoadError = ref(null)
 const uploadBlobUrl = ref(null)
 
+const removeBgOnUpload = ref(false)
+const processingId = ref(null)
+const downloadProgress = ref(null)
+
 const REF_RE = /^[a-zA-Z0-9_-]+$/
 
 function revokeUploadBlobUrl() {
@@ -327,16 +335,37 @@ async function deleteTag() {
   }
 }
 
-function onUploadFile(e) {
+async function onUploadFile(e) {
   const file = e.target.files?.[0]
   if (!file) return
-  uploadFile.value = file
-  linkSourceId.value = null
-  pictoFormMode.value = 'upload'
-  pictoFormError.value = ''
-  const base = file.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')
-  pictoForm.value = { picto_ref: base, picto_label: '', tagIds: [] }
   if (uploadInput.value) uploadInput.value.value = ''
+
+  processingId.value = '__upload__'
+  try {
+    const { applyRemoveBgToFiles } = await import('@/utils/applyRemoveBgToFiles.js')
+    const [processed] = await applyRemoveBgToFiles([file], {
+      enabled: removeBgOnUpload.value,
+      onProgress(key, current, total) {
+        if (key.includes('fetch') && total > 0) {
+          downloadProgress.value = { current, total }
+        } else {
+          downloadProgress.value = null
+        }
+      },
+    })
+    downloadProgress.value = null
+    uploadFile.value = processed
+    linkSourceId.value = null
+    pictoFormMode.value = 'upload'
+    pictoFormError.value = ''
+    const base = processed.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9_-]/g, '_')
+    pictoForm.value = { picto_ref: base, picto_label: '', tagIds: [] }
+  } catch (err) {
+    showToast(err.message || 'Échec suppression fond', 'error')
+  } finally {
+    processingId.value = null
+    downloadProgress.value = null
+  }
 }
 
 async function openLinkPicker() {
@@ -502,7 +531,18 @@ onUnmounted(revokeUploadBlobUrl)
 }
 .pg-chip:hover { border-color: var(--border-default); color: var(--text-primary); }
 .pg-chip.active { font-weight: 600; }
-.pg-toolbar-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.pg-toolbar-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; }
+
+.rembg-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  user-select: none;
+  cursor: pointer;
+}
+.rembg-toggle input { cursor: pointer; }
 
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-content: start; }
 .media-card {
