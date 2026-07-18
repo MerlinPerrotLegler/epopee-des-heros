@@ -565,25 +565,25 @@ function startPan(e) {
   pointer-events: none;
 }
 
-/* Resize handles */
+/* Resize handles (CSS mm — scale with card world / viewport zoom) */
 .resize-handle {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 1.2mm;
+  height: 1.2mm;
   background: var(--accent-primary);
-  border: 1px solid white;
-  border-radius: 1px;
+  border: 0.15mm solid white;
+  border-radius: 0.15mm;
   z-index: 101;
 }
 
-.handle-n  { top: -4px; left: 50%; transform: translateX(-50%); }
-.handle-s  { bottom: -4px; left: 50%; transform: translateX(-50%); }
-.handle-e  { right: -4px; top: 50%; transform: translateY(-50%); }
-.handle-w  { left: -4px; top: 50%; transform: translateY(-50%); }
-.handle-ne { top: -4px; right: -4px; }
-.handle-nw { top: -4px; left: -4px; }
-.handle-se { bottom: -4px; right: -4px; }
-.handle-sw { bottom: -4px; left: -4px; }
+.handle-n  { top: -0.6mm; left: 50%; transform: translateX(-50%); }
+.handle-s  { bottom: -0.6mm; left: 50%; transform: translateX(-50%); }
+.handle-e  { right: -0.6mm; top: 50%; transform: translateY(-50%); }
+.handle-w  { left: -0.6mm; top: 50%; transform: translateY(-50%); }
+.handle-ne { top: -0.6mm; right: -0.6mm; }
+.handle-nw { top: -0.6mm; left: -0.6mm; }
+.handle-se { bottom: -0.6mm; right: -0.6mm; }
+.handle-sw { bottom: -0.6mm; left: -0.6mm; }
 
 /* Placeholder boxes for components/molecules */
 .placeholder-box {
