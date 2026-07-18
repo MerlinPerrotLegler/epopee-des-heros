@@ -21,9 +21,12 @@ Cette mise à jour est **non négociable** — même si la session était courte
 
 ## Conventions techniques
 
-- Mesures toujours en **mm** dans le store, les composants, et les props. Jamais de valeurs px codées en dur pour une taille visuelle (passer par `mmToPx` / SCALE).
-- `fontSize`, paddings, gaps, bordures, épaisseurs : **mm physiques** (TSD-022) — pas de % hauteur layout.
-- Scale : `3.7795 px/mm` (constante dans `useMmScale.js`)
+- Mesures toujours en **mm** dans le store, les composants, et les props (TSD-022).
+- **Rendu carte** : CSS `mm` via `mmCss()` (`frontend/src/utils/cssMm.js`). Interdit : `px` dérivés de `mm × zoom`.
+- **Zoom / pan** : uniquement `transform: translate(...) scale(...)` sur le viewport (TSD-025).
+- **Pointeur** : `clientPointToCardMm` / `clientDeltaToCardMm`.
+- `fontSize`, paddings, gaps, bordures, épaisseurs : **mm physiques** — pas de % hauteur layout.
+- Écran / règles / fit : `CSS_PX_PER_MM` (`96/25.4`) — pas pour le DOM carte. `useMmScale` = screen-only déprécié.
 - Snap par défaut : 1 mm
 - Framework : **Vue 3** Composition API + Pinia. Ne pas utiliser React, Options API, ou vue-class-component.
 - Backend : Express.js + better-sqlite3. Pas d'ORM.
@@ -31,7 +34,7 @@ Cette mise à jour est **non négociable** — même si la session était courte
 
 ## Conventions de code
 
-- Pas de `px` codé en dur dans les composants Vue (passer par SCALE)
+- Pas de `px` codé en dur pour une longueur carte (utiliser `mmCss`) ; SVG interne : `SCALE` viewBox (mm→unités SVG) OK
 - Toujours lire un fichier avant de le modifier
 - Préférer `Edit` sur `Write` pour les fichiers existants
 - Ne pas créer de fichiers de documentation (.md) sauf si explicitement demandé

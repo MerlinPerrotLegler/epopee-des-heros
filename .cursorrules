@@ -17,8 +17,12 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 - **Layouts** (DB) : templates complets d'une carte avec calques, éléments positionnés en mm, et data binding
 
 ## Conventions
-- Toutes les mesures visuelles sont en **millimètres** (mm). La conversion mm→px utilise `useMmScale.js` (1mm = 3.7795px × zoom).
-- **Tailles atomes (fontSize, padding, gap, borderWidth, thickness, borderRadius, letterSpacing, …)** : toujours en **mm physiques** de la carte. Conversion écran uniquement via `mmToPx()` / `useAtomScale`. Interdit : `px` CSS en dur pour une taille ; `%` de `layout.height_mm` pour ces params. Ratios unitless (`lineHeight`, `opacity`, `diceScale`) et `%` CSS de position (`posX`/`posY`) restent autorisés. Voir TSD-022.
+- Toutes les mesures visuelles sont en **millimètres** (mm) dans le store / JSON. Voir TSD-022 (données) + TSD-025 (affichage).
+- **Rendu carte** : longueurs en CSS `mm` via `mmCss()` (`frontend/src/utils/cssMm.js`). Interdit : `px` dérivés de `mm × zoom` pour le DOM carte.
+- **Zoom / pan** : uniquement `transform: translate(...) scale(...)` sur le wrapper viewport (éditeur / preview). Jamais de facteur zoom dans les styles atomes / éléments.
+- **Pointeur → mm** : `clientPointToCardMm` / `clientDeltaToCardMm` (via `getBoundingClientRect()` de la surface carte).
+- **Écran seulement** : `CSS_PX_PER_MM` (règles, fit-to-view) ; `useMmScale` est déprécié pour le rendu carte.
+- **Tailles atomes (fontSize, padding, gap, borderWidth, thickness, borderRadius, letterSpacing, …)** : toujours en **mm physiques**. Interdit : `px` CSS en dur pour une taille ; `%` de `layout.height_mm` pour ces params. Ratios unitless (`lineHeight`, `opacity`, `diceScale`) et `%` CSS de position (`posX`/`posY`) restent autorisés.
 - Les éléments sont positionnés par `x_mm`, `y_mm`, `width_mm`, `height_mm` relatifs à l'origine du layout.
 - Le data binding utilise le pattern `{{nameInLayout.paramName}}`. Les données des instances de cartes sont un flat object `{ "path.to.param": "value" }`.
 - Les composants Vue utilisent `<script setup>` systématiquement.
@@ -42,7 +46,7 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 3. Si besoin, ajouter les options enum dans `PropertiesPanel.vue` (ENUM_MAPS)
 4. Toujours refléter la modification dans la configuration des atomes (`/atoms-config`, `AtomConfigPanel`) : valeur fixable, visibilité (oeil), et application runtime
 5. Tout nouveau paramètre utilisé dans un composant d'atome doit exister dans `defaultParams` (`atoms/index.js`) pour être exposé dans la config atomes
-6. Toute longueur linéaire du rendu doit passer par `mmToPx` (jamais de `px` bruts). Documenter l'unité `mm` dans le commentaire `defaultParams`.
+6. Toute longueur linéaire du rendu carte doit passer par `mmCss(...)` (jamais de `px` bruts ni `mm×zoom`). Documenter l'unité `mm` dans le commentaire `defaultParams`.
 
 ## Quand tu ajoutes une route API
 1. Créer/modifier le fichier dans `backend/routes/`
@@ -55,7 +59,7 @@ Outil de design de cartes pour un jeu de société (type heroic fantasy avec gui
 3. Penser à ajouter la nouvelle table dans la liste de `createSnapshot()` dans `database.js`
 
 ## Points d'attention
-- Le canvas travaille en mm, pas en px. Toujours utiliser `mmToPx()` / `pxToMm()`.
+- Le canvas travaille en mm (données + CSS `mm`). Zoom via transform viewport ; pointeur via `clientPointToCardMm`.
 - Le snap grid est configurable (par défaut 1mm). Utiliser `store.snap(value)` pour tout positionnement.
 - Les layers (calques) ont un flag `locked` et `visible` — respecter ces flags dans les interactions.
 - L'export PDF n'est pas encore implémenté côté rendu (l'API `/export/prepare` fournit les données, le rendu HTML→PDF reste à faire).

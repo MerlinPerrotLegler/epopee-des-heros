@@ -5,8 +5,9 @@
 | Status      | Done (QA zoom/1:1 manuelle partielle — migration vérifiée API) |
 | Author      | @merlinperrot                              |
 | Created     | 2026-07-17                                 |
-| Last update | 2026-07-17                                 |
+| Last update | 2026-07-18                                 |
 | Depends on  | TSD-001 (canvas), TSD-003 (atomes)         |
+| Related     | TSD-025 (pipeline affichage CSS mm)        |
 
 ---
 
@@ -14,12 +15,16 @@
 
 Les tailles visuelles des atomes doivent dépendre **uniquement de la carte physique** (millimètres), pas de l’écran ni d’un pourcentage de hauteur de layout. Un passage récent de `fontSize` en « % de `layout.height_mm` » a introduit un second système d’unités, incohérent avec le reste (padding, bordures, gaps encore en mm ou parfois en `px` CSS). Ce TSD unifie **toutes les longueurs** sur le mm physique, corrige les fuites `px`, migre les définitions existantes, et met à jour les guidelines pour que tout nouvel atome / composant suive la même règle.
 
+> **Note affichage (2026-07-18) — TSD-025**  
+> Ce TSD fixe le **modèle de données** (nombres en mm). Le pipeline d’affichage n’utilise plus `mmToPx(mm × zoom)` : le DOM carte est en CSS `mm` via `mmCss()`, et le zoom/pan passe uniquement par `transform: translate(...) scale(...)` sur le viewport. Voir TSD-025 et `docs/superpowers/specs/2026-07-18-mm-css-viewport-transform-design.md`.
+
 ---
 
 ## 2. Scope & boundaries
 
 ### In scope
-- Convention unique : longueurs linéaires = **mm physiques** → affichage via `mmToPx()` uniquement
+- Convention unique : longueurs linéaires = **mm physiques** dans le store / JSON
+- Affichage carte : CSS `mm` via `mmCss()` (TSD-025) — plus de `mmToPx × zoom` pour le DOM carte
 - Retrait du système `fontSize` / `maxFontSize` en % de hauteur layout (`useLayoutRelativeFontMm`)
 - Audit et correction de tous les atomes (bordures, padding, gap, `borderRadius`, épaisseurs, etc.)
 - Migration one-shot des définitions layout/composant (`sizing: "mm"`)
@@ -29,7 +34,8 @@ Les tailles visuelles des atomes doivent dépendre **uniquement de la carte phys
 
 ### Out of scope
 - Changer le positionnement canvas (`x_mm`, `y_mm`, `width_mm`, `height_mm`) — déjà en mm
-- Export PDF / pipeline impression (bénéficie du rendu mm existant)
+- Détail du viewport transform / print navigateur — TSD-025
+- Export PDF lib (print navigateur : TSD-025 ; PDF techno plus tard)
 - Pictorgame (TSD-021) — l’atome `picto` devra respecter cette convention à l’implémentation
 - Conversion des ratios unitless (`lineHeight`, `opacity`, `diceScale`, `scale`) ou des `%` CSS de positionnement (`posX`/`posY` background)
 - Outil UI de re-migration manuelle / dialogue utilisateur
@@ -40,8 +46,8 @@ Les tailles visuelles des atomes doivent dépendre **uniquement de la carte phys
 
 ### Primary flow
 1. Le designer édite une taille (`fontSize`, `padding`, `borderWidth`…) en **mm** dans le panneau propriétés.
-2. Le canvas convertit mm → px avec le zoom courant ; les valeurs numériques affichées restent stables si on change le zoom / 1:1 / fit.
-3. Preview carte et impression utilisent la même base mm.
+2. Le canvas applique les longueurs en CSS `mm` ; le zoom viewport scale le monde entier — les valeurs numériques panneau restent stables à 1:1 / fit / zoom.
+3. Preview carte et impression utilisent la même base mm (TSD-025).
 
 ### Migration (invisible)
 1. À l’ouverture d’un layout ou composant :
@@ -117,7 +123,7 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 
 - [x] Step 1 — Créer `migrateDefinitionSizing(definition, heightMm)` + liste `PCT_MIGRATED_PARAMS` ; tests unitaires (idempotence, stamp, rows badge)
 - [x] Step 2 — Brancher la migration au load layout (editor store) et composant ; dirty si conversion
-- [x] Step 3 — Retirer `useLayoutRelativeFontMm` des atomes ; `fontSize` lu comme mm → `mmToPx`
+- [x] Step 3 — Retirer `useLayoutRelativeFontMm` des atomes ; `fontSize` lu comme mm → rendu CSS `mm` (`mmCss`, TSD-025)
 - [x] Step 4 — Simplifier / supprimer `useLayoutRelativeFont.js` (ou le réduire à helpers migration + `LAYOUT_HEIGHT` si encore utile ailleurs) ; retirer `provide(LAYOUT_HEIGHT_MM_KEY)` si plus nécessaire
 - [x] Step 5 — Audit atomes : corriger `px` en dur (`AtomRectangle`, `AtomCardType`, `AtomCardPlaceholder`, `AtomPrice`/`AtomResource` gaps, `AtomImage`/`AtomRectangle` `borderRadius`, etc.)
 - [x] Step 6 — `atoms/index.js` + `paramHelp.js` + labels PropertiesPanel / AtomConfigPanel / config globale
@@ -136,7 +142,7 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 | `rows[].fontSize` null (badge) | Ignorer la ligne |
 | Valeur `0` | Laisser `0` |
 | Composant ouvert hors layout | Migrer avec hauteur composant ou `88` |
-| `borderRadius` historiquement en px | Traiter comme mm désormais + corriger le rendu (`mmToPx`) ; pas de migration numérique (déjà stocké comme petit nombre) |
+| `borderRadius` historiquement en px | Traiter comme mm désormais + corriger le rendu (`mmCss`) ; pas de migration numérique (déjà stocké comme petit nombre) |
 | Gaps en `em` dans RichText | Conserver (proportionnels au fontSize mm) |
 
 ---
@@ -144,7 +150,7 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 ## 8. Acceptance criteria
 
 - [x] Aucun atome n’interprète `fontSize` / `maxFontSize` comme % de hauteur layout
-- [x] Aucune taille visuelle en `px` bruts dans les composants d’atomes (hors sortie de `mmToPx` / SCALE)
+- [x] Aucune taille visuelle en `px` bruts dans les composants d’atomes (hors CSS `mm` / SCALE SVG interne)
 - [x] Ouverture d’un ancien layout : stamp `sizing: "mm"` sans altérer les mm existants ; second load inchangé ; conversion uniquement si `sizing: "pct"`
 - [x] Labels / help / defaults parlent de **mm**
 - [x] `.cursorrules` et `CLAUDE.md` imposent la convention pour les prochains atomes/composants
@@ -174,7 +180,8 @@ N/A — pas de nouvel endpoint. Le champ `sizing` vit dans le JSON `definition` 
 
 ## 11. Notes & references
 
-- Scale : `3.7795 px/mm` (`useMmScale.js` / `useAtomScale.js`)
+- Affichage : CSS `mm` + viewport transform — **TSD-025** ; helpers `mmCss` / `CSS_PX_PER_MM` dans `frontend/src/utils/cssMm.js`
+- `useMmScale.js` : screen/ruler only (déprécié pour rendu carte) ; `useAtomScale` supprimé
 - TSD-003 mentionnait déjà `fontSize` en mm ; le détour % est à annuler
-- TSD-020 (richText) : `fontSize` et `padding` en mm — à réaligner après retrait du helper %
-- Related : TSD-001 (canvas mm), TSD-021 (picto devra naître en mm)
+- TSD-020 (richText) : `fontSize` et `padding` en mm — alignés
+- Related : TSD-001 (canvas mm), TSD-021 (picto), TSD-025 (pipeline affichage)

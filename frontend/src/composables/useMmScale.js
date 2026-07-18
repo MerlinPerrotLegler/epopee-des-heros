@@ -1,15 +1,26 @@
+/**
+ * Screen-only mm↔px helpers (rulers, fit-to-view math).
+ *
+ * Card rendering MUST NOT use this: lengths go through `mmCss()` (CSS `mm`),
+ * and editor zoom/pan is applied only via viewport `translate` + `scale`.
+ * Pointer → card mm: `clientPointToCardMm` / `clientDeltaToCardMm` in `@/utils/cssMm.js`.
+ *
+ * Prefer importing `CSS_PX_PER_MM` from `@/utils/cssMm.js` directly.
+ */
 import { computed } from 'vue'
+import { CSS_PX_PER_MM } from '@/utils/cssMm.js'
 
-// Base conversion: 1mm at zoom=1
-// Standard screen DPI is ~96, 1 inch = 25.4mm, so 1mm ≈ 3.78px
-// We use a round number for easier math
-const MM_TO_PX_BASE = 3.7795275591 // exact 96dpi conversion
+export { CSS_PX_PER_MM }
 
 /**
- * Composable for converting between mm and px at a given zoom level.
+ * @deprecated Card DOM must use `mmCss()`, not px. Kept for optional screen/ruler math.
+ * @param {import('vue').Ref<number>|number} [zoom]
  */
 export function useMmScale(zoom) {
-  const pxPerMm = computed(() => MM_TO_PX_BASE * (zoom?.value ?? 1))
+  const pxPerMm = computed(() => {
+    const z = typeof zoom === 'object' && zoom != null ? (zoom.value ?? 1) : (zoom ?? 1)
+    return CSS_PX_PER_MM * z
+  })
 
   function mmToPx(mm) {
     return mm * pxPerMm.value
@@ -19,6 +30,7 @@ export function useMmScale(zoom) {
     return px / pxPerMm.value
   }
 
+  /** @deprecated Do not use for card styles — use `mmCss(mm)` instead. */
   function mmToPxStyle(mm) {
     return `${mmToPx(mm)}px`
   }
