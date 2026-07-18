@@ -1,4 +1,4 @@
-/* Screen: keep print sheet out of the UI but mounted for layout/cache readiness */
+/* Screen: keep print sheet out of the UI when briefly mounted for print */
 @media screen {
   .print-sheet {
     position: absolute;
@@ -12,20 +12,45 @@
 }
 
 @media print {
+  /* Critical: overflow ancestors clip print content — reset before painting */
+  .app-shell,
+  .app-main,
+  .cards-view,
+  .preview-overlay,
+  .preview-modal {
+    overflow: visible !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  /* Hide app chrome with display:none (not visibility alone) */
+  .app-nav,
+  .view-header,
+  .jobs-bar,
+  .table-wrap,
+  .empty-state,
+  .modal-overlay,
+  .preview-overlay {
+    display: none !important;
+  }
+
+  /* Fallback: hide anything else that might still paint */
   body * {
     visibility: hidden;
   }
 
-  .print-sheet,
-  .print-sheet * {
-    visibility: visible;
-  }
-
   .print-sheet {
+    display: block !important;
+    visibility: visible !important;
     position: absolute;
     left: 0;
     top: 0;
     width: 100%;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible !important;
   }
 
   .print-card {

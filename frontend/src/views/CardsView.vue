@@ -12,7 +12,7 @@
         <button
           class="btn-ghost btn-sm"
           @click="printCardSheets"
-          :disabled="!printCards.length || printing"
+          :disabled="!printableCards.length || printing"
           title="Imprimer les cartes sélectionnées, ou la liste visible"
         >🖨 Imprimer</button>
         <button class="btn-primary btn-sm" @click="createCard" :disabled="!selectedLayout">+ Nouvelle carte</button>
@@ -198,10 +198,10 @@
       @imported="onImported"
     />
 
-    <!-- Print sheet: off-screen on screen, sole visible content when printing -->
-    <div class="print-sheet" aria-hidden="true">
+    <!-- Print sheet: mounted only for the print pass -->
+    <div v-if="printReady" class="print-sheet" aria-hidden="true">
       <div
-        v-for="card in printCards"
+        v-for="card in printSheetCards"
         :key="card.id"
         class="print-card"
       >
@@ -246,6 +246,8 @@ const previewLoading = ref(false)
 const previewZoom = ref(1)
 const selectedCardIds = ref(new Set())
 const printLayoutById = ref({})
+const printSheetCards = ref([])
+const printReady = ref(false)
 const printing = ref(false)
 
 onMounted(async () => {
@@ -260,8 +262,8 @@ const activeJobs = computed(() => {
   return importJobs.value.filter(j => j.layout_id === selectedLayout.value || !j.layout_id)
 })
 
-/** Selected cards if any, else the visible/filtered list. */
-const printCards = computed(() => {
+/** Selected cards if any, else the visible/filtered list (candidates for print). */
+const printableCards = computed(() => {
   if (selectedCardIds.value.size > 0) {
     return cards.value.filter(c => selectedCardIds.value.has(c.id))
   }
@@ -300,8 +302,8 @@ function layoutFor(card) {
   return printLayoutById.value[card.layout_id] || null
 }
 
-async function ensurePrintLayouts() {
-  const ids = [...new Set(printCards.value.map(c => c.layout_id).filter(Boolean))]
+async function ensurePrintLayouts(cardList) {
+  const ids = [...new Set(cardList.map(c => c.layout_id).filter(Boolean))]
   const cache = { ...printLayoutById.value }
   await Promise.all(ids.map(async (id) => {
     if (cache[id]) return
@@ -312,18 +314,35 @@ async function ensurePrintLayouts() {
   printLayoutById.value = cache
 }
 
+/**
+ * Wait for Vue to mount CardPreviews and for a paint frame before print.
+ * Remaining race: nested AtomRenderer/component media fetches may still be in-flight
+ * after this window; a first print can rarely miss late-loading images.
+ */
+async function waitForPrintReady() {
+  await nextTick()
+  await nextTick()
+  await new Promise((resolve) => {
+    requestAnimationFrame(() => requestAnimationFrame(resolve))
+  })
+  await new Promise(r => setTimeout(r, 300))
+}
+
 async function printCardSheets() {
-  if (!printCards.value.length || printing.value) return
+  if (!printableCards.value.length || printing.value) return
   printing.value = true
   try {
-    await ensurePrintLayouts()
-    await nextTick()
-    // Allow CardPreview component fetches to settle before the print dialog
-    await new Promise(r => setTimeout(r, 50))
+    const list = [...printableCards.value]
+    await ensurePrintLayouts(list)
+    printSheetCards.value = list
+    printReady.value = true
+    await waitForPrintReady()
     window.print()
   } catch (e) {
     alert(`Erreur impression : ${e.message}`)
   } finally {
+    printReady.value = false
+    printSheetCards.value = []
     printing.value = false
   }
 }
