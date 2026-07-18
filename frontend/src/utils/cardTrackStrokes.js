@@ -184,3 +184,59 @@ export function buildSeparators(cells, scale) {
 
   return seps
 }
+
+/**
+ * Séparateurs entre cases adjacentes d'une piste linéaire (AtomTrak).
+ *
+ * @param {number} cellCount  Nombre de cases
+ * @param {number} cellSize   Taille d'une case en unités SVG
+ * @param {boolean} vertical  true = piste verticale
+ * @returns {Array<{ x1, y1, x2, y2, isVertical: boolean, pairIdx: number }>}
+ */
+export function buildLinearSeparators(cellCount, cellSize, vertical) {
+  const seps = []
+  for (let i = 0; i < cellCount - 1; i++) {
+    if (vertical) {
+      const y = (i + 1) * cellSize
+      seps.push({
+        x1: 0, y1: y,
+        x2: cellSize, y2: y,
+        isVertical: false, pairIdx: i,
+      })
+    } else {
+      const x = (i + 1) * cellSize
+      seps.push({
+        x1: x, y1: 0,
+        x2: x, y2: cellSize,
+        isVertical: true, pairIdx: i,
+      })
+    }
+  }
+  return seps
+}
+
+/**
+ * Bordures externes d'une piste linéaire (ou d'une case unique).
+ *
+ * @param {number} w  Largeur SVG
+ * @param {number} h  Hauteur SVG
+ * @param {{ top?: boolean, right?: boolean, bottom?: boolean, left?: boolean }} sides
+ * @returns {Array<{ x1, y1, x2, y2, isVertical: boolean, pairIdx: number }>}
+ */
+export function buildOuterBorders(w, h, sides = {}) {
+  const seps = []
+  let idx = 0
+  if (sides.top !== false) {
+    seps.push({ x1: 0, y1: 0, x2: w, y2: 0, isVertical: false, pairIdx: idx++ })
+  }
+  if (sides.right !== false) {
+    seps.push({ x1: w, y1: 0, x2: w, y2: h, isVertical: true, pairIdx: idx++ })
+  }
+  if (sides.bottom !== false) {
+    seps.push({ x1: 0, y1: h, x2: w, y2: h, isVertical: false, pairIdx: idx++ })
+  }
+  if (sides.left !== false) {
+    seps.push({ x1: 0, y1: 0, x2: 0, y2: h, isVertical: true, pairIdx: idx++ })
+  }
+  return seps
+}

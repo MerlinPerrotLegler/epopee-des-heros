@@ -699,7 +699,7 @@ function isMediaParam(key) {
 
 // Params dont la valeur est toujours un entier → step="1"
 const INTEGER_PARAMS = new Set([
-  'n_start', 'n_end', 'cells_top', 'cells_left',
+  'n_start', 'n_end', 'reverse', 'cells_top', 'cells_left',
   'fontWeight', 'borderRadius', 'cornerTextAngle',
   'value', 'n', 'posX', 'posY',
 ])

@@ -387,8 +387,17 @@ export const ATOM_TYPES = {
       fontSize:    2.5,
       borderColor: null,      // null → config globale
       borderWidth: 0.2,
+      borderTop:    true,
+      borderRight:  true,
+      borderBottom: true,
+      borderLeft:   true,
       svgMediaId:  null,     // SVG décoratif optionnel
       textRotation: 45,      // rotation du chiffre en degrés
+      penStyle:    true,
+      penSeed:     1,
+      penPoolSize: 4,
+      penColor:    null,
+      penWidth:    0.4,
     },
     defaultSize: { width_mm: 5, height_mm: 5 }
   },
@@ -399,6 +408,7 @@ export const ATOM_TYPES = {
     defaultParams: {
       n_start:     0,
       n_end:       10,
+      reverse:     false, // true = afficher de n_end vers n_start
       direction:   'horizontal', // 'horizontal' | 'vertical'
       cellSize_mm: 5,
       bgColor:     null,      // null → config globale
@@ -407,7 +417,18 @@ export const ATOM_TYPES = {
       fontFamily:  null,
       borderColor: null,      // null → config globale
       borderWidth: 0.2,
+      // Bordures externes (côtés de la piste)
+      borderTop:    true,
+      borderRight:  true,
+      borderBottom: true,
+      borderLeft:   true,
       caps:        false, // triangles rectangles aux extrémités
+      // Traits de plume (même moteur que CardTrack)
+      penStyle:    true,
+      penSeed:     1,
+      penPoolSize: 4,
+      penColor:    null,  // null → borderColor
+      penWidth:    0.4,   // mm
     },
     defaultSize: { width_mm: 55, height_mm: 5 }
   },

@@ -631,6 +631,25 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty()
   }
 
+  /**
+   * Remonter / descendre d’un cran dans la pile (parmi les frères).
+   * 'forward'  = Cmd+] = plus haut dans le panneau = index +1 dans l’array
+   * 'backward' = Cmd+[ = plus bas dans le panneau = index -1
+   */
+  function nudgeItemInStack(id, direction /* 'forward'|'backward' */) {
+    if (!assertEditable()) return
+    const parentArr = _findParentArray(definition.value.layers, id)
+    if (!parentArr) return
+    const idx = parentArr.findIndex(i => i.id === id)
+    if (idx === -1) return
+    const newIdx = direction === 'forward' ? idx + 1 : idx - 1
+    if (newIdx < 0 || newIdx >= parentArr.length) return
+    _snapshot()
+    const [item] = parentArr.splice(idx, 1)
+    parentArr.splice(newIdx, 0, item)
+    markDirty()
+  }
+
   // Move itemId into a group's children (or to top-level if groupId===null)
   function moveItemToGroup(itemId, groupId) {
     if (!assertEditable()) return
@@ -831,7 +850,7 @@ export const useEditorStore = defineStore('editor', () => {
     loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
     // Group/item ops
     addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
-    moveItemToGroup, moveGroupBy, reorderItemAroundTarget,
+    moveItemToGroup, moveGroupBy, reorderItemAroundTarget, nudgeItemInStack,
     // Move selected
     moveSelected,
     // Element ops

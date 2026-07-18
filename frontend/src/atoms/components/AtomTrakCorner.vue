@@ -1,30 +1,15 @@
 <template>
   <!--
     AtomTrakCorner — Case de coin pour une piste (track).
-
-    Forme : rectangle (identique aux cases droites adjacentes).
-    Seul le texte est incliné à `textRotation` degrés (défaut 45°).
-
-    Un SVG personnalisé peut être placé derrière via svgMediaId.
-
-    Props params:
-      n            {number}  Numéro affiché (défaut 0)
-      bgColor      {string}  Fond (défaut '#2a3050')
-      textColor    {string}  Texte (défaut '#ffffff')
-      fontSize     {number}  Taille texte en mm (défaut 2.5)
-      borderColor  {string}  Bordure (défaut '#6c7aff')
-      borderWidth  {number}  Épaisseur bordure en mm (défaut 0.2)
-      svgMediaId   {string}  ID media d'un SVG décoratif de fond (optionnel)
-      textRotation {number}  Rotation du texte en degrés (défaut 45)
-                             CardTrack injecte 135/225/315/45 selon le coin.
+    Bordures sélectives (haut/droite/bas/gauche) + traits de plume optionnels.
   -->
   <svg
     width="100%"
     height="100%"
     viewBox="0 0 100 100"
     preserveAspectRatio="xMidYMid meet"
+    overflow="visible"
   >
-    <!-- SVG décoratif optionnel (derrière) -->
     <image
       v-if="params.svgMediaId"
       :href="`/uploads/${params.svgMediaId}`"
@@ -32,15 +17,13 @@
       preserveAspectRatio="xMidYMid meet"
     />
 
-    <!-- Rectangle de fond (même forme que les cases droites) -->
     <rect
       x="0" y="0" width="100" height="100"
-      :fill="params.bgColor     || '#2a3050'"
-      :stroke="params.borderColor || '#6c7aff'"
-      :stroke-width="borderW"
+      :fill="params.bgColor || '#2a3050'"
+      :stroke="cellStroke"
+      :stroke-width="cellStrokeW"
     />
 
-    <!-- Numéro incliné à textRotation° -->
     <text
       x="50" y="50"
       text-anchor="middle"
@@ -51,11 +34,37 @@
       font-weight="600"
       :transform="`rotate(${params.textRotation ?? 45}, 50, 50)`"
     >{{ params.n ?? 0 }}</text>
+
+    <g v-if="!penEnabled" pointer-events="none">
+      <line
+        v-for="(s, i) in plainLines"
+        :key="`line-${i}`"
+        :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
+        :stroke="borderColor"
+        :stroke-width="borderW"
+      />
+    </g>
+
+    <g v-if="penEnabled" pointer-events="none">
+      <path
+        v-for="(stroke, i) in strokePaths"
+        :key="`pen-${i}`"
+        :d="stroke.d"
+        :fill="penColor"
+        stroke="none"
+      />
+    </g>
   </svg>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import {
+  buildStrokePool,
+  buildOuterBorders,
+  variantToPath,
+  pickVariant,
+} from '@/utils/cardTrackStrokes.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -63,8 +72,58 @@ const props = defineProps({
   height_mm: Number,
 })
 
-// viewBox 0-100 ; on met fontSize et borderWidth à l'échelle
+const p = computed(() => props.params)
+
 const vbScale = computed(() => 100 / Math.max(props.width_mm || 5, 0.1))
-const fontSz  = computed(() => (props.params.fontSize    || 2.5) * vbScale.value)
-const borderW = computed(() => (props.params.borderWidth || 0.2) * vbScale.value)
+const fontSz  = computed(() => (p.value.fontSize || 2.5) * vbScale.value)
+const borderW = computed(() => (p.value.borderWidth || 0.2) * vbScale.value)
+const borderColor = computed(() => p.value.borderColor || '#6c7aff')
+
+const penEnabled = computed(() => p.value.penStyle === true)
+const penColor = computed(() => p.value.penColor || borderColor.value)
+const penHalfWidthSVG = computed(() => (p.value.penWidth ?? 0.4) / 2 * vbScale.value)
+
+const borderSides = computed(() => ({
+  top:    p.value.borderTop    !== false,
+  right:  p.value.borderRight  !== false,
+  bottom: p.value.borderBottom !== false,
+  left:   p.value.borderLeft   !== false,
+}))
+
+const useSelectiveBorders = computed(() => {
+  const s = borderSides.value
+  return !(s.top && s.right && s.bottom && s.left)
+})
+
+const cellStroke = computed(() =>
+  penEnabled.value || useSelectiveBorders.value ? 'none' : borderColor.value
+)
+const cellStrokeW = computed(() =>
+  penEnabled.value || useSelectiveBorders.value ? 0 : borderW.value
+)
+
+const outerBorders = computed(() => buildOuterBorders(100, 100, borderSides.value))
+
+const plainLines = computed(() => {
+  if (penEnabled.value || !useSelectiveBorders.value) return []
+  return outerBorders.value
+})
+
+const strokePool = computed(() =>
+  penEnabled.value
+    ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeed ?? 1)
+    : []
+)
+
+const strokePaths = computed(() => {
+  if (!penEnabled.value) return []
+  const seed = p.value.penSeed ?? 1
+  return outerBorders.value.map((sep, i) => {
+    const variant = pickVariant(strokePool.value, seed, sep.pairIdx + i * 17)
+    if (!variant) return null
+    return {
+      d: variantToPath(sep.x1, sep.y1, sep.x2, sep.y2, variant, penHalfWidthSVG.value),
+    }
+  }).filter(Boolean)
+})
 </script>

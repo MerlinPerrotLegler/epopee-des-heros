@@ -164,9 +164,19 @@ export const PARAM_HELP = {
   // ── AtomTrak ──────────────────────────────────────────────────────────────
   n_start:       'Premier numéro de la piste (inclus)',
   n_end:         'Dernier numéro de la piste (inclus)',
+  reverse:       'Inverser le sens : afficher de n_end vers n_start (début ↔ fin)',
   direction:     'Orientation de la piste : horizontale ou verticale',
   cellSize_mm:   'Taille de chaque case en millimètres',
   caps:          'Ajouter des triangles en pointe aux deux extrémités de la piste',
+  borderTop:     'Afficher la bordure haute de la piste',
+  borderRight:   'Afficher la bordure droite de la piste',
+  borderBottom:  'Afficher la bordure basse de la piste',
+  borderLeft:    'Afficher la bordure gauche de la piste',
+  penStyle:      'Séparateurs et bordures en traits de plume (comme CardTrack)',
+  penSeed:       'Graine des variantes de plume (change le motif)',
+  penPoolSize:   'Nombre de variantes de trait dans le pool',
+  penColor:      'Couleur des traits de plume (vide = couleur de bordure)',
+  penWidth:      'Épaisseur max du fuseau de plume en mm',
 
   // ── AtomCardTrack ─────────────────────────────────────────────────────────
   // n_start et n_end définis ci-dessus avec sens adapté au CardTrack :

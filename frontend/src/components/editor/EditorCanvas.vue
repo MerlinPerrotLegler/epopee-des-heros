@@ -255,6 +255,9 @@ const cardStyle = computed(() => ({
 }))
 
 function elementStyle(el) {
+  // z-index = ordre de pile (allElements : bas → haut). Ne pas remonter
+  // l’élément sélectionné, sinon un calque « en bas » passe au-dessus.
+  const stackIdx = store.allElements.findIndex(e => e.id === el.id)
   return {
     left: mmCss(el.x_mm),
     top: mmCss(el.y_mm),
@@ -262,6 +265,7 @@ function elementStyle(el) {
     height: mmCss(el.height_mm),
     transform: el.rotation ? `rotate(${el.rotation}deg)` : undefined,
     opacity: el._layerOpacity != null ? el._layerOpacity : undefined,
+    zIndex: stackIdx >= 0 ? stackIdx + 1 : 1,
   }
 }
 
@@ -460,6 +464,20 @@ function onKeyDown(e) {
     }
   }
 
+  // Cmd/Ctrl + [ ] : descendre / monter dans la pile de calques
+  if ((e.ctrlKey || e.metaKey) && !inInput && store.selectedItemId) {
+    if (e.code === 'BracketLeft' || e.key === '[') {
+      e.preventDefault()
+      store.nudgeItemInStack(store.selectedItemId, 'backward')
+      return
+    }
+    if (e.code === 'BracketRight' || e.key === ']') {
+      e.preventDefault()
+      store.nudgeItemInStack(store.selectedItemId, 'forward')
+      return
+    }
+  }
+
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
   if (inInput) return
   if (!store.selectedItemId) return
@@ -549,18 +567,15 @@ function startPan(e) {
 .canvas-element.selected {
   outline: 1.5px solid var(--accent-primary);
   outline-offset: 1px;
-  z-index: 100;
 }
 
-/* Le fond sélectionné : contour discret, pas de z-index élevé */
+/* Fonds de carte : curseur neutre ; z-index géré par elementStyle (ordre calques) */
 .canvas-element.is-background {
   cursor: default;
-  z-index: 0 !important;
 }
 .canvas-element.is-background.selected {
   outline: 1.5px dashed rgba(108, 122, 255, 0.5);
   outline-offset: -2px;
-  z-index: 0 !important;
 }
 
 .canvas-element.locked {

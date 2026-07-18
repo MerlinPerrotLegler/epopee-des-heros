@@ -3,6 +3,7 @@
     <!-- Header -->
     <div class="panel-section-title lp-header">
       <span>Calques</span>
+      <span class="lp-hint" title="⌘/Ctrl+[ descendre · ⌘/Ctrl+] monter">⌘[ ⌘]</span>
       <button class="btn-icon btn-sm" @click="store.addGroup()" title="Nouveau groupe">⊞</button>
     </div>
 
@@ -12,127 +13,108 @@
       @dragover.prevent
       @drop.prevent="onListDrop"
     >
-      <template v-for="row in flatTree" :key="row.id">
-        <!-- Drop zone ABOVE this row -->
-        <div
-          class="drop-zone"
-          :class="{ active: dropTarget === row.id && dropMode === 'above' }"
-          @dragover.prevent="setDrop(row.id, 'above')"
-          @dragleave="clearDrop"
-          @drop.prevent="commitZoneDrop(row.id, 'above')"
-        ></div>
+      <div
+        v-for="row in flatTree"
+        :key="row.id"
+        class="layer-item"
+        :class="{
+          selected: store.selectedItemId === row.id,
+          'drop-above': dropTarget === row.id && dropMode === 'above',
+          'drop-below': dropTarget === row.id && dropMode === 'below',
+          'drop-inside': dropTarget === row.id && dropMode === 'inside',
+          'is-group': row.kind === 'group',
+        }"
+        :style="{ paddingLeft: `${8 + row._depth * 14}px` }"
+        draggable="true"
+        @dragstart="onDragStart($event, row.id)"
+        @dragend="onDragEnd"
+        @dragover.prevent="onItemDragOver($event, row)"
+        @dragleave="onItemDragLeave"
+        @drop.prevent.stop="onItemDrop(row)"
+        @click="selectItem(row)"
+      >
+        <!-- Expand toggle for groups -->
+        <button
+          v-if="row.kind === 'group'"
+          class="expand-btn"
+          @click.stop="toggleExpand(row.id)"
+          :title="expanded.has(row.id) ? 'Réduire' : 'Développer'"
+        >{{ expanded.has(row.id) ? '▾' : '▸' }}</button>
+        <span v-else class="expand-spacer"></span>
 
-        <div
-          class="layer-item"
-          :class="{
-            selected: store.selectedItemId === row.id,
-            'drop-inside': dropTarget === row.id && dropMode === 'inside',
-            'is-group': row.kind === 'group',
-          }"
-          :style="{ paddingLeft: `${8 + row._depth * 14}px` }"
-          draggable="true"
-          @dragstart="onDragStart($event, row.id)"
-          @dragend="onDragEnd"
-          @dragover.prevent="onItemDragOver(row.id, row.kind)"
-          @dragleave="clearDrop"
-          @drop.prevent="onItemDrop(row.id, row.kind)"
-          @click="selectItem(row)"
+        <!-- Visibility -->
+        <button
+          class="btn-icon btn-sm"
+          @click.stop="store.updateItem(row.id, { visible: row.visible === false })"
+          :title="row.visible !== false ? 'Masquer' : 'Afficher'"
+        >{{ row.visible !== false ? '◉' : '○' }}</button>
+
+        <!-- Icon -->
+        <span class="layer-icon">{{ getIcon(row) }}</span>
+
+        <!-- Name (editable) -->
+        <span
+          v-if="editingId !== row.id"
+          class="layer-name"
+          @dblclick.stop="startRename(row)"
+        >{{ getDisplayName(row) }}</span>
+        <input
+          v-else
+          class="layer-name-input"
+          v-model="editName"
+          :ref="layerRenameRef"
+          @blur="onLayerRenameBlur(row)"
+          @keydown.enter.prevent="finishRename(row)"
+          @keydown.escape="editingId = null"
+          @click.stop
+        />
+
+        <!-- Opacity badge -->
+        <span
+          class="layer-opacity"
+          :class="{ 'opacity-faded': (row.opacity ?? 1) >= 1 }"
+          :title="`Opacité : ${Math.round((row.opacity ?? 1) * 100)}%\nGlisser gauche/droite`"
+          @mousedown.stop="startOpacityDrag($event, row)"
+        >{{ Math.round((row.opacity ?? 1) * 100) }}%</span>
+
+        <!-- Lock (SVG, CSS-colorable) -->
+        <button
+          class="btn-icon btn-sm btn-lock"
+          :class="{ 'is-locked': row.locked }"
+          @click.stop="store.updateItem(row.id, { locked: !row.locked })"
+          :title="row.locked ? 'Déverrouiller' : 'Verrouiller'"
         >
-          <!-- Expand toggle for groups -->
-          <button
-            v-if="row.kind === 'group'"
-            class="expand-btn"
-            @click.stop="toggleExpand(row.id)"
-            :title="expanded.has(row.id) ? 'Réduire' : 'Développer'"
-          >{{ expanded.has(row.id) ? '▾' : '▸' }}</button>
-          <span v-else class="expand-spacer"></span>
+          <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true">
+            <rect x="1" y="5" width="8" height="7" rx="1.2" />
+            <path
+              v-if="row.locked"
+              d="M3 5V3.5a2 2 0 0 1 4 0V5"
+              fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            />
+            <path
+              v-else
+              d="M3 5V3.5a2 2 0 0 1 4 0"
+              fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
+            />
+          </svg>
+        </button>
 
-          <!-- Visibility -->
-          <button
-            class="btn-icon btn-sm"
-            @click.stop="store.updateItem(row.id, { visible: row.visible === false })"
-            :title="row.visible !== false ? 'Masquer' : 'Afficher'"
-          >{{ row.visible !== false ? '◉' : '○' }}</button>
-
-          <!-- Icon -->
-          <span class="layer-icon">{{ getIcon(row) }}</span>
-
-          <!-- Name (editable) -->
-          <span
-            v-if="editingId !== row.id"
-            class="layer-name"
-            @dblclick.stop="startRename(row)"
-          >{{ getDisplayName(row) }}</span>
-          <input
-            v-else
-            class="layer-name-input"
-            v-model="editName"
-            :ref="layerRenameRef"
-            @blur="onLayerRenameBlur(row)"
-            @keydown.enter.prevent="finishRename(row)"
-            @keydown.escape="editingId = null"
-            @click.stop
-          />
-
-          <!-- Opacity badge -->
-          <span
-            class="layer-opacity"
-            :class="{ 'opacity-faded': (row.opacity ?? 1) >= 1 }"
-            :title="`Opacité : ${Math.round((row.opacity ?? 1) * 100)}%\nGlisser gauche/droite`"
-            @mousedown.stop="startOpacityDrag($event, row)"
-          >{{ Math.round((row.opacity ?? 1) * 100) }}%</span>
-
-          <!-- Lock (SVG, CSS-colorable) -->
-          <button
-            class="btn-icon btn-sm btn-lock"
-            :class="{ 'is-locked': row.locked }"
-            @click.stop="store.updateItem(row.id, { locked: !row.locked })"
-            :title="row.locked ? 'Déverrouiller' : 'Verrouiller'"
-          >
-            <svg width="10" height="12" viewBox="0 0 10 12" fill="currentColor" aria-hidden="true">
-              <rect x="1" y="5" width="8" height="7" rx="1.2" />
-              <!-- Closed shackle -->
-              <path
-                v-if="row.locked"
-                d="M3 5V3.5a2 2 0 0 1 4 0V5"
-                fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-              />
-              <!-- Open shackle (right side detached) -->
-              <path
-                v-else
-                d="M3 5V3.5a2 2 0 0 1 4 0"
-                fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"
-              />
-            </svg>
-          </button>
-
-          <!-- Delete -->
-          <button
-            class="btn-icon btn-sm act-del"
-            @mousedown.prevent
-            @click.stop="store.removeItem(row.id)"
-            title="Supprimer"
-          >✕</button>
-        </div>
-
-        <!-- Drop zone BELOW the last child of a group (bottom of group's children) -->
-        <div
-          v-if="isLastChildInGroup(row)"
-          class="drop-zone"
-          :class="{ active: dropTarget === row.id && dropMode === 'below-last' }"
-          @dragover.prevent="setDrop(row.id, 'below-last')"
-          @dragleave="clearDrop"
-          @drop.prevent="commitZoneDrop(row.id, 'below-last')"
-        ></div>
-      </template>
+        <!-- Delete -->
+        <button
+          class="btn-icon btn-sm act-del"
+          @mousedown.prevent
+          @click.stop="store.removeItem(row.id)"
+          title="Supprimer"
+        >✕</button>
+      </div>
 
       <!-- Drop zone at the very bottom of the top-level list -->
       <div
-        class="drop-zone"
+        class="drop-zone-end"
         :class="{ active: dropMode === 'list-bottom' }"
         @dragover.prevent="setDrop(null, 'list-bottom')"
         @dragleave="clearDrop"
-        @drop.prevent="onListBottomDrop"
+        @drop.prevent.stop="onListBottomDrop"
       ></div>
 
       <div v-if="!flatTree.length" class="empty-hint">
@@ -208,13 +190,6 @@ const flatTree = computed(() => {
   walk(store.layers, 0, null)
   return rows
 })
-
-// True for the bottom-most visual child of a group (= index 0 in children array)
-function isLastChildInGroup(row) {
-  if (!row._parentId) return false
-  const siblings = flatTree.value.filter(r => r._parentId === row._parentId)
-  return siblings[siblings.length - 1]?.id === row.id
-}
 
 // ── Names & icons ─────────────────────────────────────────────────────────────
 function getIcon(row) {
@@ -292,14 +267,16 @@ function startOpacityDrag(e, row) {
 // ── Drag & drop ───────────────────────────────────────────────────────────────
 // IMPORTANT: The UI reverses the array order (last item in array = top in UI).
 // So "above" in the visual = "after" in the array, and vice-versa.
+// Zones = haut / bas (et milieu pour groupes) de chaque ligne — large zone de drop.
 
 const dragSrcId  = ref(null)
 const dropTarget = ref(null)
-const dropMode   = ref(null)   // 'above' | 'inside' | 'below-last' | 'list-bottom'
+const dropMode   = ref(null)   // 'above' | 'below' | 'inside' | 'list-bottom'
 
 function onDragStart(e, id) {
   dragSrcId.value = id
   e.dataTransfer.effectAllowed = 'move'
+  e.dataTransfer.setData('text/plain', id)
 }
 
 function onDragEnd() {
@@ -319,48 +296,69 @@ function clearDrop() {
   dropMode.value   = null
 }
 
-// Hovering directly over a row (not a zone) — offer 'inside' for groups
-function onItemDragOver(id, kind) {
-  if (!dragSrcId.value || dragSrcId.value === id) return
-  dropTarget.value = id
-  dropMode.value   = kind === 'group' ? 'inside' : null
+function onItemDragLeave(e) {
+  // Ne clear que si on quitte vraiment la ligne (pas un enfant interne)
+  if (e.currentTarget.contains(e.relatedTarget)) return
+  clearDrop()
 }
 
-function onItemDrop(id, kind) {
-  if (!dragSrcId.value || dragSrcId.value === id) { onDragEnd(); return }
-  if (kind === 'group') store.moveItemToGroup(dragSrcId.value, id)
-  onDragEnd()
+/**
+ * Découpe la ligne en zones larges selon la position Y du pointeur :
+ *  - élément : 50 % haut = above, 50 % bas = below
+ *  - groupe  : 30 % haut = above, 40 % milieu = inside, 30 % bas = below
+ */
+function onItemDragOver(e, row) {
+  if (!dragSrcId.value || dragSrcId.value === row.id) return
+  const rect = e.currentTarget.getBoundingClientRect()
+  const y = (e.clientY - rect.top) / Math.max(rect.height, 1)
+
+  let mode
+  if (row.kind === 'group') {
+    if (y < 0.30) mode = 'above'
+    else if (y > 0.70) mode = 'below'
+    else mode = 'inside'
+  } else {
+    mode = y < 0.5 ? 'above' : 'below'
+  }
+  setDrop(row.id, mode)
 }
 
-// Drop zone commit.
-// Because the UI is REVERSED, 'above' visually = 'after' in array, 'below-last' = 'before' in array.
-function commitZoneDrop(id, mode) {
-  if (!dragSrcId.value) { onDragEnd(); return }
-  if (mode === 'above') {
-    // Visual "above" item → insert after it in array (higher index = higher in visual)
-    store.reorderItemAroundTarget(dragSrcId.value, id, 'after')
-  } else if (mode === 'below-last') {
-    // Bottom of group children → insert before first child (index 0)
-    store.reorderItemAroundTarget(dragSrcId.value, id, 'before')
+function onItemDrop(row) {
+  if (!dragSrcId.value || dragSrcId.value === row.id) { onDragEnd(); return }
+  const mode = dropMode.value
+  if (mode === 'inside' && row.kind === 'group') {
+    store.moveItemToGroup(dragSrcId.value, row.id)
+  } else if (mode === 'above') {
+    // Visuel au-dessus → after dans l’array
+    store.reorderItemAroundTarget(dragSrcId.value, row.id, 'after')
+  } else if (mode === 'below') {
+    // Visuel en-dessous → before dans l’array
+    store.reorderItemAroundTarget(dragSrcId.value, row.id, 'before')
   }
   onDragEnd()
 }
 
-// Drop on the empty area at the very bottom of the list
 function onListBottomDrop() {
   if (!dragSrcId.value) { onDragEnd(); return }
-  // Bottom of visual list = index 0 in array = insert before the first item in array
   const topLevel = flatTree.value.filter(r => r._parentId === null)
-  const lowestRow = topLevel[topLevel.length - 1] // last in flatTree = index 0 in array
+  const lowestRow = topLevel[topLevel.length - 1]
   if (lowestRow && lowestRow.id !== dragSrcId.value) {
     store.reorderItemAroundTarget(dragSrcId.value, lowestRow.id, 'before')
   }
   onDragEnd()
 }
 
-// Drop on empty space (unnest to top level)
+// Drop on empty space (unnest to top level) — ignore si une zone précise est active
 function onListDrop() {
   if (!dragSrcId.value) return
+  if (dropMode.value && dropMode.value !== 'list-bottom') {
+    onDragEnd()
+    return
+  }
+  if (dropMode.value === 'list-bottom') {
+    onListBottomDrop()
+    return
+  }
   store.moveItemToGroup(dragSrcId.value, null)
   onDragEnd()
 }
@@ -373,6 +371,16 @@ function onListDrop() {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
+}
+.lp-hint {
+  margin-left: auto;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--text-muted);
+  opacity: 0.7;
+  letter-spacing: 0.02em;
+  user-select: none;
 }
 
 .layer-list {
@@ -381,19 +389,21 @@ function onListDrop() {
   min-height: 20px;
 }
 
-.drop-zone {
-  height: 3px;
+/* Zone large en bas de liste (pas les 3 px d’avant) */
+.drop-zone-end {
+  min-height: 28px;
   border-radius: 2px;
   transition: background 60ms;
   flex-shrink: 0;
 }
-.drop-zone.active { background: var(--accent-primary); }
+.drop-zone-end.active { background: rgba(108, 122, 255, 0.25); }
 
 .layer-item {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 3px;
-  padding: 3px 8px;
+  padding: 5px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
   transition: background var(--transition-fast);
@@ -405,6 +415,22 @@ function onListDrop() {
 .layer-item.is-group { background: rgba(108,122,255,0.04); }
 .layer-item.is-group.selected { background: rgba(108,122,255,0.12); }
 .layer-item.drop-inside { border-color: var(--accent-primary); background: rgba(108,122,255,0.1); }
+
+/* Indicateurs de drop haut / bas (ligne accent sur toute la largeur) */
+.layer-item.drop-above::before,
+.layer-item.drop-below::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--accent-primary);
+  pointer-events: none;
+  z-index: 2;
+}
+.layer-item.drop-above::before { top: -1px; }
+.layer-item.drop-below::after { bottom: -1px; }
 
 .expand-btn {
   width: 14px; height: 14px;
