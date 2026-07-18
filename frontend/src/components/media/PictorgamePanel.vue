@@ -56,7 +56,7 @@
         </div>
 
         <div class="media-grid">
-          <div v-for="p in filteredPictos" :key="p.id" class="media-card">
+          <div v-for="p in filteredPictos" :key="p.id" class="media-card" :class="{ processing: processingId === p.id }">
             <div class="media-thumb" @click="preview = p">
               <img :src="pictoSrc(p)" :alt="p.picto_ref" />
             </div>
@@ -72,6 +72,14 @@
                 >{{ t.name }}</span>
               </div>
               <div class="media-actions">
+                <button
+                  class="btn-icon btn-sm btn-rembg"
+                  :disabled="!!processingId"
+                  title="Supprimer le fond"
+                  @click="removeBgFor(p)"
+                >
+                  ✦
+                </button>
                 <button class="btn-icon btn-sm" title="Éditer" @click="openEditPicto(p)">✎</button>
                 <button class="btn-icon btn-sm act-del" title="Supprimer" @click="confirmDeletePicto = p">✕</button>
               </div>
@@ -94,6 +102,13 @@
         <div class="preview-meta">
           <code>{{ preview.picto_ref }}</code>
           <strong>{{ preview.picto_label || '—' }}</strong>
+          <div class="preview-actions">
+            <button
+              class="btn-ghost btn-sm"
+              :disabled="!!processingId"
+              @click="removeBgFor(preview)"
+            >✦ Supprimer le fond</button>
+          </div>
         </div>
       </div>
     </div>
@@ -238,6 +253,7 @@ const uploadBlobUrl = ref(null)
 const removeBgOnUpload = ref(false)
 const processingId = ref(null)
 const downloadProgress = ref(null)
+const thumbBust = ref({})
 
 const REF_RE = /^[a-zA-Z0-9_-]+$/
 
@@ -282,7 +298,44 @@ const pictoFormPreviewSrc = computed(() => {
 })
 
 function pictoSrc(p) {
-  return `/uploads/${p.filename || p.id}`
+  const base = `/uploads/${p.filename || p.id}`
+  const t = thumbBust.value[p.id]
+  return t ? `${base}?t=${t}` : base
+}
+
+async function removeBgFor(p) {
+  if (!p?.id || processingId.value) return
+  processingId.value = p.id
+  downloadProgress.value = null
+  try {
+    const { removeBg } = await import('@/utils/removeBackground.js')
+    const imgResp = await fetch(pictoSrc(p).split('?')[0])
+    if (!imgResp.ok) throw new Error(`Cannot fetch image: ${imgResp.status}`)
+    const imgBlob = await imgResp.blob()
+    const blob = await removeBg(imgBlob, {
+      onProgress(key, current, total) {
+        if (key.includes('fetch') && total > 0) {
+          downloadProgress.value = { current, total }
+        } else {
+          downloadProgress.value = null
+        }
+      },
+    })
+    downloadProgress.value = null
+    const base = (p.original_name || p.picto_ref || 'picto').replace(/\.[^.]+$/, '')
+    const fd = new FormData()
+    fd.append('files', new File([blob], `${base}.png`, { type: 'image/png' }))
+    await api.replacePictoContent(p.id, fd)
+    thumbBust.value = { ...thumbBust.value, [p.id]: Date.now() }
+    await pictosStore.load(true)
+    showToast('Fond supprimé')
+  } catch (e) {
+    console.error(e)
+    showToast(e.message || 'Échec suppression fond', 'error')
+  } finally {
+    processingId.value = null
+    downloadProgress.value = null
+  }
 }
 
 function chipStyle(tag) {
@@ -550,6 +603,7 @@ onUnmounted(revokeUploadBlobUrl)
   border-radius: var(--radius-md); overflow: hidden; display: flex; flex-direction: column;
 }
 .media-card:hover { border-color: var(--border-default); }
+.media-card.processing { border-color: var(--accent-primary); }
 .media-thumb {
   height: 110px; display: flex; align-items: center; justify-content: center;
   overflow: hidden; cursor: pointer; flex-shrink: 0;
@@ -568,6 +622,9 @@ onUnmounted(revokeUploadBlobUrl)
   border: 1px solid; background: transparent;
 }
 .media-actions { display: flex; gap: 2px; justify-content: flex-end; margin-top: 4px; }
+.btn-rembg { color: var(--text-muted); display: flex; align-items: center; justify-content: center; }
+.btn-rembg:hover:not(:disabled) { color: var(--accent-primary); }
+.btn-rembg:disabled { opacity: 0.35; cursor: not-allowed; }
 .act-del:hover { color: #ef4444 !important; }
 .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted); }
 .file-icon { color: var(--accent-primary); font-weight: 700; font-size: 13px; font-family: var(--font-mono); }
@@ -586,6 +643,7 @@ onUnmounted(revokeUploadBlobUrl)
 .preview-thumb-wrap img { max-width: 100%; max-height: 60vh; object-fit: contain; display: block; }
 .preview-close { position: absolute; top: 8px; right: 8px; background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 16px; }
 .preview-meta { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; }
+.preview-actions { display: flex; gap: 8px; margin-top: 4px; }
 
 .modal-danger h3 { color: #ef4444; }
 .modal-hint { font-size: 11px; color: var(--text-muted); margin: -4px 0 8px; line-height: 1.5; }
