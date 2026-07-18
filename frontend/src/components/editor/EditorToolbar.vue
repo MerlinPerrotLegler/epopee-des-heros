@@ -36,9 +36,14 @@
     </div>
     <div class="toolbar-center">
       <button class="btn-icon btn-sm" @click="store.zoom = Math.max(0.05, store.zoom - 0.25)">−</button>
-      <span class="zoom-label" @click="store.zoom = 1">{{ Math.round(store.zoom * 100) }}%</span>
+      <span class="zoom-label" @click="store.zoom = 1" title="Zoom 100 % (mm CSS navigateur)">{{ Math.round(store.zoom * 100) }}%</span>
       <button class="btn-icon btn-sm" @click="store.zoom += 0.25">+</button>
-      <button class="btn-zoom btn-sm" @click="store.requestFit = '1:1'" title="Taille réelle (1:1)">1:1</button>
+      <button
+        class="btn-zoom btn-sm"
+        title="Taille réelle à l’écran (clic droit pour calibrer)"
+        @click="onOneToOne"
+        @contextmenu.prevent="showCalibrate = true"
+      >1:1</button>
       <button class="btn-zoom btn-sm" @click="store.requestFit = 'fit'" title="Ajuster à la fenêtre">⊡</button>
       <span class="toolbar-divider"></span>
       <label class="toggle-label">
@@ -80,6 +85,11 @@
       :save-fn="saveLayoutMeta"
       @close="showSettings = false"
     />
+    <ScreenCalibrateModal
+      :open="showCalibrate"
+      @close="showCalibrate = false"
+      @calibrated="store.requestFit = '1:1'"
+    />
   </div>
 </template>
 
@@ -89,11 +99,18 @@ import { useEditorStore } from '@/stores/editor.js'
 import { api } from '@/utils/api.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
 import GuidesMenu from '@/components/editor/GuidesMenu.vue'
+import ScreenCalibrateModal from '@/components/editor/ScreenCalibrateModal.vue'
 
 const store = useEditorStore()
 const showSettings = ref(false)
+const showCalibrate = ref(false)
 const cardTypes = ref([])
 const allLayouts = ref([])
+
+function onOneToOne() {
+  // Uses calibrated zoom if set, otherwise a HiDPI estimate (CSS mm alone is too small).
+  store.requestFit = '1:1'
+}
 
 const versoLayouts = computed(() => allLayouts.value.filter(l => l.is_back && l.id !== store.layout?.id))
 

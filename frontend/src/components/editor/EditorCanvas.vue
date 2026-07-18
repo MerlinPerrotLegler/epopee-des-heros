@@ -198,6 +198,7 @@ import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
 import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
+import { getOneToOneZoom } from '@/utils/physicalScale.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import DrawingToolbar from './DrawingToolbar.vue'
@@ -400,9 +401,12 @@ function applyFit(mode) {
     store.panX = (cw - cardW.value * CSS_PX_PER_MM * fz) / 2
     store.panY = (ch - cardH.value * CSS_PX_PER_MM * fz) / 2
   } else if (mode === '1:1') {
-    store.zoom = 1
-    store.panX = (cw - cardW.value * CSS_PX_PER_MM) / 2
-    store.panY = (ch - cardH.value * CSS_PX_PER_MM) / 2
+    // CSS `mm` follows the 96dpi reference — smaller than a ruler on HiDPI.
+    // Scale so the card matches true physical size (calibrated or estimated).
+    const z = getOneToOneZoom()
+    store.zoom = z
+    store.panX = (cw - cardW.value * CSS_PX_PER_MM * z) / 2
+    store.panY = (ch - cardH.value * CSS_PX_PER_MM * z) / 2
   }
 }
 
