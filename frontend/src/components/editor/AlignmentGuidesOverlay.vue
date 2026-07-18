@@ -16,13 +16,14 @@
         stroke-width="1"
         stroke-dasharray="4 3"
       />
-      <!-- lines -->
+      <!-- lines: active=solid, centre proche=dashed, bord proche=dotted — toujours 1px -->
       <line
         v-else-if="g.kind === 'line' && g.axis === 'x'"
         :x1="mmToPx(g.position_mm)" y1="0"
         :x2="mmToPx(g.position_mm)" :y2="mmToPx(heightMm)"
         :stroke="lineColor(g)"
-        :stroke-width="g.strong ? 2.5 : 1"
+        stroke-width="1"
+        :stroke-dasharray="lineDash(g)"
         stroke-opacity="0.9"
       />
       <line
@@ -30,7 +31,8 @@
         x1="0" :y1="mmToPx(g.position_mm)"
         :x2="mmToPx(widthMm)" :y2="mmToPx(g.position_mm)"
         :stroke="lineColor(g)"
-        :stroke-width="g.strong ? 2.5 : 1"
+        stroke-width="1"
+        :stroke-dasharray="lineDash(g)"
         stroke-opacity="0.9"
       />
       <!-- margins -->
@@ -70,6 +72,13 @@ const { mmToPx } = useMmScale(zoomRef)
 
 function lineColor(g) {
   return g.strong ? 'var(--accent-primary)' : 'rgba(108,122,255,0.45)'
+}
+
+/** Active → solid ; centre (layout/center) proche → dashed ; bord proche → dotted */
+function lineDash(g) {
+  if (g.strong) return null
+  if (g.source === 'edge') return '1 3' // dotted
+  return '5 4' // dashed (layout + element centers)
 }
 </script>
 
