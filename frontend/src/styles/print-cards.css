@@ -1,0 +1,48 @@
+/* Screen: keep print sheet out of the UI but mounted for layout/cache readiness */
+@media screen {
+  .print-sheet {
+    position: absolute;
+    left: -10000px;
+    top: 0;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+    pointer-events: none;
+  }
+}
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+
+  .print-sheet,
+  .print-sheet * {
+    visibility: visible;
+  }
+
+  .print-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
+
+  .print-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .print-card:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  /* Ensure no editor viewport transform leaks */
+  .print-sheet .card-preview {
+    transform: none !important;
+    box-shadow: none !important;
+  }
+}

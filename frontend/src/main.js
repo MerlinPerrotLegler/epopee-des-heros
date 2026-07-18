@@ -3,6 +3,7 @@ import { createPinia } from 'pinia'
 import router from './router/index.js'
 import App from './App.vue'
 import './styles/main.css'
+import './styles/print-cards.css'
 
 const app = createApp(App)
 app.use(createPinia())

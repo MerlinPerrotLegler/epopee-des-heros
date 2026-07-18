@@ -9,6 +9,12 @@
         </select>
         <button v-if="selectedLayout" class="btn-ghost btn-sm" @click="exportCsv" title="Exporter en CSV">⤓ CSV</button>
         <button class="btn-ghost btn-sm" @click="showImportWizard = true">↑ Import CSV</button>
+        <button
+          class="btn-ghost btn-sm"
+          @click="printCardSheets"
+          :disabled="!printCards.length || printing"
+          title="Imprimer les cartes sélectionnées, ou la liste visible"
+        >🖨 Imprimer</button>
         <button class="btn-primary btn-sm" @click="createCard" :disabled="!selectedLayout">+ Nouvelle carte</button>
       </div>
     </header>
@@ -34,6 +40,15 @@
       <table class="cards-table">
         <thead>
           <tr>
+            <th class="th-check">
+              <input
+                type="checkbox"
+                :checked="allVisibleSelected"
+                :indeterminate.prop="someVisibleSelected && !allVisibleSelected"
+                @change="toggleSelectAll"
+                title="Tout sélectionner"
+              />
+            </th>
             <th>Nom</th>
             <th>Layout</th>
             <th>Source</th>
@@ -43,6 +58,13 @@
         </thead>
         <tbody>
           <tr v-for="card in cards" :key="card.id">
+            <td class="td-check">
+              <input
+                type="checkbox"
+                :checked="selectedCardIds.has(card.id)"
+                @change="toggleCardSelection(card.id)"
+              />
+            </td>
             <td>
               <input v-model="card.name" @blur="saveCard(card)" class="inline-input" />
             </td>
@@ -175,11 +197,27 @@
       @close="showImportWizard = false"
       @imported="onImported"
     />
+
+    <!-- Print sheet: off-screen on screen, sole visible content when printing -->
+    <div class="print-sheet" aria-hidden="true">
+      <div
+        v-for="card in printCards"
+        :key="card.id"
+        class="print-card"
+      >
+        <CardPreview
+          v-if="layoutFor(card)"
+          :layout="layoutFor(card)"
+          :data="card.data || {}"
+          :zoom="1"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { getBindablePaths } from '@/utils/binding.js'
@@ -206,6 +244,9 @@ const previewCard = ref(null)
 const previewLayout = ref(null)
 const previewLoading = ref(false)
 const previewZoom = ref(1)
+const selectedCardIds = ref(new Set())
+const printLayoutById = ref({})
+const printing = ref(false)
 
 onMounted(async () => {
   layouts.value = await api.getLayouts()
@@ -219,8 +260,72 @@ const activeJobs = computed(() => {
   return importJobs.value.filter(j => j.layout_id === selectedLayout.value || !j.layout_id)
 })
 
+/** Selected cards if any, else the visible/filtered list. */
+const printCards = computed(() => {
+  if (selectedCardIds.value.size > 0) {
+    return cards.value.filter(c => selectedCardIds.value.has(c.id))
+  }
+  return cards.value
+})
+
+const allVisibleSelected = computed(() =>
+  cards.value.length > 0 && cards.value.every(c => selectedCardIds.value.has(c.id))
+)
+
+const someVisibleSelected = computed(() =>
+  cards.value.some(c => selectedCardIds.value.has(c.id))
+)
+
 async function loadCards() {
   cards.value = await api.getCards(selectedLayout.value)
+  selectedCardIds.value = new Set()
+}
+
+function toggleCardSelection(id) {
+  const next = new Set(selectedCardIds.value)
+  if (next.has(id)) next.delete(id)
+  else next.add(id)
+  selectedCardIds.value = next
+}
+
+function toggleSelectAll(e) {
+  if (e.target.checked) {
+    selectedCardIds.value = new Set(cards.value.map(c => c.id))
+  } else {
+    selectedCardIds.value = new Set()
+  }
+}
+
+function layoutFor(card) {
+  return printLayoutById.value[card.layout_id] || null
+}
+
+async function ensurePrintLayouts() {
+  const ids = [...new Set(printCards.value.map(c => c.layout_id).filter(Boolean))]
+  const cache = { ...printLayoutById.value }
+  await Promise.all(ids.map(async (id) => {
+    if (cache[id]) return
+    const layout = await api.getLayout(id)
+    const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
+    cache[id] = { ...layout, definition: def }
+  }))
+  printLayoutById.value = cache
+}
+
+async function printCardSheets() {
+  if (!printCards.value.length || printing.value) return
+  printing.value = true
+  try {
+    await ensurePrintLayouts()
+    await nextTick()
+    // Allow CardPreview component fetches to settle before the print dialog
+    await new Promise(r => setTimeout(r, 50))
+    window.print()
+  } catch (e) {
+    alert(`Erreur impression : ${e.message}`)
+  } finally {
+    printing.value = false
+  }
 }
 
 function getLayoutName(id) {
@@ -439,6 +544,8 @@ function exportCsv() {
   background: var(--bg-primary);
 }
 .cards-table td { padding: 5px 8px; border-bottom: 1px solid var(--border-subtle); font-size: 12px; }
+.th-check, .td-check { width: 28px; text-align: center; }
+.th-check input, .td-check input { cursor: pointer; }
 .th-actions { text-align: right; }
 
 .inline-input {
