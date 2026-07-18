@@ -111,7 +111,7 @@ Les instances de cartes fournissent les valeurs réelles :
 ```json
 {
   "card_name.text": "Épée en fer",
-  "price.resources": {"or": 6},
+  "price.resources": {"pieces": 6},
   "level.value": "1"
 }
 ```
@@ -136,7 +136,7 @@ Les layouts de type "dos" sont disponibles dans la bibliothèque de dos.
 | `die12` | Dé 12 faces (dodécaèdre) |
 | `cardPlaceholder` | Placeholder de carte par type |
 | `resourcePlaceholder` | Placeholder de ressource |
-| `resource` | Ressource avec icône (or, essence, etc.) |
+| `resource` | Ressource avec icône (pieces, essence, etc.) |
 | `price` | Prix multi-ressources |
 | `cardType` | Badge type de carte |
 | `counter` | Compteur/numéro de carte |

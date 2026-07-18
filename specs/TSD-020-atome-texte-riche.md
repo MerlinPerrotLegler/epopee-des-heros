@@ -1,5 +1,7 @@
 # TSD-020 — Atome Texte Riche (`richText`)
 
+> **Note (2026-07-18) :** syntaxe shortcodes et markdown blocs → **[TSD-026](TSD-026-richtext-enrichissement.md)** + guide **[GUIDE-richtext](GUIDE-richtext.md)**. Ce TSD reste la base historique (FML, rendu).
+
 | Field       | Value                        |
 |-------------|------------------------------|
 | Status      | Draft                        |

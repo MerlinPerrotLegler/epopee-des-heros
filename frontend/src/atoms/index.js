@@ -271,7 +271,7 @@ export const ATOM_TYPES = {
     label: 'Ressource',
     icon: '◈',
     defaultParams: {
-      resourceType: 'or', // or | essence | pierre | mithril | cristaux | fragment
+      resourceType: 'pieces', // pieces | essence | pierre | mithril | cristaux | fragment
       value: '',
       iconSize: 4,
       fontSize: 2.5,
@@ -286,7 +286,7 @@ export const ATOM_TYPES = {
     label: 'Prix',
     icon: '$',
     defaultParams: {
-      resources: {}, // { or: 5, essence: 1 } - will be bound
+      resources: {}, // { pieces: 5, essence: 1 } - will be bound
       layout: 'horizontal', // horizontal | vertical | grid
       iconSize: 4,
       fontSize: 2.5,
@@ -516,11 +516,14 @@ export const ATOM_TYPES = {
     label: 'Texte riche',
     icon: '✦',
     defaultParams: {
-      content:    '',         // source — markdown + /D8{N} /D12{N} /R{type,amt} /FOR{mod} /SVG{name} $$fml$$
+      content:    '',         // markdown blocs + shortcodes TSD-026 — voir GUIDE-richtext
+      bulletIcon: null,       // media id / URL / caractère pour puces -
+      checkboxIcon: null,     // case vide [ ]
+      checkboxIconChecked: null, // case cochée [x]
       fontFamily: null,
       fontSize:   4,          // mm
       color:      null,       // null → config globale
-      align:      'left',     // left | center | right
+      align:      'left',     // left | center | right | justify — défaut ; /align{} dans le contenu
       lineHeight: 1.5,
       diceScale:  1.4,        // multiplicateur taille dé vs fontSize (em)
       padding:    0,          // mm
@@ -579,7 +582,7 @@ export const STAT_TYPES = {
 
 // Resource types with colors and icons
 export const RESOURCE_TYPES = {
-  or: { label: 'Or', color: '#fbbf24', icon: '●' },
+  pieces: { label: 'Pièces', color: '#fbbf24', icon: '●' },
   essence: { label: 'Essence de monstre', color: '#a855f7', icon: '◆' },
   pierre: { label: 'Pierre précieuse', color: '#38bdf8', icon: '◇' },
   mithril: { label: 'Mithril', color: '#94a3b8', icon: '⬡' },

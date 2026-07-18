@@ -80,7 +80,7 @@ export const PARAM_HELP = {
 
   // ── AtomPicto ──────────────────────────────────────────────────────────────
   tag:             'Tag Pictorgame pour filtrer la liste des refs dans le panneau propriétés',
-  ref:             'Référence stable du picto dans le catalogue (ex. or, une-main)',
+  ref:             'Référence stable du picto dans le catalogue (ex. pieces, une-main)',
   view:            'Mode d\'affichage : icône seule, horizontal, vertical, inversé, ou texte seul',
 
   // ── AtomIconMap / AtomBadge ────────────────────────────────────────────────
@@ -105,14 +105,14 @@ export const PARAM_HELP = {
   label:         'Texte d\'étiquette affiché dans la zone de réservation',
 
   // ── AtomResourcePlaceholder ────────────────────────────────────────────────
-  resourceType:  'Type de ressource : or, essence, pierre, mithril, cristaux, fragment',
+  resourceType:  'Type de ressource : pieces, essence, pierre, mithril, cristaux, fragment',
 
   // ── AtomResource ───────────────────────────────────────────────────────────
   iconSize:      'Taille de l\'icône de ressource en millimètres',
   showLabel:     'Afficher ou non le nom de la ressource à côté de l\'icône',
 
   // ── AtomPrice ──────────────────────────────────────────────────────────────
-  resources:     'Coût en ressources, ex : {"or":3,"essence":1}',
+  resources:     'Coût en ressources, ex : {"pieces":3,"essence":1}',
   layout:        'Disposition des ressources : horizontale, verticale, ou grille',
   gap:           'Espace entre les icônes de ressources (mm)',
 
@@ -190,4 +190,11 @@ export const PARAM_HELP = {
   cellOverrides:   'Surcharges visuelles par case. Utilisez la section "Édition par case" ci-dessus.',
   thicknessH_mm:   'Épaisseur des pistes haut et bas (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
   thicknessV_mm:   'Épaisseur des pistes gauche et droite (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
+
+  // ── AtomRichText ──────────────────────────────────────────────────────────
+  bulletIcon:    'Icône des puces (-) : média du catalogue, ou laisser vide pour •',
+  checkboxIcon:  'Icône case vide [ ] : média, ou laisser vide pour ☐',
+  checkboxIconChecked: 'Icône case cochée [x] : média, ou laisser vide pour ☑',
+  diceScale:     'Taille des dés / pictos inline par rapport à la police (multiplicateur)',
+  align:         'Alignement par défaut (left/center/right/justify). Surchargeable via /align{…}',
 }

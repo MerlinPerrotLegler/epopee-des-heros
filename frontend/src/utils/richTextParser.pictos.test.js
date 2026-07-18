@@ -1,39 +1,33 @@
-import { tokenize } from './richTextParser.js'
+/**
+ * TSD-026 — legacy pictos tests remplacés.
+ * Ancien /D8, \ref, withLabel → nouveaux /d8, /ref{view}
+ */
 import assert from 'node:assert/strict'
+import { tokenize } from './richTextParser.js'
 
-const tokens = tokenize('Coût /or et \\epee-longue puis /D8{3}')
-const types = tokens.map((t) => t.type)
-assert.ok(types.includes('picto'))
-assert.ok(types.includes('die'))
-const icon = tokens.find((t) => t.type === 'picto' && t.ref === 'or')
-assert.equal(icon.withLabel, false)
-const labeled = tokens.find((t) => t.type === 'picto' && t.ref === 'epee-longue')
-assert.equal(labeled.withLabel, true)
-const die = tokens.find((t) => t.type === 'die')
+const tokens = tokenize('Coût /pieces{both} et /epee-longue puis /d8{3}')
+const flat = []
+for (const t of tokens) {
+  if (t.children) flat.push(...t.children)
+  else if (t.items) for (const it of t.items) flat.push(...it)
+  else flat.push(t)
+}
+
+const picto = flat.find((t) => t.type === 'picto' && t.ref === 'pieces')
+assert.ok(picto)
+assert.equal(picto.view, 'both')
+
+const sword = flat.find((t) => t.type === 'picto' && t.ref === 'epee-longue')
+assert.ok(sword)
+assert.equal(sword.view, 'icon')
+
+const die = flat.find((t) => t.type === 'die')
 assert.equal(die.sides, 8)
+assert.equal(die.value, '3')
 
-// stat vs picto disambiguation
 const statBare = tokenize('/INI')
-assert.equal(statBare.length, 1)
-assert.equal(statBare[0].type, 'stat')
-assert.equal(statBare[0].stat, 'INI')
+assert.equal(statBare[0].type, 'paragraph')
+assert.equal(statBare[0].children[0].type, 'stat')
+assert.equal(statBare[0].children[0].stat, 'INI')
 
-const statMod = tokenize('/FOR{+1}')
-assert.equal(statMod.length, 1)
-assert.equal(statMod[0].type, 'stat')
-assert.equal(statMod[0].stat, 'FOR')
-assert.equal(statMod[0].modifier, '+1')
-
-const pictoSlash = tokenize('/or')
-assert.equal(pictoSlash.length, 1)
-assert.equal(pictoSlash[0].type, 'picto')
-assert.equal(pictoSlash[0].ref, 'or')
-assert.equal(pictoSlash[0].withLabel, false)
-
-const pictoBackslash = tokenize('\\or')
-assert.equal(pictoBackslash.length, 1)
-assert.equal(pictoBackslash[0].type, 'picto')
-assert.equal(pictoBackslash[0].ref, 'or')
-assert.equal(pictoBackslash[0].withLabel, true)
-
-console.log('ok richTextParser pictos')
+console.log('ok richTextParser pictos (TSD-026)')

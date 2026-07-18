@@ -46,6 +46,90 @@
       </div>
     </div>
 
+    <!-- ── Section picto : catalogue tag → ref (avant styles) ───────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'picto'">
+      <div class="panel-section-title">Catalogue Pictorgame</div>
+
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Tag</label>
+          <span v-if="PARAM_HELP.tag" class="param-help">{{ PARAM_HELP.tag }}</span>
+        </div>
+        <div class="field-row">
+          <template v-if="isPictoParamBinding(el.params?.tag)">
+            <input
+              :value="el.params?.tag || ''"
+              @input="updateParam('tag', $event.target.value)"
+              :disabled="isParamFixed('tag')"
+              style="flex:1; font-family:var(--font-mono); font-size:10px"
+            />
+          </template>
+          <select
+            v-else
+            :value="el.params?.tag || ''"
+            @change="updateParam('tag', $event.target.value || '')"
+            :disabled="isParamFixed('tag')"
+            style="flex:1"
+          >
+            <option value="">— tous —</option>
+            <option v-for="t in pictosStore.tags" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
+            <option
+              v-if="el.params?.tag && !pictosStore.tags.some(t => String(t.id) === String(el.params.tag))"
+              :value="el.params.tag"
+            >{{ el.params.tag }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Ref</label>
+          <span v-if="PARAM_HELP.ref" class="param-help">{{ PARAM_HELP.ref }}</span>
+        </div>
+        <div class="field-row">
+          <template v-if="isPictoParamBinding(el.params?.ref)">
+            <input
+              :value="el.params?.ref || ''"
+              @input="updateParam('ref', $event.target.value)"
+              :disabled="isParamFixed('ref')"
+              style="flex:1; font-family:var(--font-mono); font-size:10px"
+            />
+          </template>
+          <select
+            v-else
+            :value="el.params?.ref || ''"
+            @change="updateParam('ref', $event.target.value || '')"
+            :disabled="isParamFixed('ref')"
+            style="flex:1"
+          >
+            <option value="">— choisir —</option>
+            <option v-for="opt in pictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+            <option
+              v-if="el.params?.ref && !pictoRefOptions.some(o => o.value === el.params.ref)"
+              :value="el.params.ref"
+            >{{ el.params.ref }}</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="param-block">
+        <div class="param-header">
+          <label class="param-label">Vue</label>
+          <span v-if="PARAM_HELP.view" class="param-help">{{ PARAM_HELP.view }}</span>
+        </div>
+        <div class="field-row">
+          <select
+            :value="el.params?.view || 'horizontal'"
+            @change="updateParam('view', $event.target.value)"
+            :disabled="isParamFixed('view')"
+            style="flex:1"
+          >
+            <option v-for="opt in (getEnumOptions('view') || [])" :key="opt" :value="opt">{{ opt }}</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
     <!-- ── Section spéciale CardTrack : édition par case ── -->
     <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'cardTrack'">
       <div class="panel-section-title">Édition par case</div>
@@ -76,23 +160,77 @@
     <div class="panel-section" v-if="isGradientAtom">
       <div class="panel-section-title">Couleurs du dégradé</div>
       <GradientStopEditor
-        :model-value="el.params.stops || []"
+        :model-value="el.params?.stops || []"
         @update:model-value="updateParam('stops', $event)"
         :gradient-type="el.atomType === 'backgroundGradientRadial' ? 'radial' : 'linear'"
-        :angle="el.params.angle || 135"
-        :pos-x="el.params.posX || 50"
-        :pos-y="el.params.posY || 50"
-        :shape="el.params.shape || 'ellipse'"
+        :angle="el.params?.angle || 135"
+        :pos-x="el.params?.posX || 50"
+        :pos-y="el.params?.posY || 50"
+        :shape="el.params?.shape || 'ellipse'"
       />
     </div>
 
-    <!-- Type-specific params -->
-    <div class="panel-section" v-if="el.params">
-      <div class="panel-section-title">Paramètres — {{ typeLabel }}</div>
+    <!-- ── Section richText : Contenu en premier ─────────────────────────── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'richText'">
+      <div class="panel-section-title" style="display:flex;justify-content:space-between;align-items:center">
+        <span>Contenu</span>
+        <button type="button" class="btn-ghost btn-sm" @click="rtDocOpen = true">Doc</button>
+      </div>
+      <div class="rt-syntax-hint">
+        **gras** *italique* · # titre · - puce · [ ] · /align{center} · /separator{basic,2}<br>
+        /d8{6} /pieces{both} /picto{tag,ref,icon} /svg{file,#c00} /data{nom}<br>
+        Tapez <code>/</code> pour le menu d’insertion
+      </div>
+      <div class="rt-editor-wrap">
+        <textarea
+          ref="rtTextarea"
+          :value="el.params.content || ''"
+          @input="onRtInput"
+          @keydown="onRtKeydown"
+          rows="8"
+          class="rt-textarea"
+          placeholder="Texte avec **gras**, /d8{6}, /align{center}…"
+        />
+        <RichTextSlashMenu
+          ref="rtSlash"
+          :open="rtSlashOpen"
+          :context="rtSlashContext"
+          :anchor="rtSlashAnchor"
+          @replace="replaceRtSlash"
+          @close="closeRtSlash"
+        />
+      </div>
+      <div class="field-row" style="margin-top:8px">
+        <label>Icône de puce</label>
+        <MediaPicker
+          :model-value="el.params.bulletIcon || ''"
+          @update:model-value="updateParam('bulletIcon', $event || null)"
+        />
+      </div>
+      <div class="field-row" style="margin-top:6px">
+        <label>Case vide</label>
+        <MediaPicker
+          :model-value="el.params.checkboxIcon || ''"
+          @update:model-value="updateParam('checkboxIcon', $event || null)"
+        />
+      </div>
+      <div class="field-row" style="margin-top:6px">
+        <label>Case cochée</label>
+        <MediaPicker
+          :model-value="el.params.checkboxIconChecked || ''"
+          @update:model-value="updateParam('checkboxIconChecked', $event || null)"
+        />
+      </div>
+      <RichTextDocModal :open="rtDocOpen" @close="rtDocOpen = false" />
+    </div>
+
+    <!-- Type-specific params (toujours via defaults fusionnés, même si params absents) -->
+    <div class="panel-section" v-if="el.type === 'atom' && Object.keys(effectiveParams).length">
+      <div class="panel-section-title">{{ el.atomType === 'richText' ? 'Style' : `Paramètres — ${typeLabel}` }}</div>
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && key === 'content') && !(el.atomType === 'picto' && (key === 'tag' || key === 'ref')) && !isParamHidden(key)"
+        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && (key === 'content' || key === 'bulletIcon' || key === 'checkboxIcon' || key === 'checkboxIconChecked')) && !(el.atomType === 'picto' && (key === 'tag' || key === 'ref' || key === 'view')) && !isParamHidden(key)"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -249,23 +387,6 @@
       </div>
     </div>
 
-    <!-- ── Section richText : éditeur de contenu ────────────────────────── -->
-    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'richText'">
-      <div class="panel-section-title">Contenu</div>
-      <div class="rt-syntax-hint">
-        **gras** *italique* __souligné__ ~~barré~~<br>
-        /D8{6} /D12{4} /R{or,3} /FOR{+1} /INI<br>
-        /SVG{fichier} $$expr$$ $$$bloc$$$
-      </div>
-      <textarea
-        :value="el.params.content || ''"
-        @input="updateParam('content', $event.target.value)"
-        rows="8"
-        class="rt-textarea"
-        placeholder="Texte avec **gras**, /D8{6}, /R{or,2}…"
-      />
-    </div>
-
     <!-- ── Section image : cadrage + IA prompt ──────────────────────────── -->
     <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'image'">
       <div class="panel-section-title">Cadrage (cover)</div>
@@ -313,73 +434,6 @@
         <!-- Warning if prompt template is empty -->
         <div v-if="!el.params.ai_prompt_template" class="ai-warning" style="margin-top:4px">
           ⚠ Prompt vide — la génération sera désactivée pour cet élément.
-        </div>
-      </div>
-    </div>
-
-    <!-- ── Section picto : catalogue tag → ref ─────────────────────────── -->
-    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'picto'">
-      <div class="panel-section-title">Catalogue Pictorgame</div>
-
-      <div class="param-block">
-        <div class="param-header">
-          <label class="param-label">Tag</label>
-          <span v-if="PARAM_HELP.tag" class="param-help">{{ PARAM_HELP.tag }}</span>
-        </div>
-        <div class="field-row">
-          <template v-if="isPictoParamBinding(el.params.tag)">
-            <input
-              :value="el.params.tag || ''"
-              @input="updateParam('tag', $event.target.value)"
-              :disabled="isParamFixed('tag')"
-              style="flex:1; font-family:var(--font-mono); font-size:10px"
-            />
-          </template>
-          <select
-            v-else
-            :value="el.params.tag || ''"
-            @change="updateParam('tag', $event.target.value || '')"
-            :disabled="isParamFixed('tag')"
-            style="flex:1"
-          >
-            <option value="">— tous —</option>
-            <option v-for="t in pictosStore.tags" :key="t.id" :value="String(t.id)">{{ t.name }}</option>
-            <option
-              v-if="el.params.tag && !pictosStore.tags.some(t => String(t.id) === String(el.params.tag))"
-              :value="el.params.tag"
-            >{{ el.params.tag }}</option>
-          </select>
-        </div>
-      </div>
-
-      <div class="param-block">
-        <div class="param-header">
-          <label class="param-label">Ref</label>
-          <span v-if="PARAM_HELP.ref" class="param-help">{{ PARAM_HELP.ref }}</span>
-        </div>
-        <div class="field-row">
-          <template v-if="isPictoParamBinding(el.params.ref)">
-            <input
-              :value="el.params.ref || ''"
-              @input="updateParam('ref', $event.target.value)"
-              :disabled="isParamFixed('ref')"
-              style="flex:1; font-family:var(--font-mono); font-size:10px"
-            />
-          </template>
-          <select
-            v-else
-            :value="el.params.ref || ''"
-            @change="updateParam('ref', $event.target.value || '')"
-            :disabled="isParamFixed('ref')"
-            style="flex:1"
-          >
-            <option value="">— choisir —</option>
-            <option v-for="opt in pictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-            <option
-              v-if="el.params.ref && !pictoRefOptions.some(o => o.value === el.params.ref)"
-              :value="el.params.ref"
-            >{{ el.params.ref }}</option>
-          </select>
         </div>
       </div>
     </div>
@@ -490,7 +544,7 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted, watch, nextTick } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
@@ -498,9 +552,12 @@ import { usePictosStore } from '@/stores/pictos.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
+import { parseSlashContext } from '@/utils/richTextRegistry.js'
 import GradientStopEditor from './GradientStopEditor.vue'
 import MediaPicker from './MediaPicker.vue'
 import ColorPickerAlpha from './ColorPickerAlpha.vue'
+import RichTextSlashMenu from './RichTextSlashMenu.vue'
+import RichTextDocModal from './RichTextDocModal.vue'
 import { api } from '@/utils/api.js'
 
 // ── AI config (media types + configured state) ──────────────────────────────
@@ -537,10 +594,93 @@ const pictosStore = usePictosStore()
 watch(
   () => el.value?.atomType,
   (atomType) => {
-    if (atomType === 'picto') pictosStore.load()
+    if (atomType === 'picto' || atomType === 'richText') pictosStore.load()
   },
   { immediate: true },
 )
+
+// ── RichText slash + doc ────────────────────────────────────────────────────
+const rtDocOpen = ref(false)
+const rtSlashOpen = ref(false)
+const rtSlashContext = ref(null)
+const rtSlashAnchor = ref({ top: 0, left: 0 })
+const rtTextarea = ref(null)
+const rtSlash = ref(null)
+
+function syncSlashFromTextarea(ta) {
+  if (!ta) return
+  const val = ta.value
+  const pos = ta.selectionStart ?? val.length
+  const before = val.slice(0, pos)
+  const ctx = parseSlashContext(before)
+  if (ctx) {
+    const wasOpen = rtSlashOpen.value
+    rtSlashContext.value = ctx
+    rtSlashOpen.value = true
+    rtSlashAnchor.value = { top: ta.offsetHeight + 4, left: 8 }
+    if (!wasOpen) {
+      nextTick(() => rtSlash.value?.focusSearch?.())
+    }
+  } else {
+    closeRtSlash({ restoreFocus: false })
+  }
+}
+
+function closeRtSlash({ restoreFocus = true } = {}) {
+  rtSlashOpen.value = false
+  rtSlashContext.value = null
+  if (restoreFocus) {
+    nextTick(() => {
+      const ta = rtTextarea.value
+      if (!ta) return
+      ta.focus()
+    })
+  }
+}
+
+function onRtInput(e) {
+  const ta = e.target
+  const val = ta.value
+  const pos = ta.selectionStart ?? val.length
+  updateParam('content', val)
+  nextTick(() => {
+    const elTa = rtTextarea.value || ta
+    try { elTa.setSelectionRange(pos, pos) } catch { /* ignore */ }
+    syncSlashFromTextarea(elTa)
+    if (!rtSlashOpen.value) {
+      elTa.focus()
+    }
+  })
+}
+
+function onRtKeydown(e) {
+  if (rtSlashOpen.value && rtSlash.value?.onKey(e)) return
+}
+
+function replaceRtSlash({ start, text, close }) {
+  const ta = rtTextarea.value
+  if (!ta) return
+  const val = el.value?.params?.content || ''
+  const pos = ta.selectionStart ?? val.length
+  const from = typeof start === 'number' ? start : pos
+  const next = val.slice(0, from) + text + val.slice(pos)
+  updateParam('content', next)
+  const caret = from + text.length
+  if (close) {
+    rtSlashOpen.value = false
+    rtSlashContext.value = null
+    nextTick(() => {
+      ta.focus()
+      ta.setSelectionRange(caret, caret)
+    })
+    return
+  }
+  nextTick(() => {
+    ta.setSelectionRange(caret, caret)
+    syncSlashFromTextarea(ta)
+    nextTick(() => rtSlash.value?.focusSearch?.())
+  })
+}
 
 const pictoRefOptions = computed(() =>
   pictosStore.pictosForTag(el.value?.params?.tag).map((p) => ({
@@ -567,10 +707,11 @@ const isGradientAtom = computed(() =>
 )
 
 // Merge stored params with atom defaults so newly-added default keys always appear
+// (même si `params` est null/absent sur l’élément)
 const effectiveParams = computed(() => {
-  if (!el.value?.params) return {}
-  const defaults = (el.value.type === 'atom' && ATOM_TYPES[el.value.atomType]?.defaultParams) || {}
-  return { ...defaults, ...el.value.params }
+  if (!el.value || el.value.type !== 'atom') return {}
+  const defaults = ATOM_TYPES[el.value.atomType]?.defaultParams || {}
+  return { ...defaults, ...(el.value.params || {}) }
 })
 
 const atomParamRules = computed(() => configStore.config?.[ATOM_PARAM_RULES_KEY] || {})
@@ -608,7 +749,7 @@ function update(key, value) {
 }
 
 function updateParam(key, value) {
-  const newParams = { ...el.value.params, [key]: value }
+  const newParams = { ...(el.value.params || {}), [key]: value }
   store.updateElement(el.value.id, { params: newParams })
 }
 
@@ -717,6 +858,7 @@ const ENUM_MAPS = {
   textOrientation: ['parallel', 'perpendicular'],
   cornerTextMode:  ['bisect', 'parallel', 'perpendicular', 'custom'],
   textAlign:       ['left', 'center', 'right', 'justify'],
+  align:           ['left', 'center', 'right', 'justify'],
   titleAlign:      ['left', 'center', 'right'],
   textTransform:   ['none', 'uppercase', 'capitalize', 'lowercase'],
   overflow:        ['hidden', 'visible', 'ellipsis'],
@@ -725,7 +867,7 @@ const ENUM_MAPS = {
   borderStyle:     ['solid', 'dashed', 'dotted'],
   style:           ['solid', 'dashed', 'dotted'],
   fontFamily:      ['Outfit', 'JetBrains Mono', 'serif', 'sans-serif'],
-  resourceType:    ['or', 'essence', 'pierre', 'mithril', 'cristaux', 'fragment'],
+  resourceType:    ['pieces', 'essence', 'pierre', 'mithril', 'cristaux', 'fragment'],
   cardType:        ['equipement', 'classe', 'quete', 'bricabrac', 'cestpasjuste', 'buff', 'faveur', 'epopee'],
   // Background enums
   blendMode:       ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-burn', 'color-dodge'],
@@ -987,6 +1129,10 @@ function isParamFixed(paramKey) {
   padding: 5px 7px;
   border-radius: var(--radius-sm);
   line-height: 1.5;
+}
+
+.rt-editor-wrap {
+  position: relative;
 }
 
 .ai-warning {

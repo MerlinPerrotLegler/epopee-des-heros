@@ -172,7 +172,7 @@ const ENUM_MAPS = {
   borderStyle: ['solid', 'dashed', 'dotted'],
   style: ['solid', 'dashed', 'dotted'],
   fontFamily: ['Outfit', 'JetBrains Mono', 'serif', 'sans-serif'],
-  resourceType: ['or', 'essence', 'pierre', 'mithril', 'cristaux', 'fragment'],
+  resourceType: ['pieces', 'essence', 'pierre', 'mithril', 'cristaux', 'fragment'],
   cardType: ['equipement', 'classe', 'quete', 'bricabrac', 'cestpasjuste', 'buff', 'faveur', 'epopee'],
   blendMode: ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-burn', 'color-dodge'],
   shape: ['ellipse', 'circle'],
