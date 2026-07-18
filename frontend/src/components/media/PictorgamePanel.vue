@@ -1,5 +1,16 @@
 <template>
   <div class="pictorgame-panel">
+    <Transition name="banner">
+      <div v-if="downloadProgress" class="model-banner">
+        <span class="model-banner-label">
+          Chargement du modèle IA (première utilisation)… {{ downloadPct }}%
+        </span>
+        <div class="model-progress-track">
+          <div class="model-progress-fill" :style="{ width: downloadPct + '%' }"></div>
+        </div>
+      </div>
+    </Transition>
+
     <div v-if="initialLoading" class="pg-loading">Chargement…</div>
     <div v-else-if="initialLoadError" class="pg-load-error">{{ initialLoadError }}</div>
     <div v-else class="pg-layout">
@@ -59,6 +70,10 @@
           <div v-for="p in filteredPictos" :key="p.id" class="media-card" :class="{ processing: processingId === p.id }">
             <div class="media-thumb" @click="preview = p">
               <img :src="pictoSrc(p)" :alt="p.picto_ref" />
+              <div v-if="processingId === p.id" class="thumb-processing">
+                <div class="thumb-spinner"></div>
+                <span class="thumb-processing-label">Traitement…</span>
+              </div>
             </div>
             <div class="media-body">
               <code class="pg-ref">{{ p.picto_ref }}</code>
@@ -98,6 +113,10 @@
         <button class="preview-close" @click="preview = null">✕</button>
         <div class="preview-thumb-wrap">
           <img :src="pictoSrc(preview)" :alt="preview.picto_ref" />
+          <div v-if="processingId === preview.id" class="thumb-processing">
+            <div class="thumb-spinner"></div>
+            <span class="thumb-processing-label">Traitement…</span>
+          </div>
         </div>
         <div class="preview-meta">
           <code>{{ preview.picto_ref }}</code>
@@ -253,6 +272,10 @@ const uploadBlobUrl = ref(null)
 const removeBgOnUpload = ref(false)
 const processingId = ref(null)
 const downloadProgress = ref(null)
+const downloadPct = computed(() => {
+  if (!downloadProgress.value?.total) return 0
+  return Math.round((downloadProgress.value.current / downloadProgress.value.total) * 100)
+})
 const thumbBust = ref({})
 
 const REF_RE = /^[a-zA-Z0-9_-]+$/
@@ -556,6 +579,18 @@ onUnmounted(revokeUploadBlobUrl)
 
 <style scoped>
 .pictorgame-panel { padding: 0; }
+
+.model-banner {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--bg-tertiary); border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.model-banner-label { font-size: 11px; color: var(--accent-primary); }
+.model-progress-track { height: 4px; border-radius: 2px; background: var(--bg-deep); overflow: hidden; }
+.model-progress-fill { height: 100%; border-radius: 2px; background: var(--accent-primary); transition: width 200ms; }
+.banner-enter-active, .banner-leave-active { transition: opacity 200ms, transform 200ms; }
+.banner-enter-from, .banner-leave-to { opacity: 0; transform: translateY(-8px); }
 .pg-loading, .pg-load-error { text-align: center; padding: 40px; min-height: 200px; color: var(--text-muted); font-size: 12px; }
 .pg-load-error { color: #ef4444; }
 .pg-layout { display: flex; gap: 16px; min-height: 400px; }
@@ -605,7 +640,8 @@ onUnmounted(revokeUploadBlobUrl)
 .media-card:hover { border-color: var(--border-default); }
 .media-card.processing { border-color: var(--accent-primary); }
 .media-thumb {
-  height: 110px; display: flex; align-items: center; justify-content: center;
+  height: 110px; position: relative;
+  display: flex; align-items: center; justify-content: center;
   overflow: hidden; cursor: pointer; flex-shrink: 0;
   background-color: #b0b0b0;
   background-image: linear-gradient(45deg,#888 25%,transparent 25%), linear-gradient(-45deg,#888 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#888 75%), linear-gradient(-45deg,transparent 75%,#888 75%);
@@ -613,6 +649,10 @@ onUnmounted(revokeUploadBlobUrl)
   background-position: 0 0, 0 6px, 6px -6px, -6px 0px;
 }
 .media-thumb img { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+.thumb-processing { position: absolute; inset: 0; background: rgba(0,0,0,0.55); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; }
+.thumb-spinner { width: 24px; height: 24px; border: 3px solid rgba(255,255,255,0.25); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; }
+.thumb-processing-label { font-size: 10px; color: rgba(255,255,255,0.85); font-family: var(--font-mono); }
+@keyframes spin { to { transform: rotate(360deg); } }
 .media-body { padding: 7px 8px 6px; display: flex; flex-direction: column; gap: 3px; }
 .pg-ref { font-size: 10px; color: var(--accent-primary); font-family: var(--font-mono); }
 .pg-label { font-size: 11px; color: var(--text-secondary); line-height: 1.3; }
@@ -635,6 +675,7 @@ onUnmounted(revokeUploadBlobUrl)
   display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative;
 }
 .preview-thumb-wrap {
+  position: relative;
   background-color: #b0b0b0;
   background-image: linear-gradient(45deg,#888 25%,transparent 25%), linear-gradient(-45deg,#888 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#888 75%), linear-gradient(-45deg,transparent 75%,#888 75%);
   background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
