@@ -300,6 +300,34 @@ router.patch('/:id', async (req, res) => {
   }
 })
 
+router.put('/:id/content', upload.array('files', 1), async (req, res) => {
+  try {
+    const db = getDb()
+    const existing = await db.prepare(
+      `SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ? AND kind = 'picto'`,
+    ).get(req.params.id)
+    if (!existing) return res.status(404).json({ error: 'Not found' })
+
+    const files = req.files || []
+    if (!files.length) return res.status(400).json({ error: 'files required' })
+    if (files.length > 1) return res.status(400).json({ error: 'One file required' })
+
+    const file = files[0]
+    const mime = file.mimetype || 'image/png'
+    const originalName = file.originalname || existing.original_name || 'picto.png'
+
+    await db.prepare(`
+      UPDATE media
+      SET content = ?, mime_type = ?, original_name = ?, source_media_id = NULL
+      WHERE id = ? AND kind = 'picto'
+    `).run(file.buffer, mime, originalName, req.params.id)
+
+    res.json(await getPictoById(db, req.params.id))
+  } catch (err) {
+    sendError(res, err)
+  }
+})
+
 router.delete('/:id', async (req, res) => {
   try {
   const db = getDb()

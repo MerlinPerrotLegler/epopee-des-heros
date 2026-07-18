@@ -183,6 +183,26 @@ export const api = {
       return r.json()
     })
   },
+  replacePictoContent: (id, formData) => {
+    return fetch(`${BASE}/pictos/${encodeURIComponent(id)}/content`, {
+      method: 'PUT',
+      body: formData,
+      credentials: 'include',
+    }).then(async (r) => {
+      if (r.status === 401) {
+        const loc = `${window.location.pathname}${window.location.search}`
+        if (!loc.startsWith('/login')) {
+          window.location.href = `/login?redirect=${encodeURIComponent(loc || '/layouts')}`
+        }
+        throw new Error('Non authentifié')
+      }
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({ error: r.statusText }))
+        throw new Error(err.error || `API error ${r.status}`)
+      }
+      return r.json()
+    })
+  },
 
   // Card Types
   getCardTypes: () => request('/card-types'),
