@@ -22,6 +22,21 @@
       <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }} × {{ store.layout.height_mm }} mm</span>
       <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>
+      <div
+        v-if="store.mode === 'layout' && partnerId"
+        class="face-toggle toolbar-face-toggle"
+      >
+        <button
+          type="button"
+          :class="['face-toggle-btn', { active: activeFace === 'recto' }]"
+          @click="switchFace('recto')"
+        >Recto</button>
+        <button
+          type="button"
+          :class="['face-toggle-btn', { active: activeFace === 'verso' }]"
+          @click="switchFace('verso')"
+        >Verso</button>
+      </div>
       <button
         v-if="store.mode === 'layout' && store.layout"
         type="button"
@@ -95,13 +110,16 @@
 
 <script setup>
 import { ref, computed, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useEditorStore } from '@/stores/editor.js'
 import { api } from '@/utils/api.js'
+import { getFacePartnerId } from '@/utils/layoutFaces.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
 import GuidesMenu from '@/components/editor/GuidesMenu.vue'
 import ScreenCalibrateModal from '@/components/editor/ScreenCalibrateModal.vue'
 
 const store = useEditorStore()
+const router = useRouter()
 const showSettings = ref(false)
 const showCalibrate = ref(false)
 const cardTypes = ref([])
@@ -113,6 +131,26 @@ function onOneToOne() {
 }
 
 const versoLayouts = computed(() => allLayouts.value.filter(l => l.is_back && l.id !== store.layout?.id))
+
+const partnerId = computed(() =>
+  store.mode === 'layout' ? getFacePartnerId(store.layout, allLayouts.value) : null
+)
+
+const activeFace = computed(() => {
+  if (!store.layout) return 'recto'
+  return store.layout.is_back ? 'verso' : 'recto'
+})
+
+async function switchFace(target) {
+  if (!partnerId.value) return
+  if (target === activeFace.value) return
+  const ok = await store.saveDefinition()
+  if (!ok) {
+    window.alert('Impossible de sauvegarder avant de changer de face (verrou ou erreur).')
+    return
+  }
+  await router.push(`/editor/${partnerId.value}`)
+}
 
 onMounted(async () => {
   if (store.mode !== 'layout') return
@@ -260,5 +298,29 @@ async function saveLayoutMeta(payload) {
 }
 .save-ok {
   color: var(--text-muted);
+}
+
+.face-toggle {
+  display: flex;
+  gap: 2px;
+}
+.toolbar-face-toggle {
+  width: auto;
+}
+.face-toggle-btn {
+  flex: 1;
+  padding: 4px 6px;
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.face-toggle-btn.active {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: rgba(108, 122, 255, 0.08);
 }
 </style>
