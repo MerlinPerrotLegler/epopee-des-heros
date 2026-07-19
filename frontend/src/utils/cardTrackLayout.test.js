@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildCardTrackCells } from './cardTrackLayout.js'
+import {
+  buildCardTrackCells,
+  buildCardTrackFootprints,
+  hitTestCardTrackCell,
+} from './cardTrackLayout.js'
 
 describe('buildCardTrackCells variable footprints', () => {
   it('places each edge sequentially without overlapping adjacent cells', () => {
@@ -38,5 +42,36 @@ describe('buildCardTrackCells variable footprints', () => {
     assert.equal(cells[9].x + cells[9].w, cells[8].x)
     assert.equal(cells[10].y + cells[10].h, cells[9].y)
     assert.equal(cells[11].y + cells[11].h, cells[10].y)
+    assert.equal(cells[11].y, cells[0].y + cells[0].h)
+
+    for (let i = 0; i < cells.length; i++) {
+      for (let j = i + 1; j < cells.length; j++) {
+        const overlapW = Math.min(cells[i].x + cells[i].w, cells[j].x + cells[j].w)
+          - Math.max(cells[i].x, cells[j].x)
+        const overlapH = Math.min(cells[i].y + cells[i].h, cells[j].y + cells[j].h)
+          - Math.max(cells[i].y, cells[j].y)
+        assert.ok(
+          overlapW <= 0 || overlapH <= 0,
+          `cells ${i} and ${j} overlap`,
+        )
+      }
+    }
+  })
+
+  it('hit-tests the same expanded footprint geometry used for rendering', () => {
+    const params = {
+      cells_top: 2,
+      cells_left: 2,
+      cellOverrides: { 1: { textureId: 'wide' } },
+    }
+    const footprints = buildCardTrackFootprints(params, 63, 88, {
+      wide: { margins: { right: 0.2 } },
+    })
+
+    assert.equal(
+      hitTestCardTrackCell(params, 63, 88, 33, 5, footprints),
+      1,
+    )
+    assert.equal(hitTestCardTrackCell(params, 63, 88, 33, 5), 2)
   })
 })

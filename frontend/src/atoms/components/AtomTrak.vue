@@ -115,12 +115,11 @@ const cellLayouts = computed(() => {
   })
 })
 
-const svgW = computed(() => sv(isVertical.value
-  ? Math.max(0, ...cellLayouts.value.map((cell) => cell.w))
-  : cellLayouts.value.reduce((sum, cell) => sum + cell.w, 0)))
-const svgH = computed(() => sv(isVertical.value
-  ? cellLayouts.value.reduce((sum, cell) => sum + cell.h, 0)
-  : Math.max(0, ...cellLayouts.value.map((cell) => cell.h))))
+// Le viewBox reste celui de la boîte logique de l'atome : 1 mm SVG reste
+// 1 mm physique. Les empreintes plus grandes débordent sans être remises à
+// l'échelle dans la boîte.
+const svgW = computed(() => sv(props.width_mm))
+const svgH = computed(() => sv(props.height_mm))
 
 function textureOpacity(cell) {
   return cell.textureSource === 'system' && !props.printMode ? 0.35 : 1

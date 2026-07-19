@@ -6,6 +6,7 @@
  *
  * TOUTE modification ici affecte simultanément le rendu ET la détection de clic.
  */
+import { cellFootprintMm } from './trackFootprint.js'
 
 // ── Calcul des paramètres structurels ──────────────────────────────────────────
 /**
@@ -216,9 +217,32 @@ export function buildCardTrackCells(params, width_mm, height_mm, footprintByInde
     })
   }
 
+  // Les longueurs cumulées des empreintes verticales peuvent différer entre
+  // les côtés droit et gauche. Recaler la branche de retour (BL + gauche)
+  // sous TL ferme l'anneau sans redimensionner ni superposer les deux cases.
+  const lastCell = raw[raw.length - 1]
+  const closureDy = topLeft.y + topLeft.h - lastCell.y
+  const bottomLeftIdx = 3 + 2 * tc + lc
+
   return raw.map((cell) => ({
     ...cell,
+    ...(cell.idx >= bottomLeftIdx
+      ? { y: cell.y + closureDy, cy: cell.cy + closureDy }
+      : {}),
     n: n0 + ((cell.idx - startOffset + total) % total),
+  }))
+}
+
+/**
+ * Construit les empreintes texturées depuis le même layout de base que le
+ * rendu et le hit-test. Les clés du catalogue sont les ids logiques.
+ */
+export function buildCardTrackFootprints(params, width_mm, height_mm, textureByLogicalId = {}) {
+  const baseCells = buildCardTrackCells(params, width_mm, height_mm)
+  return Object.fromEntries(baseCells.map((cell) => {
+    const textureId = params.cellOverrides?.[cell.idx]?.textureId
+    const texture = textureByLogicalId?.[textureId]
+    return [cell.idx, cellFootprintMm(cell.w, cell.h, texture?.margins)]
   }))
 }
 

@@ -196,9 +196,13 @@ import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
-import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
+import {
+  buildCardTrackFootprints,
+  hitTestCardTrackCell,
+} from '@/utils/cardTrackLayout.js'
 import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
 import { getOneToOneZoom } from '@/utils/physicalScale.js'
+import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import DrawingToolbar from './DrawingToolbar.vue'
@@ -208,6 +212,7 @@ import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
 
 const store = useEditorStore()
+const { byLogicalId: trackTexturesByLogicalId } = useTrackTextures()
 const containerRef    = ref(null)
 const cardBoundaryRef = ref(null)
 
@@ -300,7 +305,20 @@ function onElementMouseDown(e, el) {
       )
       const relX_mm = x_mm - el.x_mm
       const relY_mm = y_mm - el.y_mm
-      const idx = hitTestCardTrackCell(el.params || {}, el.width_mm, el.height_mm, relX_mm, relY_mm)
+      const footprintByIndex = buildCardTrackFootprints(
+        el.params || {},
+        el.width_mm,
+        el.height_mm,
+        trackTexturesByLogicalId.value,
+      )
+      const idx = hitTestCardTrackCell(
+        el.params || {},
+        el.width_mm,
+        el.height_mm,
+        relX_mm,
+        relY_mm,
+        footprintByIndex,
+      )
       if (idx !== null) {
         store.activeCellIdx = idx
         return // pas de drag : l'utilisateur sélectionne une case

@@ -26,6 +26,7 @@
     height="100%"
     :viewBox="`0 0 ${W} ${H}`"
     preserveAspectRatio="xMidYMid meet"
+    overflow="visible"
   >
     <g v-for="cell in cells" :key="`cell-${cell.idx}`">
       <rect
@@ -79,8 +80,10 @@
 import { computed }                from 'vue'
 import { useEditorStore }          from '@/stores/editor.js'
 import { useTrackTextures }        from '@/composables/useTrackTextures.js'
-import { buildCardTrackCells }     from '@/utils/cardTrackLayout.js'
-import { cellFootprintMm }         from '@/utils/trackFootprint.js'
+import {
+  buildCardTrackCells,
+  buildCardTrackFootprints,
+} from '@/utils/cardTrackLayout.js'
 
 const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
@@ -106,12 +109,13 @@ const H = computed(() => props.height_mm * SCALE)
 function sv(mm) { return mm * SCALE }
 
 // ── Cellules (via utilitaire partagé) ─────────────────────────────────────────
-const baseCells = computed(() =>
-  buildCardTrackCells(p.value, props.width_mm, props.height_mm))
-const footprints = computed(() => Object.fromEntries(baseCells.value.map((cell) => {
-  const texture = textureForIndex(cell.idx)
-  return [cell.idx, cellFootprintMm(cell.w, cell.h, texture?.margins)]
-})))
+const footprints = computed(() =>
+  buildCardTrackFootprints(
+    p.value,
+    props.width_mm,
+    props.height_mm,
+    byLogicalId.value,
+  ))
 const cells = computed(() =>
   buildCardTrackCells(p.value, props.width_mm, props.height_mm, footprints.value))
 
