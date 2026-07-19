@@ -56,9 +56,22 @@
           <span class="tile-dims">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
         </div>
 
+        <div v-if="!l.is_back && getLinkedVersoId(l)" class="face-toggle" @click.stop>
+          <button
+            type="button"
+            :class="['face-toggle-btn', { active: getTileFace(l) === 'recto' }]"
+            @click="setTileFace(l, 'recto')"
+          >Recto</button>
+          <button
+            type="button"
+            :class="['face-toggle-btn', { active: getTileFace(l) === 'verso' }]"
+            @click="setTileFace(l, 'verso')"
+          >Verso</button>
+        </div>
+
         <div class="tile-body">
           <div class="tile-thumb" :style="thumbStyle(l)">
-            <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" alt="" />
+            <img v-if="tileThumbnail(l)" :src="tileThumbnail(l)" class="thumb-img" alt="" />
             <div v-else class="thumb-placeholder">
               <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
             </div>
@@ -71,7 +84,7 @@
               <span v-if="l.is_back" class="tile-verso-badge">DOS</span>
             </div>
 
-            <div v-if="!l.is_back" class="tile-verso" @click.stop>
+            <div v-if="!l.is_back && !getLinkedVersoId(l)" class="tile-verso" @click.stop>
               <span class="verso-label">Verso</span>
               <select
                 class="verso-select"
@@ -154,6 +167,11 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { isHexLayout } from '@/utils/hexGeometry.js'
+import {
+  getLinkedVersoId,
+  resolveOpenLayoutId,
+  thumbnailForFace,
+} from '@/utils/layoutFaces.js'
 import { useInlineRename } from '@/composables/useInlineRename.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
 
@@ -165,6 +183,9 @@ const editingLayout = ref(null)
 const search     = ref('')
 const sortKey    = ref('name')
 const faceTab    = ref('recto')
+
+/** @type {import('vue').Ref<Record<string, 'recto'|'verso'>>} */
+const faceByLayoutId = ref({})
 
 const rectoLayouts = computed(() => layouts.value.filter(l => !l.is_back))
 const versoLayouts = computed(() => layouts.value.filter(l => l.is_back))
@@ -185,9 +206,27 @@ const {
   },
 )
 
+function getTileFace(l) {
+  return faceByLayoutId.value[l.id] || 'recto'
+}
+
+function setTileFace(l, face) {
+  faceByLayoutId.value = { ...faceByLayoutId.value, [l.id]: face }
+}
+
 function openEditor(l) {
   if (renamingId.value) return
-  router.push(`/editor/${l.id}`)
+  if (l.is_back) {
+    router.push(`/editor/${l.id}`)
+    return
+  }
+  const id = resolveOpenLayoutId(l, getTileFace(l))
+  router.push(`/editor/${id}`)
+}
+
+function tileThumbnail(l) {
+  if (l.is_back) return l.thumbnail
+  return thumbnailForFace(l, getTileFace(l), layouts.value)
 }
 
 const filtered = computed(() => {
@@ -341,6 +380,20 @@ async function confirmDelete(l) {
   padding: 1px 5px; color: var(--text-muted);
 }
 .face-tab.active .tab-count { background: rgba(108,122,255,0.15); color: var(--accent-primary); }
+
+.face-toggle {
+  display: flex; gap: 2px; width: 100%;
+}
+.face-toggle-btn {
+  flex: 1; padding: 4px 6px; font-size: 10px; font-weight: 600;
+  background: var(--bg-deep); border: 1px solid var(--border-subtle);
+  border-radius: 3px; color: var(--text-muted); cursor: pointer;
+}
+.face-toggle-btn.active {
+  color: var(--accent-primary);
+  border-color: var(--accent-primary);
+  background: rgba(108,122,255,0.08);
+}
 
 .items-grid {
   display: grid;
