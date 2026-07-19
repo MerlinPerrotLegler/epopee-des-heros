@@ -63,8 +63,26 @@
           @drop.prevent="onDropToFolder(f.id)"
         >
           <span>📁</span>
-          <span>{{ f.name }}</span>
-          <button v-if="f.id !== 'root' && f.id !== 'default' && f.id !== 'builtin'" class="btn-icon btn-sm" @click.stop="deleteFolder(f)">✕</button>
+          <input
+            v-if="folderRenamingId === f.id"
+            :ref="folderRenameRef"
+            class="folder-name-input"
+            v-model="folderRenameValue"
+            @blur="onFolderRenameBlur(f)"
+            @keydown.enter.prevent="commitFolderRename(f)"
+            @keydown.escape="cancelFolderRename"
+            @click.stop
+          />
+          <span
+            v-else
+            class="folder-name"
+            :title="f.name"
+            @dblclick.stop="canRenameFolder(f) && startFolderRename(f)"
+          >{{ f.name }}</span>
+          <span class="folder-actions" v-if="canRenameFolder(f)">
+            <button type="button" class="btn-icon btn-sm" @mousedown.prevent @click.stop="startFolderRename(f)" title="Renommer">✎</button>
+            <button type="button" class="btn-icon btn-sm" @click.stop="deleteFolder(f)" title="Supprimer">✕</button>
+          </span>
         </div>
       </div>
 
@@ -207,6 +225,27 @@ const {
   },
 )
 
+const {
+  renamingId: folderRenamingId,
+  renameValue: folderRenameValue,
+  startRename: startFolderRename,
+  cancelRename: cancelFolderRename,
+  renameRef: folderRenameRef,
+  onRenameBlur: onFolderRenameBlur,
+  commitRename: commitFolderRename,
+} = useInlineRename(
+  (f) => f.name,
+  async (f, name) => {
+    const updated = await api.updateFolder(f.id, { name })
+    const idx = folders.value.findIndex((x) => x.id === f.id)
+    if (idx !== -1) folders.value[idx] = { ...folders.value[idx], name: updated.name }
+  },
+)
+
+function canRenameFolder(f) {
+  return f.id !== 'root' && f.id !== 'default' && f.id !== 'builtin'
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function isImage(m)     { return m.mime_type?.startsWith('image/') }
 function isSvg(m)       { return m.mime_type === 'image/svg+xml' }
@@ -333,10 +372,19 @@ async function createFolder() {
 }
 
 async function deleteFolder(f) {
-  if (!confirm('Supprimer le dossier "' + f.name + '" ?')) return
-  await api.deleteFolder(f.id)
-  folders.value = folders.value.filter(x => x.id !== f.id)
-  if (currentFolder.value === f.id) currentFolder.value = 'root'
+  if (!canRenameFolder(f)) return
+  if (!confirm(`Supprimer le dossier « ${f.name} » ?\nLes fichiers seront déplacés dans « Non classé ».`)) return
+  try {
+    await api.deleteFolder(f.id)
+    folders.value = folders.value.filter((x) => x.id !== f.id)
+    // Les médias ont été déplacés côté API → rafraîchir
+    media.value = await api.getMedia()
+    if (currentFolder.value === f.id) currentFolder.value = 'root'
+    showToast('Dossier supprimé')
+  } catch (err) {
+    console.error('Delete folder failed', err)
+    showToast(err.message || 'Impossible de supprimer le dossier', 'error')
+  }
 }
 
 const deleteTarget = ref(null)
@@ -413,11 +461,23 @@ async function onDropToFolder(targetFolderId) {
 .toast-leave-to   { opacity: 0; transform: translateX(20px); }
 
 /* Folders */
-.folder-tree { width: 200px; flex-shrink: 0; }
+.folder-tree { width: 220px; flex-shrink: 0; }
 .folder-item { display: flex; align-items: center; gap: 6px; padding: 6px 8px; border-radius: var(--radius-sm); cursor: pointer; font-size: 12px; border: 2px solid transparent; transition: border-color 100ms, background 100ms; }
 .folder-item:hover { background: var(--bg-hover); }
 .folder-item.active { background: var(--bg-tertiary); color: var(--accent-primary); }
 .folder-item.drop-target { border-color: var(--accent-primary); background: rgba(108,122,255,0.12); }
+.folder-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.folder-name-input {
+  flex: 1; min-width: 0;
+  font-size: 12px; padding: 2px 4px;
+  border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm);
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.folder-actions { display: flex; gap: 2px; margin-left: auto; flex-shrink: 0; opacity: 0.35; }
+.folder-item:hover .folder-actions,
+.folder-item.active .folder-actions { opacity: 1; }
 
 /* Grid */
 .media-grid { flex: 1; display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 12px; align-content: start; }

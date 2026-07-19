@@ -2,20 +2,26 @@
  * Adaptateur commun : prepare().get/all/run retournent des Promises
  * pour permettre le même code async avec SQLite ou MySQL.
  */
+
+/** mysql2 refuse `undefined` — convertir en null (équivalent SQL NULL). */
+function sanitizeParams(params) {
+  return params.map((p) => (p === undefined ? null : p))
+}
+
 export function createMysqlAdapter(pool) {
   return {
     prepare(sql) {
       return {
         get: async (...params) => {
-          const [rows] = await pool.execute(sql, params)
+          const [rows] = await pool.execute(sql, sanitizeParams(params))
           return rows[0]
         },
         all: async (...params) => {
-          const [rows] = await pool.execute(sql, params)
+          const [rows] = await pool.execute(sql, sanitizeParams(params))
           return rows
         },
         run: async (...params) => {
-          const [result] = await pool.execute(sql, params)
+          const [result] = await pool.execute(sql, sanitizeParams(params))
           return {
             changes: result.affectedRows,
             lastInsertRowid: result.insertId,
@@ -40,15 +46,15 @@ export function createMysqlAdapter(pool) {
           const tx = {
             prepare: (s) => ({
               get: async (...p) => {
-                const [rows] = await conn.execute(s, p)
+                const [rows] = await conn.execute(s, sanitizeParams(p))
                 return rows[0]
               },
               all: async (...p) => {
-                const [rows] = await conn.execute(s, p)
+                const [rows] = await conn.execute(s, sanitizeParams(p))
                 return rows
               },
               run: async (...p) => {
-                const [result] = await conn.execute(s, p)
+                const [result] = await conn.execute(s, sanitizeParams(p))
                 return {
                   changes: result.affectedRows,
                   lastInsertRowid: result.insertId,

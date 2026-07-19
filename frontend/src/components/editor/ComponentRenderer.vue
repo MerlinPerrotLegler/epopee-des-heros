@@ -1,10 +1,8 @@
 <template>
   <div class="comp-renderer" :style="outerStyle">
-    <!-- Loading -->
     <div v-if="!comp" class="comp-loading">
       <span>◧ {{ componentId }}</span>
     </div>
-    <!-- Rendered component elements -->
     <div v-else class="comp-inner" :style="innerStyle">
       <div
         v-for="el in elements" :key="el.id"
@@ -26,6 +24,7 @@
 import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { mmCss } from '@/utils/cssMm.js'
+import { flattenComponentElements } from '@/utils/componentDefinition.js'
 import AtomRenderer from './AtomRenderer.vue'
 
 const props = defineProps({
@@ -38,33 +37,11 @@ const store = useEditorStore()
 
 const comp = computed(() => store.componentsCache[props.componentId] ?? null)
 
-// Natural dimensions of the component
 const compW = computed(() => comp.value?.width_mm || 60)
 const compH = computed(() => comp.value?.height_mm || 40)
 
-// Flatten component definition tree to a renderable list of elements
-const elements = computed(() => {
-  if (!comp.value) return []
-  const def = comp.value.definition
-  if (!def) return []
-  // Old flat format
-  if (def.elements) return def.elements
-  // New tree format: { layers: [...] } — flatten recursively
-  if (def.layers) {
-    const result = []
-    function flatten(items) {
-      for (const item of items) {
-        if (item.kind === 'group') flatten(item.children || [])
-        else result.push(item)
-      }
-    }
-    flatten(def.layers)
-    return result
-  }
-  return []
-})
+const elements = computed(() => flattenComponentElements(comp.value?.definition))
 
-// Scale factor to fit component into the allocated space (CSS scale, not zoomed mmToPx)
 const scaleX = computed(() => props.width_mm / compW.value)
 const scaleY = computed(() => props.height_mm / compH.value)
 

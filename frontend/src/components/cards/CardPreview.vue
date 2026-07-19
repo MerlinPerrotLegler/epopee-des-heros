@@ -29,6 +29,7 @@
 import { ref, computed, watch, defineComponent, h } from 'vue'
 import { mmCss, CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { resolveElementParams } from '@/utils/binding.js'
+import { flattenComponentElements } from '@/utils/componentDefinition.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
 
@@ -134,19 +135,7 @@ const InlineComponentRenderer = defineComponent({
     const compW = computed(() => comp.value?.width_mm || 60)
     const compH = computed(() => comp.value?.height_mm || 40)
 
-    const compEls = computed(() => {
-      if (!comp.value?.definition) return []
-      const def = comp.value.definition
-      const result = []
-      function flatten(items) {
-        for (const item of items) {
-          if (item.kind === 'group') flatten(item.children || [])
-          else result.push(item)
-        }
-      }
-      flatten(def.elements || def.layers || [])
-      return result
-    })
+    const compEls = computed(() => flattenComponentElements(comp.value?.definition))
 
     const scaleX = computed(() => p.element.width_mm / compW.value)
     const scaleY = computed(() => p.element.height_mm / compH.value)

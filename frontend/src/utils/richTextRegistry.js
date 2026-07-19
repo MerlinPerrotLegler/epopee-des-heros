@@ -1,7 +1,7 @@
 /**
  * Catalogue unique pour slash menu + doc RichText (TSD-026).
  */
-import { STAT_CODES, PICTO_VIEWS, ALIGN_VALUES, SEPARATOR_TIERS } from './richTextParser.js'
+import { STAT_CODES, PICTO_VIEWS, ALIGN_VALUES, SEPARATOR_TIERS, CADRE_CORNER_SHAPES } from './richTextParser.js'
 import { STAT_TYPES } from '@/atoms/index.js'
 
 /** @typedef {{ name: string, options?: string[], optionsFrom?: 'picto-tags'|'picto-refs'|'picto-views', free?: boolean, placeholder?: string }} ArgDef */
@@ -68,6 +68,15 @@ export function getRichTextCatalog({ pictos = [] } = {}) {
       args: [
         { name: 'tier', options: [...SEPARATOR_TIERS] },
         { name: 'hauteur', options: ['1', '1.5', '2', '2.5', '3', '4'], free: true },
+      ],
+    },
+    {
+      id: 'sc-cadre', kind: 'builtin', group: 'Shortcodes', label: 'Cadre', hint: '/cadre{tier,hauteur,coin?}',
+      insert: '/cadre{', command: 'cadre',
+      args: [
+        { name: 'tier', options: [...SEPARATOR_TIERS] },
+        { name: 'hauteur', options: ['8', '10', '12', '16', '20'], free: true },
+        { name: 'coin', options: [...CADRE_CORNER_SHAPES], optional: true },
       ],
     },
   )

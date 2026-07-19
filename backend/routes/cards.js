@@ -438,7 +438,7 @@ router.put('/:id', async (req, res) => {
     name = COALESCE(?, name), data = COALESCE(?, data),
     sort_order = COALESCE(?, sort_order), updated_at = CURRENT_TIMESTAMP
     WHERE id = ?`)
-    .run(name, data ? JSON.stringify(data) : null, sort_order, req.params.id)
+    .run(name ?? null, data != null ? JSON.stringify(data) : null, sort_order ?? null, req.params.id)
   const row = await db.prepare('SELECT * FROM card_instances WHERE id = ?').get(req.params.id)
   if (!row) return res.status(404).json({ error: 'Not found' })
   row.data = typeof row.data === 'string' ? JSON.parse(row.data) : row.data

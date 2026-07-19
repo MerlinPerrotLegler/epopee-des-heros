@@ -177,7 +177,7 @@
         <button type="button" class="btn-ghost btn-sm" @click="rtDocOpen = true">Doc</button>
       </div>
       <div class="rt-syntax-hint">
-        **gras** *italique* · # titre · - puce · [ ] · /align{center} · /separator{basic,2}<br>
+        **gras** *italique* · # titre · - puce · [ ] · /align{center} · /separator{basic,2} · /cadre{basic,12}<br>
         /d8{6} /pieces{both} /picto{tag,ref,icon} /svg{file,#c00} /data{nom}<br>
         Tapez <code>/</code> pour le menu d’insertion
       </div>

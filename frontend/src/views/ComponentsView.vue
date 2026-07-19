@@ -145,7 +145,7 @@ function thumbStyle(item) {
 }
 
 async function create() {
-  const created = await api.createComponent({ ...form.value, definition: { elements: [] } })
+  const created = await api.createComponent({ ...form.value, definition: { layers: [], dataSchema: {} } })
   items.value.push(created)
   showCreate.value = false
   form.value = { name: '', description: '', width_mm: 30, height_mm: 20 }

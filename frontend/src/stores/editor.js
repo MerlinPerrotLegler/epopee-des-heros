@@ -451,7 +451,7 @@ export const useEditorStore = defineStore('editor', () => {
       selectedElementId.value = null
       selectedItemId.value = layers.value[0]?.id || null
       requestFit.value = 'fit'
-      await _preloadComponents()
+      await _preloadComponents({ force: true })
     } finally {
       loading.value = false
     }
@@ -466,17 +466,32 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  async function _preloadComponents() {
+  async function _preloadComponents({ force = false } = {}) {
     const ids = new Set()
     for (const el of allElements.value) {
       if (el.type === 'component' && el.componentId) ids.add(el.componentId)
     }
-    const missing = [...ids].filter(id => !componentsCache.value[id])
-    if (!missing.length) return
-    const results = await Promise.allSettled(missing.map(id => api.getComponent(id)))
-    for (let i = 0; i < missing.length; i++) {
-      if (results[i].status === 'fulfilled') componentsCache.value[missing[i]] = results[i].value
+    const toLoad = force
+      ? [...ids]
+      : [...ids].filter(id => !componentsCache.value[id])
+    if (!toLoad.length) return
+    const results = await Promise.allSettled(toLoad.map(id => api.getComponent(id)))
+    const next = { ...componentsCache.value }
+    for (let i = 0; i < toLoad.length; i++) {
+      if (results[i].status === 'fulfilled') next[toLoad[i]] = results[i].value
     }
+    componentsCache.value = next
+  }
+
+  function invalidateComponentCache(id) {
+    if (!id) {
+      componentsCache.value = {}
+      return
+    }
+    if (!componentsCache.value[id]) return
+    const next = { ...componentsCache.value }
+    delete next[id]
+    componentsCache.value = next
   }
 
   async function loadComponent(id) {
@@ -546,6 +561,18 @@ export const useEditorStore = defineStore('editor', () => {
           definition: layout.value.definition,
           ...(thumbnail ? { thumbnail } : {})
         })
+        // Invalider le cache pour que les layouts rechargent la version à jour
+        invalidateComponentCache(layout.value.id)
+        componentsCache.value = {
+          ...componentsCache.value,
+          [layout.value.id]: {
+            id: layout.value.id,
+            name: layout.value.name,
+            width_mm: layout.value.width_mm,
+            height_mm: layout.value.height_mm,
+            definition: JSON.parse(JSON.stringify(layout.value.definition)),
+          },
+        }
       } else {
         await api.updateLayoutDefinition(layout.value.id, { definition: layout.value.definition, thumbnail })
       }
@@ -744,7 +771,7 @@ export const useEditorStore = defineStore('editor', () => {
 
     if (el.type === 'component' && el.componentId && !componentsCache.value[el.componentId]) {
       api.getComponent(el.componentId).then(comp => {
-        componentsCache.value[el.componentId] = comp
+        componentsCache.value = { ...componentsCache.value, [el.componentId]: comp }
       }).catch(() => {})
     }
     return el
@@ -857,7 +884,7 @@ export const useEditorStore = defineStore('editor', () => {
     addElement, updateElement, removeElement, duplicateElement,
     // Data schema
     addSchemaField, removeSchemaField,
-    snap, _preloadComponents,
+    snap, _preloadComponents, invalidateComponentCache,
     registerCaptureCallback, unregisterCaptureCallback
   }
 })

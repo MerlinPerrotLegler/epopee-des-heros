@@ -108,6 +108,18 @@ describe('tokenize blocks', () => {
     assert.equal(sep.height_mm, 2)
     assert.equal(sep.align, 'justify')
   })
+
+  it('parses /cadre defaults and corner', () => {
+    const t = tokenize('/cadre{rare,16,circle}')
+    const c = t.find((x) => x.type === 'cadre')
+    assert.equal(c.tier, 'rare')
+    assert.equal(c.height_mm, 16)
+    assert.equal(c.cornerShape, 'circle')
+    const d = tokenize('/cadre').find((x) => x.type === 'cadre')
+    assert.equal(d.tier, 'basic')
+    assert.equal(d.height_mm, 12)
+    assert.equal(d.cornerShape, 'star4')
+  })
 })
 
 describe('parseFML', () => {

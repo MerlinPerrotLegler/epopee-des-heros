@@ -85,6 +85,20 @@ Paragraphe justifié…
 
 
 
+### Cadre calligraphique
+
+```
+/cadre{basic,12}
+/cadre{rare,16,star5}
+/cadre
+```
+
+- `tier` : mêmes valeurs que le séparateur (défaut `basic`)
+- `hauteur` : mm (défaut `12`) ; largeur = largeur de l’atome
+- `coin` (optionnel) : `none` | `star4` | `star5` | `circle` | `square` | `triangle` (défaut `star4`)
+
+
+
 ### Autres blocs
 
 ```

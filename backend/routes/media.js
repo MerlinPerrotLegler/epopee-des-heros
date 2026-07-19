@@ -33,10 +33,16 @@ router.patch('/folders/:id', async (req, res) => {
   const db = getDb();
   const existing = await db.prepare('SELECT * FROM media_folders WHERE id = ?').get(req.params.id);
   if (!existing) return res.status(404).json({ error: 'Not found' });
+  if (req.params.id === 'root' || req.params.id === 'default' || req.params.id === 'builtin') {
+    return res.status(400).json({ error: 'Cannot rename system folders' });
+  }
 
   const { name, parent_id } = req.body;
+  if (name !== undefined && !String(name).trim()) {
+    return res.status(400).json({ error: 'Name required' });
+  }
   await db.prepare('UPDATE media_folders SET name = ?, parent_id = ? WHERE id = ?').run(
-    name !== undefined ? name : existing.name,
+    name !== undefined ? String(name).trim() : existing.name,
     parent_id !== undefined ? parent_id : existing.parent_id,
     req.params.id,
   );
@@ -46,9 +52,16 @@ router.patch('/folders/:id', async (req, res) => {
 
 router.delete('/folders/:id', async (req, res) => {
   const db = getDb();
-  if (req.params.id === 'root' || req.params.id === 'default') {
+  if (req.params.id === 'root' || req.params.id === 'default' || req.params.id === 'builtin') {
     return res.status(400).json({ error: 'Cannot delete system folders' });
   }
+  const existing = await db.prepare('SELECT * FROM media_folders WHERE id = ?').get(req.params.id);
+  if (!existing) return res.status(404).json({ error: 'Not found' });
+
+  // MySQL: FK ON DELETE RESTRICT — déplacer les médias vers Non classé avant suppression
+  await db.prepare("UPDATE media SET folder_id = 'default' WHERE folder_id = ?").run(req.params.id);
+  // Sous-dossiers → rattacher à root
+  await db.prepare("UPDATE media_folders SET parent_id = 'root' WHERE parent_id = ?").run(req.params.id);
   await db.prepare('DELETE FROM media_folders WHERE id = ?').run(req.params.id);
   res.json({ ok: true });
 });

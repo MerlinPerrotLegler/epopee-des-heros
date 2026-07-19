@@ -1,7 +1,7 @@
 /**
  * richTextParser.js — TSD-026
  * Blocs : # titres, - / 1. listes, [ ]/[x], >, =>
- * Shortcodes de bloc (ligne seule) : /align{…} /separator{tier,hauteur}
+ * Shortcodes de bloc (ligne seule) : /align{…} /separator{tier,hauteur} /cadre{tier,hauteur,coin?}
  * Shortcodes inline : /d8 /d12 /svg /data $<…> /STAT /picto /ref{view?}
  * Arguments : () ou {} interchangeables
  */
@@ -10,10 +10,12 @@ export const STAT_CODES = ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE', 'DEF
 export const PICTO_VIEWS = ['icon', 'label', 'both']
 export const ALIGN_VALUES = ['left', 'right', 'center', 'justify']
 export const SEPARATOR_TIERS = ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire']
+export const CADRE_CORNER_SHAPES = ['none', 'star4', 'star5', 'circle', 'square', 'triangle']
 
 const STAT_SET = new Set(STAT_CODES)
 const ALIGN_SET = new Set(ALIGN_VALUES)
 const TIER_SET = new Set(SEPARATOR_TIERS)
+const CORNER_SET = new Set(CADRE_CORNER_SHAPES)
 
 // ── Markdown inline → HTML ────────────────────────────────────────────────────
 export function markdownToHtml(text) {
@@ -142,12 +144,22 @@ export function parseBlockShortcodeLine(trimmed) {
     return { type: 'separator', tier, height_mm }
   }
 
+  if (name === 'cadre') {
+    let tier = args[0] || 'basic'
+    if (!TIER_SET.has(tier)) tier = 'basic'
+    let height_mm = parseFloat(args[1])
+    if (!Number.isFinite(height_mm) || height_mm <= 0) height_mm = 12
+    let cornerShape = args[2] || 'star4'
+    if (!CORNER_SET.has(cornerShape)) cornerShape = 'star4'
+    return { type: 'cadre', tier, height_mm, cornerShape }
+  }
+
   return null
 }
 
 function shortcodeToToken(name, args, rawInner) {
   // Réservés bloc — ne pas interpréter comme picto si collés inline
-  if (name === 'align' || name === 'separator') return null
+  if (name === 'align' || name === 'separator' || name === 'cadre') return null
 
   // Dés : uniquement /d8 /d12 en minuscules (pas /D8 legacy)
   if (name === 'd8' || name === 'd12') {
@@ -230,7 +242,7 @@ function withAlign(token, align) {
 /**
  * Full document tokenize → block + inline tokens.
  * `/align{…}` (ligne seule) fixe l'alignement des blocs suivants.
- * `/separator{tier,hauteur}` (ligne seule) → séparateur calligraphique.
+ * `/separator{tier,hauteur}` / `/cadre{tier,hauteur,coin?}` (ligne seule) → ornements calligraphiques.
  */
 export function tokenize(content) {
   if (!content) return []
@@ -258,7 +270,7 @@ export function tokenize(content) {
       i++
       continue
     }
-    if (blockSc?.type === 'separator') {
+    if (blockSc?.type === 'separator' || blockSc?.type === 'cadre') {
       out.push(withAlign(blockSc, currentAlign))
       i++
       continue

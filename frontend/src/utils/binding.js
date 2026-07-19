@@ -3,6 +3,7 @@
 // Resolves {{bindingPath}} expressions using card instance data
 // ============================================
 import Papa from 'papaparse'
+import { flattenComponentElements } from './componentDefinition.js'
 
 /**
  * Resolve a binding expression against card data.
@@ -166,8 +167,9 @@ export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
       if (el.type === 'component' && el.componentId) {
         const comp = componentRegistry[el.componentId]
         if (comp?.definition) {
-          const compItems = comp.definition.elements || comp.definition.layers || []
-          walkItems(compItems, currentParts)
+          const compItems = flattenComponentElements(comp.definition)
+          // Re-wrap as walkable items (elements already flat)
+          walkItems(compItems.map((el) => ({ ...el, kind: el.kind || 'element' })), currentParts)
         }
       } else {
         for (const paramKey of Object.keys(el.params || {})) {

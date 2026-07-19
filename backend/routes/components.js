@@ -42,6 +42,7 @@ router.post('/', async (req, res) => {
 router.put('/:id', async (req, res) => {
   const db = getDb();
   const { name, description, width_mm, height_mm, definition, thumbnail } = req.body;
+  // MySQL refuse `undefined` dans les binds — toujours passer null
   await db.prepare(`UPDATE components SET
     name = COALESCE(?, name),
     description = COALESCE(?, description),
@@ -51,7 +52,15 @@ router.put('/:id', async (req, res) => {
     thumbnail = COALESCE(?, thumbnail),
     updated_at = CURRENT_TIMESTAMP
     WHERE id = ?`,
-  ).run(name, description, width_mm, height_mm, definition ? JSON.stringify(definition) : null, thumbnail ?? null, req.params.id);
+  ).run(
+    name ?? null,
+    description ?? null,
+    width_mm ?? null,
+    height_mm ?? null,
+    definition != null ? JSON.stringify(definition) : null,
+    thumbnail ?? null,
+    req.params.id,
+  );
 
   const row = await db.prepare('SELECT * FROM components WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
@@ -63,7 +72,7 @@ router.put('/:id', async (req, res) => {
 router.patch('/:id', async (req, res) => {
   const db = getDb();
   const { name } = req.body;
-  await db.prepare('UPDATE components SET name = COALESCE(?, name), updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name, req.params.id);
+  await db.prepare('UPDATE components SET name = COALESCE(?, name), updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name ?? null, req.params.id);
   const row = await db.prepare('SELECT * FROM components WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
   row.definition = parseJsonColumn(row.definition);

@@ -33,6 +33,60 @@
           </svg>
         </div>
 
+        <div
+          v-else-if="token.type === 'cadre'"
+          class="rt-cadre"
+          :style="{ height: mmCss(token.height_mm || 12), ...blockAlign(token) }"
+        >
+          <svg
+            width="100%"
+            height="100%"
+            :viewBox="`0 0 ${sepSvgW} ${(token.height_mm || 12) * SEP_SCALE}`"
+            preserveAspectRatio="none"
+            overflow="visible"
+          >
+            <g
+              v-for="(stroke, si) in cadrePaths(token)"
+              :key="'f' + si"
+              :transform="stroke.transform"
+            >
+              <path
+                :d="stroke.d"
+                :fill="color"
+                :fill-opacity="stroke.opacity"
+              />
+            </g>
+            <g v-for="orn in cadreCorners(token)" :key="orn.key">
+              <path
+                v-if="orn.kind === 'star4' || orn.kind === 'star5'"
+                :d="orn.d"
+                :fill="color"
+              />
+              <circle
+                v-else-if="orn.kind === 'circle'"
+                :cx="orn.cx"
+                :cy="orn.cy"
+                :r="orn.r"
+                :fill="color"
+              />
+              <rect
+                v-else-if="orn.kind === 'square'"
+                :x="orn.cx - orn.r"
+                :y="orn.cy - orn.r"
+                :width="orn.r * 2"
+                :height="orn.r * 2"
+                :fill="color"
+              />
+              <polygon
+                v-else-if="orn.kind === 'triangle'"
+                :points="`${orn.cx},${orn.cy - orn.r} ${orn.cx - orn.r * 0.866},${orn.cy + orn.r * 0.5} ${orn.cx + orn.r * 0.866},${orn.cy + orn.r * 0.5}`"
+                :fill="color"
+                :transform="`rotate(${orn.rotationDeg} ${orn.cx} ${orn.cy})`"
+              />
+            </g>
+          </svg>
+        </div>
+
         <blockquote v-else-if="token.type === 'blockquote'" class="rt-blockquote" :style="blockAlign(token)">
           <RtInline :nodes="token.children" v-bind="inlineBind" />
         </blockquote>
@@ -81,6 +135,8 @@ import { usePictosStore } from '@/stores/pictos.js'
 import { useEditorStore } from '@/stores/editor.js'
 import { mmCss } from '@/utils/cssMm.js'
 import { buildSeparatorPaths } from '@/utils/separatorStrokes.js'
+import { buildFramePaths } from '@/utils/frameStrokes.js'
+import { buildCornerOrnaments } from '@/utils/cornerOrnaments.js'
 import AtomDice8 from './AtomDice8.vue'
 import AtomDice12 from './AtomDice12.vue'
 
@@ -142,6 +198,27 @@ function separatorPaths(token) {
   const w = sepSvgW.value
   const h = (token.height_mm || 2) * SEP_SCALE
   return buildSeparatorPaths(w, h, token.tier || 'basic', 42)
+}
+
+function cadrePaths(token) {
+  const w = sepSvgW.value
+  const h = (token.height_mm || 12) * SEP_SCALE
+  return buildFramePaths(w, h, token.tier || 'basic', 42)
+}
+
+function cadreCorners(token) {
+  const w = sepSvgW.value
+  const h = (token.height_mm || 12) * SEP_SCALE
+  const pad = Math.max(2, Math.min(w, h) * 0.02)
+  const sizeMm = Math.min(2, (token.height_mm || 12) * 0.2)
+  return buildCornerOrnaments({
+    svgW: w,
+    svgH: h,
+    pad,
+    shape: token.cornerShape || 'star4',
+    sizeSvg: sizeMm * SEP_SCALE,
+    corners: { TL: true, TR: true, BL: true, BR: true },
+  })
 }
 
 const containerStyle = computed(() => ({
@@ -366,6 +443,13 @@ const RtInline = defineComponent({
   overflow: visible;
 }
 .rt-separator svg { display: block; }
+.rt-cadre {
+  width: 100%;
+  margin: 0.35em 0;
+  display: block;
+  overflow: visible;
+}
+.rt-cadre svg { display: block; }
 .rt-blockquote {
   margin: 0.25em 0;
   padding-left: 0.6em;
