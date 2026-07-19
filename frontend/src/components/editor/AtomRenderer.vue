@@ -1,5 +1,5 @@
 <template>
-  <div class="atom-render" :class="{ 'atom-render--overflow': atomType === 'die8' || atomType === 'die12' }">
+  <div class="atom-render" :class="{ 'atom-render--overflow': ['die8', 'die12', 'trakPath'].includes(atomType) }">
     <component
       v-if="atomComponent"
       :is="atomComponent"
@@ -43,6 +43,7 @@ import AtomRectangle           from '@/atoms/components/AtomRectangle.vue'
 import AtomLine                from '@/atoms/components/AtomLine.vue'
 import AtomTrak                from '@/atoms/components/AtomTrak.vue'
 import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
+import AtomTrakPath            from '@/atoms/components/AtomTrakPath.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
 import AtomCadre               from '@/atoms/components/AtomCadre.vue'
@@ -76,6 +77,7 @@ const ATOM_COMPONENTS = {
   line:                AtomLine,
   trak:                AtomTrak,
   trakCorner:          AtomTrakCorner,
+  trakPath:            AtomTrakPath,
   cardTrack:           AtomCardTrack,
   separator:           AtomSeparator,
   cadre:               AtomCadre,
@@ -100,7 +102,7 @@ const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
 // Extra props passed only to specific atom types (avoids spurious $attrs warnings)
 const extraProps = computed(() => {
   if (props.atomType === 'drawing') return { liveStroke: props.liveStroke }
-  if (['trak', 'trakCorner', 'cardTrack'].includes(props.atomType)) {
+  if (['trak', 'trakCorner', 'trakPath', 'cardTrack'].includes(props.atomType)) {
     return { printMode: props.finalRender }
   }
   return {}

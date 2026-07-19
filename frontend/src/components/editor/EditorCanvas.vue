@@ -90,6 +90,21 @@
             :live-stroke="(drawingMode.active.value && drawingMode.drawingElementId.value === el.id) ? drawingMode.liveStroke.value : null"
           />
 
+          <template
+            v-if="el.type === 'atom' && el.atomType === 'trakPath' && store.selectedElementId === el.id && !el._layerLocked"
+          >
+            <button
+              v-for="control in trakPathAddControls(el)"
+              :key="control.direction"
+              class="trak-path-add"
+              :style="{ left: mmCss(control.x), top: mmCss(control.y) }"
+              :title="`Ajouter un segment vers ${control.direction}`"
+              :aria-label="`Ajouter un segment vers ${control.direction}`"
+              @mousedown.stop
+              @click.stop="appendTrakPathSegment(el, control.direction)"
+            >+</button>
+          </template>
+
           <!-- Component renderer -->
           <ComponentRenderer
             v-else-if="el.type === 'component'"
@@ -200,6 +215,7 @@ import {
   buildCardTrackFootprints,
   hitTestCardTrackCell,
 } from '@/utils/cardTrackLayout.js'
+import { buildTrakPathCells, orthogonalDirections } from '@/utils/trakPathLayout.js'
 import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
 import { getOneToOneZoom } from '@/utils/physicalScale.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
@@ -281,6 +297,43 @@ function resolvedParams(el) {
   return el.params || {}
 }
 
+function trakPathLayout(el) {
+  return buildTrakPathCells({
+    segments: el.params?.segments,
+    cellSize: el.params?.cellSize ?? 0.1,
+    n_start: el.params?.n_start ?? 0,
+    cellOverrides: el.params?.cellOverrides || {},
+    texturesById: trackTexturesByLogicalId.value,
+    width_mm: el.width_mm,
+    height_mm: el.height_mm,
+  })
+}
+
+function trakPathAddControls(el) {
+  const cells = trakPathLayout(el).cells
+  const lastCell = cells.at(-1)
+  if (!lastCell) return []
+
+  const offset = 2.5
+  return orthogonalDirections(lastCell.direction).map((direction) => {
+    let x = lastCell.cx
+    let y = lastCell.cy
+    if (direction === 'left') x -= lastCell.w / 2 + offset
+    if (direction === 'right') x += lastCell.w / 2 + offset
+    if (direction === 'up') y -= lastCell.h / 2 + offset
+    if (direction === 'down') y += lastCell.h / 2 + offset
+    return { direction, x, y }
+  })
+}
+
+function appendTrakPathSegment(el, direction) {
+  const segments = Array.isArray(el.params?.segments) ? [...el.params.segments] : []
+  segments.push({ direction, count: 3 })
+  store.updateElement(el.id, {
+    params: { ...(el.params || {}), segments },
+  })
+}
+
 function onElementDblClick(_e, el) {
   if (el.type === 'atom' && el.atomType === 'drawing' && !el._layerLocked) {
     drawingMode.enter(el.id)
@@ -296,8 +349,9 @@ function onElementMouseDown(e, el) {
   store.selectedElementId = el.id
   store.selectedItemId = el.id // sync calque → flèches / panneau calques
 
-  // Clic sur une case d'un CardTrack déjà sélectionné → sélection de case
-  if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' && el.atomType === 'cardTrack') {
+  // Clic sur une case d'une piste déjà sélectionnée → sélection de case
+  if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' &&
+      (el.atomType === 'cardTrack' || el.atomType === 'trakPath')) {
     const cardEl = cardBoundaryRef.value
     if (cardEl) {
       const { x_mm, y_mm } = clientPointToCardMm(
@@ -305,20 +359,28 @@ function onElementMouseDown(e, el) {
       )
       const relX_mm = x_mm - el.x_mm
       const relY_mm = y_mm - el.y_mm
-      const footprintByIndex = buildCardTrackFootprints(
-        el.params || {},
-        el.width_mm,
-        el.height_mm,
-        trackTexturesByLogicalId.value,
-      )
-      const idx = hitTestCardTrackCell(
-        el.params || {},
-        el.width_mm,
-        el.height_mm,
-        relX_mm,
-        relY_mm,
-        footprintByIndex,
-      )
+      let idx = null
+      if (el.atomType === 'cardTrack') {
+        const footprintByIndex = buildCardTrackFootprints(
+          el.params || {},
+          el.width_mm,
+          el.height_mm,
+          trackTexturesByLogicalId.value,
+        )
+        idx = hitTestCardTrackCell(
+          el.params || {},
+          el.width_mm,
+          el.height_mm,
+          relX_mm,
+          relY_mm,
+          footprintByIndex,
+        )
+      } else {
+        idx = trakPathLayout(el).cells.find((cell) =>
+          relX_mm >= cell.x && relX_mm < cell.x + cell.w &&
+          relY_mm >= cell.y && relY_mm < cell.y + cell.h
+        )?.idx ?? null
+      }
       if (idx !== null) {
         store.activeCellIdx = idx
         return // pas de drag : l'utilisateur sélectionne une case
@@ -600,6 +662,29 @@ function startPan(e) {
   cursor: default;
   opacity: 0.5;
   pointer-events: none;
+}
+
+.trak-path-add {
+  position: absolute;
+  z-index: 150;
+  width: 4mm;
+  height: 4mm;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0.2mm solid white;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 2.8mm;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: all;
+  box-shadow: 0 0.3mm 1mm rgba(0, 0, 0, 0.35);
+}
+
+.trak-path-add:hover {
+  filter: brightness(1.15);
 }
 
 /* Resize handles (CSS mm — scale with card world / viewport zoom) */
