@@ -653,7 +653,7 @@ git commit -m "feat(media): Track texture metadata editor in library"
 **Files:**
 - Modify: `specs/WORKPLAN.md`
 
-- [ ] **Step 1: Run all new unit tests**
+- [x] **Step 1: Run all new unit tests**
 
 ```bash
 cd frontend && node --test src/utils/trackFootprint.test.js src/utils/trackMatch.test.js src/utils/trakPathLayout.test.js
@@ -661,11 +661,11 @@ cd frontend && node --test src/utils/trackFootprint.test.js src/utils/trackMatch
 
 Expected: all PASS
 
-- [ ] **Step 2: Manual acceptance** against spec §11 (1–7)
+- [x] **Step 2: Manual acceptance** against spec §11 (1–7)
 
-- [ ] **Step 3: Update WORKPLAN.md** — checkboxes, %, next actions, session journal line for 2026-07-19 Track textures / TrakPath
+- [x] **Step 3: Update WORKPLAN.md** — checkboxes, %, next actions, session journal line for 2026-07-19 Track textures / TrakPath
 
-- [ ] **Step 4: Commit**
+- [x] **Step 4: Commit**
 
 ```bash
 git add specs/WORKPLAN.md
