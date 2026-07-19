@@ -346,6 +346,10 @@ export const ATOM_TYPES = {
       posY: 50,        // % objectPosition Y (recadrage vertical, utilisé quand fit=cover)
       opacity: 1,
       borderRadius: 0,
+      fadeTop_mm: 0,
+      fadeBottom_mm: 0,
+      fadeLeft_mm: 0,
+      fadeRight_mm: 0,
       // IA — génération (TSD-012)
       ai_media_type: 'illustration',  // illustration | icone | fond | autre
       ai_prompt_template: '',         // template avec variables {{binding_path}}

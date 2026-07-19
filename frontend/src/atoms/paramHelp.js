@@ -132,6 +132,10 @@ export const PARAM_HELP = {
 
   // ── AtomImage ─────────────────────────────────────────────────────────────
   fit:           'Ajustement de l\'image dans son cadre : remplir, contenir, ou étirer',
+  fadeTop_mm:    'Fondu transparent depuis le haut (mm). 0 = désactivé',
+  fadeBottom_mm: 'Fondu transparent depuis le bas (mm). 0 = désactivé',
+  fadeLeft_mm:   'Fondu transparent depuis la gauche (mm). 0 = désactivé',
+  fadeRight_mm:  'Fondu transparent depuis la droite (mm). 0 = désactivé',
   aiPrompt:      'Description pour générer l\'image par IA (fonctionnalité future)',
   aiGenerated:   'Indique si l\'image a été générée par IA',
 

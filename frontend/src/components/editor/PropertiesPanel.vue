@@ -848,6 +848,7 @@ const INTEGER_PARAMS = new Set([
 function paramStep(key) {
   if (INTEGER_PARAMS.has(key)) return 1
   if (key === 'fontSize' || key === 'maxFontSize' || key === 'cornerSize') return 0.1
+  if (key === 'fadeTop_mm' || key === 'fadeBottom_mm' || key === 'fadeLeft_mm' || key === 'fadeRight_mm') return 0.1
   return 0.5
 }
 
