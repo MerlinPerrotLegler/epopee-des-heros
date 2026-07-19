@@ -148,7 +148,7 @@ async function runMysqlMigrations(pool) {
     PRIMARY KEY (media_id, tag_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
   await tryAlter("INSERT IGNORE INTO media_folders (id, name, parent_id) VALUES ('chemin', 'Chemin', 'root'), ('chemin-track', 'Track', 'chemin')")
-  await tryAlter("INSERT IGNORE INTO track_types (id, name, color) VALUES ('tt-droit', 'droit', '#6c7aff'), ('tt-coin', 'coin', '#c9a227'), ('tt-impasse', 'impasse', '#888888')")
+  await tryAlter("INSERT IGNORE INTO track_types (id, name, color) VALUES ('tt-droit', 'droit', '#6c7aff'), ('tt-coin', 'coin', '#c9a227'), ('tt-impasse', 'impasse', '#888888'), ('tt-omnidirectionnel', 'omnidirectionnel', '#4ade80')")
 }
 
 function initSqliteSync() {
@@ -323,7 +323,8 @@ function initSqliteSync() {
     sqliteDb.exec(`INSERT OR IGNORE INTO track_types (id, name, color) VALUES
       ('tt-droit', 'droit', '#6c7aff'),
       ('tt-coin', 'coin', '#c9a227'),
-      ('tt-impasse', 'impasse', '#888888')`)
+      ('tt-impasse', 'impasse', '#888888'),
+      ('tt-omnidirectionnel', 'omnidirectionnel', '#4ade80')`)
   } catch {}
   seedInitialAdminIfNeededSync(sqliteDb)
   adapter = createSqliteAdapter(sqliteDb)

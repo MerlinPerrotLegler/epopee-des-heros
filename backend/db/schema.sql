@@ -88,7 +88,8 @@ CREATE TABLE IF NOT EXISTS track_types (
 INSERT OR IGNORE INTO track_types (id, name, color) VALUES
   ('tt-droit', 'droit', '#6c7aff'),
   ('tt-coin', 'coin', '#c9a227'),
-  ('tt-impasse', 'impasse', '#888888');
+  ('tt-impasse', 'impasse', '#888888'),
+  ('tt-omnidirectionnel', 'omnidirectionnel', '#4ade80');
 
 CREATE TABLE IF NOT EXISTS track_tags (
   id TEXT PRIMARY KEY,
