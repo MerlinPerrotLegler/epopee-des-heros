@@ -50,6 +50,19 @@
       <MissingMediaList />
     </div>
 
+    <div v-if="activeTab === 'library'" class="track-filters">
+      <span>Textures track</span>
+      <select v-model="trackTypeFilter">
+        <option value="">Tous les types</option>
+        <option v-for="type in trackTypes" :key="type.id" :value="type.name">{{ type.name }}</option>
+      </select>
+      <select v-model="trackTagFilter">
+        <option value="">Tous les tags</option>
+        <option v-for="tag in trackTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+      </select>
+      <button v-if="trackTypeFilter || trackTagFilter" class="btn-ghost btn-sm" @click="clearTrackFilters">Effacer</button>
+    </div>
+
     <div v-if="activeTab === 'library'" class="media-layout">
       <!-- Folders -->
       <div class="folder-tree">
@@ -155,6 +168,12 @@
             <button class="btn-primary btn-sm" @click="copyId(preview.id); preview = null">⧉ Copier l'ID</button>
           </div>
         </div>
+        <TrackMetaForm
+          v-if="isTrack(preview)"
+          :media="preview"
+          @saved="onTrackSaved"
+          @catalogs-changed="loadTrackCatalogs"
+        />
       </div>
     </div>
 
@@ -189,6 +208,7 @@ import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 import MissingMediaList from '@/components/media/MissingMediaList.vue'
 import PictorgamePanel from '@/components/media/PictorgamePanel.vue'
+import TrackMetaForm from '@/components/media/TrackMetaForm.vue'
 import { useInlineRename } from '@/composables/useInlineRename.js'
 
 const activeTab     = ref('library')
@@ -202,10 +222,24 @@ const removeBgOnUpload = ref(false)
 const preview       = ref(null)
 const draggedMedia  = ref(null)
 const dragOver      = ref(null)
+const trackTypes    = ref([])
+const trackTags     = ref([])
+const trackTypeFilter = ref('')
+const trackTagFilter = ref('')
 
 const filteredMedia = computed(() => {
-  if (currentFolder.value === 'root') return media.value
-  return media.value.filter(m => m.folder_id === currentFolder.value)
+  let rows = currentFolder.value === 'root'
+    ? media.value
+    : media.value.filter(m => m.folder_id === currentFolder.value)
+  if (trackTypeFilter.value || trackTagFilter.value) {
+    rows = rows.filter((m) => {
+      if (!isTrack(m)) return false
+      if (trackTypeFilter.value && m.track_meta?.type !== trackTypeFilter.value) return false
+      if (trackTagFilter.value && !(m.tags || []).some((tag) => tag.id === trackTagFilter.value)) return false
+      return true
+    })
+  }
+  return rows
 })
 
 const {
@@ -251,11 +285,37 @@ function isImage(m)     { return m.mime_type?.startsWith('image/') }
 function isSvg(m)       { return m.mime_type === 'image/svg+xml' }
 function canRemoveBg(m) { return isImage(m) && !isSvg(m) }
 function fileExt(m)     { return m.original_name?.split('.').pop()?.toUpperCase() || 'FILE' }
+function isTrack(m)      { return m?.kind === 'track' || m?.folder_id === 'chemin-track' }
+
+function clearTrackFilters() {
+  trackTypeFilter.value = ''
+  trackTagFilter.value = ''
+}
+
+async function loadTrackCatalogs() {
+  ;[trackTypes.value, trackTags.value] = await Promise.all([
+    api.getTrackTypes(),
+    api.getTrackTags(),
+  ])
+}
+
+async function loadMedia() {
+  const [regularMedia, trackMedia] = await Promise.all([
+    api.getMedia(),
+    api.getTrackTextures(),
+  ])
+  media.value = [...regularMedia, ...trackMedia]
+}
 
 // ── Load ──────────────────────────────────────────────────────────────────────
 onMounted(async () => {
   try {
-    [folders.value, media.value] = await Promise.all([api.getFolders(), api.getMedia()])
+    const [loadedFolders] = await Promise.all([
+      api.getFolders(),
+      loadMedia(),
+      loadTrackCatalogs(),
+    ])
+    folders.value = loadedFolders
   } catch (e) { console.error('Failed to load media', e) }
 })
 
@@ -287,6 +347,17 @@ async function upload(e) {
       const newFiles = results.filter(r => !r.duplicate && !existingIds.has(r.id))
       const duplicates = results.filter(r => r.duplicate)
       media.value.push(...newFiles)
+      const uploadedTrack = results.find((result) => isTrack(result))
+      if (uploadedTrack) {
+        const tracks = await api.getTrackTextures()
+        const refreshed = tracks.find((track) => track.id === uploadedTrack.id)
+        if (refreshed) {
+          const index = media.value.findIndex((item) => item.id === refreshed.id)
+          if (index === -1) media.value.push(refreshed)
+          else media.value[index] = refreshed
+          preview.value = refreshed
+        }
+      }
       if (duplicates.length) {
         showToast(`Déjà présent : ${duplicates.map(r => r.original_name).join(', ')}`, 'info')
       } else if (removeBgOnUpload.value) {
@@ -378,7 +449,7 @@ async function deleteFolder(f) {
     await api.deleteFolder(f.id)
     folders.value = folders.value.filter((x) => x.id !== f.id)
     // Les médias ont été déplacés côté API → rafraîchir
-    media.value = await api.getMedia()
+    await loadMedia()
     if (currentFolder.value === f.id) currentFolder.value = 'root'
     showToast('Dossier supprimé')
   } catch (err) {
@@ -396,6 +467,13 @@ async function confirmDeleteMedia() {
   await api.deleteMedia(m.id)
   media.value = media.value.filter(x => x.id !== m.id)
   if (preview.value?.id === m.id) preview.value = null
+}
+
+function onTrackSaved(updated) {
+  const index = media.value.findIndex((item) => item.id === updated.id)
+  if (index !== -1) media.value[index] = updated
+  preview.value = updated
+  showToast('Métadonnées track enregistrées')
 }
 
 function copyId(id) { navigator.clipboard.writeText(id) }
@@ -435,6 +513,17 @@ async function onDropToFolder(targetFolderId) {
 .rembg-toggle input { cursor: pointer; }
 
 .missing-tab, .pictorgame-tab { padding: 8px 0; }
+.track-filters {
+  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
+  padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+}
+.track-filters span { font-size: 11px; color: var(--text-muted); }
+.track-filters select {
+  padding: 4px 7px; font-size: 11px; color: var(--text-primary);
+  background: var(--bg-primary); border: 1px solid var(--border-default);
+  border-radius: var(--radius-sm);
+}
 .media-layout { display: flex; gap: 16px; }
 
 /* Model download banner */
@@ -528,7 +617,7 @@ async function onDropToFolder(targetFolderId) {
 .empty-state { grid-column: 1 / -1; text-align: center; padding: 40px; color: var(--text-muted); }
 
 /* Preview */
-.preview-modal { background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; max-width: 80vw; max-height: 80vh; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
+.preview-modal { background: var(--bg-primary); border: 1px solid var(--border-default); border-radius: var(--radius-lg); padding: 16px; max-width: 80vw; max-height: 80vh; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 12px; position: relative; }
 .preview-thumb-wrap {
   background-color: #b0b0b0;
   background-image: linear-gradient(45deg,#888 25%,transparent 25%), linear-gradient(-45deg,#888 25%,transparent 25%), linear-gradient(45deg,transparent 75%,#888 75%), linear-gradient(-45deg,transparent 75%,#888 75%);

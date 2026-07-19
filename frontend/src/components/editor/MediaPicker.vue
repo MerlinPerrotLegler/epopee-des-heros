@@ -29,6 +29,16 @@
           <option value="">Tous les dossiers</option>
           <option v-for="f in folders" :key="f.id" :value="f.id">{{ f.name }}</option>
         </select>
+        <div class="mp-track-filters">
+          <select v-model="trackType" class="mp-folder">
+            <option value="">Tous les types track</option>
+            <option v-for="type in trackTypes" :key="type.id" :value="type.name">{{ type.name }}</option>
+          </select>
+          <select v-model="trackTag" class="mp-folder">
+            <option value="">Tous les tags track</option>
+            <option v-for="tag in trackTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
+          </select>
+        </div>
 
         <div v-if="uploading" class="mp-status">{{ uploadStatus }}</div>
 
@@ -109,6 +119,10 @@ const search = ref('')
 const folderId = ref('')
 const media = ref([])
 const folders = ref([])
+const trackTypes = ref([])
+const trackTags = ref([])
+const trackType = ref('')
+const trackTag = ref('')
 const wrapRef = ref(null)
 const popoverRef = ref(null)
 const fileInput = ref(null)
@@ -149,6 +163,11 @@ const filtered = computed(() => {
   const q = search.value.trim().toLowerCase()
   return media.value.filter((m) => {
     if (folderId.value && m.folder_id !== folderId.value) return false
+    if (trackType.value || trackTag.value) {
+      if (m.kind !== 'track') return false
+      if (trackType.value && m.track_meta?.type !== trackType.value) return false
+      if (trackTag.value && !(m.tags || []).some((tag) => tag.id === trackTag.value)) return false
+    }
     if (!q) return true
     const name = (m.original_name || '').toLowerCase()
     const file = (m.filename || '').toLowerCase()
@@ -199,12 +218,17 @@ function updatePopoverPosition() {
 }
 
 async function loadLists({ force = false } = {}) {
-  const [m, f] = await Promise.all([
-    force || !media.value.length ? api.getMedia() : Promise.resolve(media.value),
+  const [regularMedia, trackMedia, f, types, tags] = await Promise.all([
+    force || !media.value.length ? api.getMedia() : Promise.resolve(media.value.filter((item) => item.kind !== 'track')),
+    force || !media.value.length ? api.getTrackTextures() : Promise.resolve(media.value.filter((item) => item.kind === 'track')),
     force || !folders.value.length ? api.getFolders() : Promise.resolve(folders.value),
+    force || !trackTypes.value.length ? api.getTrackTypes() : Promise.resolve(trackTypes.value),
+    force || !trackTags.value.length ? api.getTrackTags() : Promise.resolve(trackTags.value),
   ])
-  media.value = m
+  media.value = [...regularMedia, ...trackMedia]
   folders.value = (f || []).filter((x) => x.id !== 'root')
+  trackTypes.value = types
+  trackTags.value = tags
 }
 
 async function toggle() {
@@ -365,6 +389,12 @@ onBeforeUnmount(() => {
 
 .mp-popover .mp-folder {
   cursor: pointer;
+}
+
+.mp-popover .mp-track-filters {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 
 .mp-popover .mp-status {
