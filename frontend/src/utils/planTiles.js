@@ -15,6 +15,37 @@ export function tileSizeFromHeight(heightMm, texture) {
   return { width_mm: height_mm, height_mm }
 }
 
+/**
+ * @param {object | null | undefined} payload
+ * @param {{ group?: { id?: string } } | null | undefined} planContext
+ * @returns {object | null}
+ */
+export function buildPlanTileElement(payload, planContext) {
+  const heightMm = Number(payload?.heightMm)
+  if (
+    payload?.kind !== 'plan-tile' ||
+    !planContext?.group?.id ||
+    payload.tileGroupId !== planContext.group.id ||
+    payload.mediaId == null ||
+    payload.textureId == null ||
+    !Number.isFinite(heightMm) ||
+    heightMm <= 0
+  ) {
+    return null
+  }
+
+  const size = tileSizeFromHeight(heightMm, payload)
+  return {
+    type: 'atom',
+    atomType: 'image',
+    ...size,
+    params: {
+      mediaId: payload.mediaId,
+      textureId: payload.textureId,
+    },
+  }
+}
+
 /** @param {unknown} el */
 export function isPlanMarker(el) {
   return el?.type === 'atom' && el?.atomType === 'plan'

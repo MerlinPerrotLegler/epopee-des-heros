@@ -1,11 +1,46 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 import {
+  buildPlanTileElement,
   tileSizeFromHeight,
   findPlanContext,
   isPlanMarker,
   nudgeableSiblingIds,
 } from './planTiles.js'
+
+describe('buildPlanTileElement', () => {
+  const planContext = { group: { id: 'g-plan' } }
+  const payload = {
+    kind: 'plan-tile',
+    tileGroupId: 'g-plan',
+    mediaId: 'media-1',
+    textureId: 42,
+    heightMm: 10,
+    width_px: 300,
+    height_px: 200,
+  }
+
+  it('builds an image tile sized from the texture aspect ratio', () => {
+    assert.deepEqual(buildPlanTileElement(payload, planContext), {
+      type: 'atom',
+      atomType: 'image',
+      width_mm: 15,
+      height_mm: 10,
+      params: {
+        mediaId: 'media-1',
+        textureId: 42,
+      },
+    })
+  })
+
+  it('rejects a tile for an inactive or different plan context', () => {
+    assert.equal(buildPlanTileElement(payload, null), null)
+    assert.equal(
+      buildPlanTileElement({ ...payload, tileGroupId: 'g-other' }, planContext),
+      null,
+    )
+  })
+})
 
 describe('tileSizeFromHeight', () => {
   it('derives width from texture pixel aspect ratio', () => {

@@ -36,7 +36,7 @@
         class="card-boundary"
         ref="cardBoundaryRef"
         :style="cardStyle"
-        @dragover.prevent="onDropDragOver"
+        @dragover="onDropDragOver"
         @drop="onDropAdd"
       >
         <!-- Grid overlay -->
@@ -238,6 +238,7 @@ import AlignmentGuidesOverlay from './AlignmentGuidesOverlay.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
+import { buildPlanTileElement, findPlanContext } from '@/utils/planTiles.js'
 
 const store = useEditorStore()
 const configStore = useConfigStore()
@@ -251,6 +252,7 @@ const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
+const activePlanContext = computed(() => findPlanContext(store.layers, store.selectedItemId))
 
 const dragDrop = useDragAndDrop(
   store,
@@ -454,11 +456,42 @@ function onWheel(e) {
 
 function onDropDragOver(e) {
   const types = Array.from(e.dataTransfer?.types || [])
-  const hasPayload = types.includes('application/x-card-designer-add')
-  if (hasPayload) e.dataTransfer.dropEffect = 'copy'
+  const hasAddPayload = types.includes('application/x-card-designer-add')
+  const hasActivePlanTile = types.includes('application/x-card-designer-plan-tile')
+    && activePlanContext.value
+    && !store.readOnly
+  if (!hasAddPayload && !hasActivePlanTile) return
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'copy'
 }
 
 function onDropAdd(e) {
+  const rawPlanTile = e.dataTransfer?.getData('application/x-card-designer-plan-tile')
+  if (rawPlanTile) {
+    const planContext = activePlanContext.value
+    if (!planContext || !cardBoundaryRef.value || store.readOnly) return
+
+    let payload = null
+    try {
+      payload = JSON.parse(rawPlanTile)
+    } catch {
+      return
+    }
+    const element = buildPlanTileElement(payload, planContext)
+    if (!element) return
+
+    e.preventDefault()
+    const { x_mm, y_mm } = clientPointToCardMm(
+      cardBoundaryRef.value, e.clientX, e.clientY, cardW.value, cardH.value
+    )
+    store.addElement({
+      ...element,
+      x_mm: store.snap(x_mm),
+      y_mm: store.snap(y_mm),
+    }, planContext.group.id)
+    return
+  }
+
   const raw = e.dataTransfer?.getData('application/x-card-designer-add')
   if (!raw) return
 
@@ -470,6 +503,7 @@ function onDropAdd(e) {
   }
   if (!payload || !cardBoundaryRef.value) return
 
+  e.preventDefault()
   // Position de drop en mm dans la carte (coordonnées relatives au card-boundary)
   const { x_mm: dropXmm, y_mm: dropYmm } = clientPointToCardMm(
     cardBoundaryRef.value, e.clientX, e.clientY, cardW.value, cardH.value
