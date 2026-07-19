@@ -391,6 +391,7 @@ export const ATOM_TYPES = {
       fontSize:    2.5,
       svgMediaId:  null,     // SVG décoratif optionnel
       textRotation: 45,      // rotation du chiffre en degrés
+      cellOverrides: {},     // { 0: { textureId, coin, textureSource } }
     },
     defaultSize: { width_mm: 5, height_mm: 5 }
   },
@@ -409,6 +410,7 @@ export const ATOM_TYPES = {
       fontSize:    2.5,
       fontFamily:  null,
       caps:        false, // triangles rectangles aux extrémités
+      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource } }
     },
     defaultSize: { width_mm: 55, height_mm: 5 }
   },

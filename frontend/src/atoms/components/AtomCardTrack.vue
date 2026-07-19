@@ -18,10 +18,8 @@
       bgColor        {string}  Fond des cases
       textColor      {string}  Couleur du texte
       fontSize       {number}  Taille du texte en mm
-      borderColor    {string}  Couleur de bordure
-      borderWidth    {number}  Épaisseur de bordure en mm
       svgMediaId     {string}  SVG décoratif dans les coins (optionnel)
-      cellOverrides  {object}  { [idx]: { bgColor?, svgMediaId? } } — surcharges par case
+      cellOverrides  {object}  { [idx]: { textureId, coin, textureSource } }
   -->
   <svg
     width="100%"
@@ -29,22 +27,27 @@
     :viewBox="`0 0 ${W} ${H}`"
     preserveAspectRatio="xMidYMid meet"
   >
-    <!-- ── Passe 1 : cases droites (derrière les coins) ── -->
-    <g v-for="cell in straightCells" :key="`s-${cell.idx}`">
+    <g v-for="cell in cells" :key="`cell-${cell.idx}`">
       <rect
         :x="sv(cell.x)" :y="sv(cell.y)"
         :width="sv(cell.w)" :height="sv(cell.h)"
         :fill="cellBg(cell)"
-        :stroke="penEnabled ? 'none' : (p.borderColor || '#6c7aff')"
-        :stroke-width="penEnabled ? 0 : bw"
       />
-      <!-- SVG override au-dessus du fond, sous le numéro -->
       <image
-        v-if="cellOverride(cell)?.svgMediaId"
-        :href="`/uploads/${cellOverride(cell).svgMediaId}`"
+        v-if="legacyMediaId(cell)"
+        :href="`/uploads/${legacyMediaId(cell)}`"
         :x="sv(cell.x)" :y="sv(cell.y)"
         :width="sv(cell.w)" :height="sv(cell.h)"
         preserveAspectRatio="xMidYMid meet"
+      />
+      <image
+        v-if="cellTexture(cell)"
+        :href="`/uploads/${cellTexture(cell).mediaId}`"
+        :x="sv(cell.x)" :y="sv(cell.y)"
+        :width="sv(cell.w)" :height="sv(cell.h)"
+        preserveAspectRatio="xMidYMid meet"
+        :opacity="textureOpacity(cell)"
+        :transform="`rotate(${cellCoin(cell)},${sv(cell.cx)},${sv(cell.cy)})`"
       />
       <text
         :x="sv(cell.cx)" :y="sv(cell.cy)"
@@ -54,7 +57,6 @@
         :font-family="p.fontFamily || 'Outfit'" font-weight="600"
         :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
       >{{ cell.n }}</text>
-      <!-- Highlight de la case active (édition) -->
       <rect
         v-if="selected && cell.idx === activeCellIdx"
         :x="sv(cell.x)" :y="sv(cell.y)"
@@ -63,56 +65,6 @@
         stroke="#facc15"
         :stroke-width="bw * 2"
         pointer-events="none"
-      />
-    </g>
-
-    <!-- ── Passe 2 : coins (au-dessus des cases droites) ── -->
-    <g v-for="cell in cornerCells" :key="`c-${cell.corner}`">
-      <!-- SVG décoratif global des coins (+ éventuel override) -->
-      <image
-        v-if="p.svgMediaId || cellOverride(cell)?.svgMediaId"
-        :href="`/uploads/${cellOverride(cell)?.svgMediaId || p.svgMediaId}`"
-        :x="sv(cell.x)" :y="sv(cell.y)"
-        :width="sv(cell.w)" :height="sv(cell.h)"
-        preserveAspectRatio="xMidYMid meet"
-      />
-      <!-- Rectangle identique aux cases droites -->
-      <rect
-        :x="sv(cell.x)" :y="sv(cell.y)"
-        :width="sv(cell.w)" :height="sv(cell.h)"
-        :fill="cellBg(cell)"
-        :stroke="penEnabled ? 'none' : (p.borderColor || '#6c7aff')"
-        :stroke-width="penEnabled ? 0 : bw"
-      />
-      <!-- Texte incliné selon cornerTextMode -->
-      <text
-        :x="sv(cell.cx)" :y="sv(cell.cy)"
-        text-anchor="middle" dominant-baseline="central"
-        :fill="p.textColor || '#ffffff'"
-        :font-size="fontSz"
-        :font-family="p.fontFamily || 'Outfit'" font-weight="600"
-        :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
-      >{{ cell.n }}</text>
-      <!-- Highlight coin actif -->
-      <rect
-        v-if="selected && cell.idx === activeCellIdx"
-        :x="sv(cell.x)" :y="sv(cell.y)"
-        :width="sv(cell.w)" :height="sv(cell.h)"
-        fill="none"
-        stroke="#facc15"
-        :stroke-width="bw * 2"
-        pointer-events="none"
-      />
-    </g>
-    <!-- ── Passe 3 : traits de plume (au-dessus de tout) ── -->
-    <!-- Chaque trait est un fuseau rempli (filled polygon) effilé aux extrémités -->
-    <g v-if="penEnabled" pointer-events="none">
-      <path
-        v-for="(stroke, i) in strokePaths"
-        :key="`pen-${i}`"
-        :d="stroke.d"
-        :fill="penColor"
-        stroke="none"
       />
     </g>
   </svg>
@@ -126,22 +78,20 @@
 // ──────────────────────────────────────────────────────────────────────────────
 import { computed }                from 'vue'
 import { useEditorStore }          from '@/stores/editor.js'
+import { useTrackTextures }        from '@/composables/useTrackTextures.js'
 import { buildCardTrackCells }     from '@/utils/cardTrackLayout.js'
-import {
-  buildStrokePool,
-  buildSeparators,
-  variantToPath,
-  pickVariant,
-} from '@/utils/cardTrackStrokes.js'
+import { cellFootprintMm }         from '@/utils/trackFootprint.js'
 
 const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
   width_mm:  { type: Number,  default: 63 },
   height_mm: { type: Number,  default: 88 },
   selected:  { type: Boolean, default: false },   // passé par AtomRenderer/EditorCanvas
+  printMode: { type: Boolean, default: false },
 })
 
 const p = computed(() => props.params)
+const { byLogicalId } = useTrackTextures()
 
 // Lecture de la case active dans le store (pour le highlight)
 const store = useEditorStore()
@@ -156,15 +106,40 @@ const H = computed(() => props.height_mm * SCALE)
 function sv(mm) { return mm * SCALE }
 
 // ── Cellules (via utilitaire partagé) ─────────────────────────────────────────
-const cells = computed(() => buildCardTrackCells(p.value, props.width_mm, props.height_mm))
-
-const straightCells = computed(() => cells.value.filter(c => !c.isCorner))
-const cornerCells   = computed(() => cells.value.filter(c =>  c.isCorner))
+const baseCells = computed(() =>
+  buildCardTrackCells(p.value, props.width_mm, props.height_mm))
+const footprints = computed(() => Object.fromEntries(baseCells.value.map((cell) => {
+  const texture = textureForIndex(cell.idx)
+  return [cell.idx, cellFootprintMm(cell.w, cell.h, texture?.margins)]
+})))
+const cells = computed(() =>
+  buildCardTrackCells(p.value, props.width_mm, props.height_mm, footprints.value))
 
 // ── Surcharges par case ───────────────────────────────────────────────────────
-// params.cellOverrides = { "5": { bgColor: "#f00", svgMediaId: "abc" }, ... }
+// params.cellOverrides = { "5": { textureId: 2, coin: 90, textureSource: "user" }, ... }
 function cellOverride(cell) {
   return p.value.cellOverrides?.[cell.idx] ?? null
+}
+
+function textureForIndex(idx) {
+  const textureId = p.value.cellOverrides?.[idx]?.textureId
+  return byLogicalId.value[textureId] || null
+}
+
+function cellTexture(cell) {
+  return textureForIndex(cell.idx)
+}
+
+function cellCoin(cell) {
+  return Number(cellOverride(cell)?.coin) || 0
+}
+
+function textureOpacity(cell) {
+  return cellOverride(cell)?.textureSource === 'system' && !props.printMode ? 0.35 : 1
+}
+
+function legacyMediaId(cell) {
+  return cellOverride(cell)?.svgMediaId || (cell.isCorner ? p.value.svgMediaId : null)
 }
 
 function cellBg(cell) {
@@ -173,36 +148,5 @@ function cellBg(cell) {
 
 // ── Styles globaux ────────────────────────────────────────────────────────────
 const fontSz = computed(() => (p.value.fontSize    || 2.5) * SCALE)
-const bw     = computed(() => (p.value.borderWidth || 0.2) * SCALE)
-
-// ── Traits de plume ───────────────────────────────────────────────────────────
-const penEnabled      = computed(() => p.value.penStyle === true)
-const penColor        = computed(() => p.value.penColor || p.value.borderColor || '#6c7aff')
-// Épaisseur max / 2 → maxHalfWidth pour les fuseaux remplis
-const penHalfWidthSVG = computed(() => (p.value.penWidth ?? 0.4) / 2 * SCALE)
-
-// Pools de variantes (un par type de bande)
-// poolH = bords haut/bas (séparateurs verticaux courts), seed penSeedH
-// poolV = bords gauche/droite (séparateurs horizontaux courts), seed penSeedV
-const poolH = computed(() =>
-  penEnabled.value ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeedH ?? 1) : [])
-const poolV = computed(() =>
-  penEnabled.value ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeedV ?? 2) : [])
-
-// Tous les séparateurs de l'anneau (coins inclus)
-const separators = computed(() =>
-  penEnabled.value ? buildSeparators(cells.value, SCALE) : [])
-
-// Chemins SVG des fuseaux
-const strokePaths = computed(() => {
-  if (!penEnabled.value) return []
-  return separators.value.map(sep => {
-    // Séparateur vertical (isVertical) → bande H (haut/bas) → poolH
-    const pool     = sep.isVertical ? poolH.value : poolV.value
-    const seedBase = sep.isVertical ? (p.value.penSeedH ?? 1) : (p.value.penSeedV ?? 2)
-    const variant  = pickVariant(pool, seedBase, sep.pairIdx)
-    if (!variant) return null
-    return { d: variantToPath(sep.x1, sep.y1, sep.x2, sep.y2, variant, penHalfWidthSVG.value) }
-  }).filter(Boolean)
-})
+const bw = 2
 </script>

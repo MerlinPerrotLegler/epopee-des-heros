@@ -1,129 +1,70 @@
 <template>
-  <!--
-    AtomTrakCorner — Case de coin pour une piste (track).
-    Bordures sélectives (haut/droite/bas/gauche) + traits de plume optionnels.
-  -->
   <svg
     width="100%"
     height="100%"
-    viewBox="0 0 100 100"
+    :viewBox="`0 0 ${svgW} ${svgH}`"
     preserveAspectRatio="xMidYMid meet"
     overflow="visible"
   >
+    <rect
+      x="0" y="0" :width="svgW" :height="svgH"
+      :fill="params.bgColor || '#2a3050'"
+    />
     <image
       v-if="params.svgMediaId"
       :href="`/uploads/${params.svgMediaId}`"
-      x="0" y="0" width="100" height="100"
+      x="0" y="0" :width="svgW" :height="svgH"
       preserveAspectRatio="xMidYMid meet"
     />
-
-    <rect
-      x="0" y="0" width="100" height="100"
-      :fill="params.bgColor || '#2a3050'"
-      :stroke="cellStroke"
-      :stroke-width="cellStrokeW"
+    <image
+      v-if="texture"
+      :href="`/uploads/${texture.mediaId}`"
+      x="0" y="0" :width="svgW" :height="svgH"
+      preserveAspectRatio="xMidYMid meet"
+      :opacity="textureOpacity"
+      :transform="`rotate(${coin},${svgW / 2},${svgH / 2})`"
     />
 
     <text
-      x="50" y="50"
+      :x="svgW / 2" :y="svgH / 2"
       text-anchor="middle"
       dominant-baseline="central"
       :fill="params.textColor || '#ffffff'"
       :font-size="fontSz"
       font-family="Outfit"
       font-weight="600"
-      :transform="`rotate(${params.textRotation ?? 45}, 50, 50)`"
+      :transform="`rotate(${params.textRotation ?? 45},${svgW / 2},${svgH / 2})`"
     >{{ params.n ?? 0 }}</text>
-
-    <g v-if="!penEnabled" pointer-events="none">
-      <line
-        v-for="(s, i) in plainLines"
-        :key="`line-${i}`"
-        :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
-        :stroke="borderColor"
-        :stroke-width="borderW"
-      />
-    </g>
-
-    <g v-if="penEnabled" pointer-events="none">
-      <path
-        v-for="(stroke, i) in strokePaths"
-        :key="`pen-${i}`"
-        :d="stroke.d"
-        :fill="penColor"
-        stroke="none"
-      />
-    </g>
   </svg>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import {
-  buildStrokePool,
-  buildOuterBorders,
-  variantToPath,
-  pickVariant,
-} from '@/utils/cardTrackStrokes.js'
+import { useTrackTextures } from '@/composables/useTrackTextures.js'
+import { cellFootprintMm } from '@/utils/trackFootprint.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
+  printMode: { type: Boolean, default: false },
 })
 
 const p = computed(() => props.params)
+const { byLogicalId } = useTrackTextures()
 
-const vbScale = computed(() => 100 / Math.max(props.width_mm || 5, 0.1))
-const fontSz  = computed(() => (p.value.fontSize || 2.5) * vbScale.value)
-const borderW = computed(() => (p.value.borderWidth || 0.2) * vbScale.value)
-const borderColor = computed(() => p.value.borderColor || '#6c7aff')
-
-const penEnabled = computed(() => p.value.penStyle === true)
-const penColor = computed(() => p.value.penColor || borderColor.value)
-const penHalfWidthSVG = computed(() => (p.value.penWidth ?? 0.4) / 2 * vbScale.value)
-
-const borderSides = computed(() => ({
-  top:    p.value.borderTop    !== false,
-  right:  p.value.borderRight  !== false,
-  bottom: p.value.borderBottom !== false,
-  left:   p.value.borderLeft   !== false,
-}))
-
-const useSelectiveBorders = computed(() => {
-  const s = borderSides.value
-  return !(s.top && s.right && s.bottom && s.left)
-})
-
-const cellStroke = computed(() =>
-  penEnabled.value || useSelectiveBorders.value ? 'none' : borderColor.value
-)
-const cellStrokeW = computed(() =>
-  penEnabled.value || useSelectiveBorders.value ? 0 : borderW.value
-)
-
-const outerBorders = computed(() => buildOuterBorders(100, 100, borderSides.value))
-
-const plainLines = computed(() => {
-  if (penEnabled.value || !useSelectiveBorders.value) return []
-  return outerBorders.value
-})
-
-const strokePool = computed(() =>
-  penEnabled.value
-    ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeed ?? 1)
-    : []
-)
-
-const strokePaths = computed(() => {
-  if (!penEnabled.value) return []
-  const seed = p.value.penSeed ?? 1
-  return outerBorders.value.map((sep, i) => {
-    const variant = pickVariant(strokePool.value, seed, sep.pairIdx + i * 17)
-    if (!variant) return null
-    return {
-      d: variantToPath(sep.x1, sep.y1, sep.x2, sep.y2, variant, penHalfWidthSVG.value),
-    }
-  }).filter(Boolean)
-})
+const SCALE = 10
+const override = computed(() => p.value.cellOverrides?.[0] || {})
+const texture = computed(() => byLogicalId.value[override.value.textureId] || null)
+const footprint = computed(() => cellFootprintMm(
+  props.width_mm || 5,
+  props.height_mm || 5,
+  texture.value?.margins,
+))
+const svgW = computed(() => footprint.value.w * SCALE)
+const svgH = computed(() => footprint.value.h * SCALE)
+const fontSz = computed(() => (p.value.fontSize || 2.5) * SCALE)
+const coin = computed(() => Number(override.value.coin) || 0)
+const textureOpacity = computed(() =>
+  override.value.textureSource === 'system' && !props.printMode ? 0.35 : 1)
 </script>

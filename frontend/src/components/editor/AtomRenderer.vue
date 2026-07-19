@@ -89,6 +89,7 @@ const props = defineProps({
   width_mm:   Number,
   height_mm:  Number,
   selected:   { type: Boolean, default: false },
+  finalRender:{ type: Boolean, default: false },
   liveStroke: { type: Object, default: null },   // only used by AtomDrawing
 })
 
@@ -97,9 +98,13 @@ const configStore = useConfigStore()
 const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
 
 // Extra props passed only to specific atom types (avoids spurious $attrs warnings)
-const extraProps = computed(() =>
-  props.atomType === 'drawing' ? { liveStroke: props.liveStroke } : {}
-)
+const extraProps = computed(() => {
+  if (props.atomType === 'drawing') return { liveStroke: props.liveStroke }
+  if (['trak', 'trakCorner', 'cardTrack'].includes(props.atomType)) {
+    return { printMode: props.finalRender }
+  }
+  return {}
+})
 
 // Merge params with global config: null values in params are replaced by the config value
 const resolvedParams = computed(() => {
