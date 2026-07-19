@@ -7,6 +7,7 @@ import {
   MEDIA_LIST_COLUMNS,
   insertMediaRecord,
 } from '../services/mediaStorage.js';
+import { allocateTrackId, defaultTrackMeta } from './trackTextures.js';
 
 // Use memory storage so we can compute SHA1 before writing to disk
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } });
@@ -101,6 +102,11 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
       continue;
     }
 
+    const kind = folder_id === 'chemin-track' ? 'track' : 'media';
+    const track_meta = kind === 'track'
+      ? JSON.stringify(defaultTrackMeta(await allocateTrackId(db)))
+      : null;
+
     await insertMediaRecord(db, {
       id: filename,
       filename,
@@ -108,8 +114,18 @@ router.post('/upload', upload.array('files', 20), async (req, res) => {
       mime_type: file.mimetype,
       folder_id,
       buffer: file.buffer,
+      kind,
+      track_meta,
     });
-    results.push({ id: filename, filename, original_name: file.originalname, mime_type: file.mimetype, folder_id });
+    results.push({
+      id: filename,
+      filename,
+      original_name: file.originalname,
+      mime_type: file.mimetype,
+      folder_id,
+      kind,
+      track_meta: track_meta ? JSON.parse(track_meta) : null,
+    });
   }
 
   res.status(201).json(results);

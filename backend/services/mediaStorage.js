@@ -3,7 +3,7 @@ import { insertOrIgnoreInto } from '../db/sqlDialect.js'
 
 /** Colonnes exposées par l'API (sans le BLOB) */
 export const MEDIA_LIST_COLUMNS =
-  'id, filename, original_name, mime_type, width_px, height_px, folder_id, kind, picto_ref, picto_label, source_media_id, created_at'
+  'id, filename, original_name, mime_type, width_px, height_px, folder_id, kind, picto_ref, picto_label, source_media_id, track_meta, created_at'
 
 const MIME_BY_EXT = {
   '.jpg': 'image/jpeg',
@@ -41,9 +41,10 @@ export async function insertMediaRecord(db, {
   picto_ref = null,
   picto_label = null,
   source_media_id = null,
+  track_meta = null,
 }) {
-  const sql = `${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, width_px, height_px, folder_id, content, kind, picto_ref, picto_label, source_media_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  await db.prepare(sql).run(id, filename, original_name, mime_type, width_px, height_px, folder_id, buffer, kind, picto_ref, picto_label, source_media_id)
+  const sql = `${insertOrIgnoreInto()} media (id, filename, original_name, mime_type, width_px, height_px, folder_id, content, kind, picto_ref, picto_label, source_media_id, track_meta) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  await db.prepare(sql).run(id, filename, original_name, mime_type, width_px, height_px, folder_id, buffer, kind, picto_ref, picto_label, source_media_id, track_meta)
 }
 
 /** Sert un fichier depuis le BLOB en base. */
