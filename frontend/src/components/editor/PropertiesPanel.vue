@@ -644,7 +644,11 @@ import { api } from '@/utils/api.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { buildCardTrackCells } from '@/utils/cardTrackLayout.js'
 import { buildTrakPathCells } from '@/utils/trakPathLayout.js'
-import { shuffleTrackTextures } from '@/utils/trackMatch.js'
+import {
+  clearAllTextureOverrides,
+  propagateTextureOverrides,
+  shuffleTrackTextures,
+} from '@/utils/trackMatch.js'
 
 const TRACK_ATOMS = new Set(['trak', 'trakCorner', 'cardTrack', 'trakPath'])
 const TRACK_COINS = [0, 90, 180, 270]
@@ -1005,7 +1009,7 @@ function setCellProp(prop, value, markAsUser = false) {
   } else {
     cellData[prop] = value
   }
-  if (markAsUser) cellData.textureSource = 'user'
+  if (markAsUser && cellData.textureId != null) cellData.textureSource = 'user'
   if (Object.keys(cellData).length === 0) {
     delete overrides[activeTrackCellIdx.value]
   } else {
@@ -1037,7 +1041,7 @@ function selectCellTexture({ textureId, coin }) {
 }
 
 function clearAllTextures() {
-  updateParam('cellOverrides', {})
+  updateParam('cellOverrides', clearAllTextureOverrides(el.value.params?.cellOverrides || {}))
 }
 
 function openPropagatePicker() {
@@ -1046,11 +1050,14 @@ function openPropagatePicker() {
 }
 
 function propagateTexture({ textureId, coin }) {
-  const overrides = {}
-  for (const cell of trackCells.value) {
-    overrides[cell.idx] = { textureId, coin, textureSource: 'user' }
-  }
-  updateParam('cellOverrides', overrides)
+  updateParam(
+    'cellOverrides',
+    propagateTextureOverrides(
+      trackCells.value,
+      { textureId, coin },
+      el.value.params?.cellOverrides || {},
+    ),
+  )
   propagatePickerOpen.value = false
 }
 
