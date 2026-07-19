@@ -44,7 +44,9 @@ CREATE TABLE IF NOT EXISTS media_folders (
 
 INSERT OR IGNORE INTO media_folders (id, name, parent_id) VALUES
   ('root', 'Bibliothèque', NULL),
-  ('default', 'Non classé', 'root');
+  ('default', 'Non classé', 'root'),
+  ('chemin', 'Chemin', 'root'),
+  ('chemin-track', 'Track', 'chemin');
 
 CREATE TABLE IF NOT EXISTS media (
   id TEXT PRIMARY KEY,
@@ -59,6 +61,7 @@ CREATE TABLE IF NOT EXISTS media (
   picto_ref TEXT,
   picto_label TEXT,
   source_media_id TEXT REFERENCES media(id) ON DELETE SET NULL,
+  track_meta TEXT,  -- JSON: { id, label, type, alignment, voisins, margins }
   created_at TEXT DEFAULT (datetime('now'))
 );
 
@@ -72,6 +75,31 @@ CREATE TABLE IF NOT EXISTS picto_tags (
 CREATE TABLE IF NOT EXISTS media_picto_tags (
   media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
   tag_id   TEXT NOT NULL REFERENCES picto_tags(id) ON DELETE CASCADE,
+  PRIMARY KEY (media_id, tag_id)
+);
+
+CREATE TABLE IF NOT EXISTS track_types (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#888888',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+INSERT OR IGNORE INTO track_types (id, name, color) VALUES
+  ('tt-droit', 'droit', '#6c7aff'),
+  ('tt-coin', 'coin', '#c9a227'),
+  ('tt-impasse', 'impasse', '#888888');
+
+CREATE TABLE IF NOT EXISTS track_tags (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL UNIQUE,
+  color TEXT NOT NULL DEFAULT '#888888',
+  created_at TEXT DEFAULT (datetime('now'))
+);
+
+CREATE TABLE IF NOT EXISTS media_track_tags (
+  media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+  tag_id   TEXT NOT NULL REFERENCES track_tags(id) ON DELETE CASCADE,
   PRIMARY KEY (media_id, tag_id)
 );
 
