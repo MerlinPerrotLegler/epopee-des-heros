@@ -4,6 +4,10 @@ import { MEDIA_LIST_COLUMNS } from '../services/mediaStorage.js'
 
 const router = Router()
 
+function sendError(res, err) {
+  res.status(err.status || 500).json({ error: err.message })
+}
+
 export async function allocateTrackId(db) {
   const rows = await db.prepare(
     `SELECT track_meta FROM media WHERE kind = 'track' AND track_meta IS NOT NULL`,
@@ -33,7 +37,7 @@ export function defaultTrackMeta(id) {
   }
 }
 
-function parseTrackMeta(raw) {
+export function parseTrackMeta(raw) {
   if (!raw) return null
   if (typeof raw === 'object') return raw
   try {
@@ -149,38 +153,42 @@ router.get('/', async (req, res) => {
 })
 
 router.patch('/:mediaId', async (req, res) => {
-  const db = getDb()
-  const existing = await db.prepare(
-    `SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ? AND kind = 'track'`,
-  ).get(req.params.mediaId)
-  if (!existing) return res.status(404).json({ error: 'Not found' })
+  try {
+    const db = getDb()
+    const existing = await db.prepare(
+      `SELECT ${MEDIA_LIST_COLUMNS} FROM media WHERE id = ? AND kind = 'track'`,
+    ).get(req.params.mediaId)
+    if (!existing) return res.status(404).json({ error: 'Not found' })
 
-  if (req.body?.track_meta !== undefined) {
-    const patch = req.body.track_meta
-    if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
-      return res.status(400).json({ error: 'track_meta must be an object' })
+    if (req.body?.track_meta !== undefined) {
+      const patch = req.body.track_meta
+      if (!patch || typeof patch !== 'object' || Array.isArray(patch)) {
+        return res.status(400).json({ error: 'track_meta must be an object' })
+      }
+      const current = parseTrackMeta(existing.track_meta)
+      const id = patch.id ?? current?.id ?? await allocateTrackId(db)
+      const base = current || defaultTrackMeta(id)
+      const next = {
+        ...base,
+        ...patch,
+        id,
+        margins: {
+          ...base.margins,
+          ...(patch.margins || {}),
+        },
+      }
+      await db.prepare('UPDATE media SET track_meta = ? WHERE id = ? AND kind = ?')
+        .run(JSON.stringify(next), req.params.mediaId, 'track')
     }
-    const current = parseTrackMeta(existing.track_meta)
-    const id = patch.id ?? current?.id ?? await allocateTrackId(db)
-    const base = current || defaultTrackMeta(id)
-    const next = {
-      ...base,
-      ...patch,
-      id,
-      margins: {
-        ...base.margins,
-        ...(patch.margins || {}),
-      },
+
+    if (req.body?.tagIds !== undefined) {
+      await syncTrackTags(db, req.params.mediaId, parseTagIds(req.body.tagIds))
     }
-    await db.prepare('UPDATE media SET track_meta = ? WHERE id = ? AND kind = ?')
-      .run(JSON.stringify(next), req.params.mediaId, 'track')
-  }
 
-  if (req.body?.tagIds !== undefined) {
-    await syncTrackTags(db, req.params.mediaId, parseTagIds(req.body.tagIds))
+    res.json(await getTrackById(db, req.params.mediaId))
+  } catch (err) {
+    sendError(res, err)
   }
-
-  res.json(await getTrackById(db, req.params.mediaId))
 })
 
 export default router
