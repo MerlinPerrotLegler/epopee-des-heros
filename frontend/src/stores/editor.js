@@ -548,8 +548,9 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function saveDefinition() {
-    if (!layout.value || !dirty.value) return
-    if (mode.value === 'layout' && (readOnly.value || !layoutLockHeld.value)) return
+    if (!layout.value) return false
+    if (!dirty.value) return true
+    if (mode.value === 'layout' && (readOnly.value || !layoutLockHeld.value)) return false
     cancelAutoSave()
     const versionAtSave = editVersion
     saving.value = true
@@ -579,6 +580,10 @@ export const useEditorStore = defineStore('editor', () => {
       }
       // Ne clear dirty que si aucune nouvelle modif n’est arrivée pendant le save
       if (editVersion === versionAtSave) dirty.value = false
+      return !dirty.value
+    } catch (e) {
+      console.error('saveDefinition failed', e)
+      return false
     } finally {
       saving.value = false
       if (dirty.value && autoSave.value) scheduleAutoSave()
