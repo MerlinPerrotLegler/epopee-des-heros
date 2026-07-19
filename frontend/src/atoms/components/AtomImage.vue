@@ -11,6 +11,7 @@
 <script setup>
 import { computed } from 'vue'
 import { mmCss } from '@/utils/cssMm.js'
+import { buildImageEdgeFadeMaskStyle } from '@/utils/imageEdgeFade.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -18,16 +19,28 @@ const props = defineProps({
   height_mm: Number,
 })
 
-const containerStyle = computed(() => ({
-  width: '100%',
-  height: '100%',
-  borderRadius: props.params.borderRadius ? mmCss(props.params.borderRadius) : '0',
-  opacity: props.params.opacity ?? 1,
-  overflow: 'hidden',
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'center',
-}))
+const containerStyle = computed(() => {
+  const style = {
+    width: '100%',
+    height: '100%',
+    borderRadius: props.params.borderRadius ? mmCss(props.params.borderRadius) : '0',
+    opacity: props.params.opacity ?? 1,
+    overflow: 'hidden',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  }
+  const mask = buildImageEdgeFadeMaskStyle({
+    fadeTop_mm: props.params.fadeTop_mm,
+    fadeBottom_mm: props.params.fadeBottom_mm,
+    fadeLeft_mm: props.params.fadeLeft_mm,
+    fadeRight_mm: props.params.fadeRight_mm,
+    width_mm: props.width_mm,
+    height_mm: props.height_mm,
+  })
+  if (mask) Object.assign(style, mask)
+  return style
+})
 
 const imgStyle = computed(() => ({
   width: '100%',
