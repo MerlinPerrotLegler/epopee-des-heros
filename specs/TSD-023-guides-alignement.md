@@ -27,8 +27,9 @@ Lors du placement d’atomes et de composants sur un layout, le designer a besoi
 - Affichage des **cadres** des autres éléments non lockés / visibles pendant le geste
 - Activation pendant **drag**, **resize** et **flèches clavier**
 - Deux seuils pour les lignes d’alignement :
-  - **visibilité** : ligne fine si `|Δ| ≤ 3 mm`
-  - **aligné** : ligne **épaisse** si `|Δ| < snapGrid` (pas de grille courant, ex. 1 mm)
+  - **visibilité** : ligne proche si `|Δ| ≤ 3 mm` — style selon source : **dashed** (centres layout/éléments), **dotted** (bords)
+  - **aligné / actif** : ligne **solid** 1 px si `|Δ| < snapGrid` (pas de grille courant, ex. 1 mm)
+  - Toutes les lignes d’alignement : **stroke-width 1 px** (écran)
 - Marges vers les éléments **proches** en horizontal **et** vertical (voisins H/B/G/D)
 - Menu toolbar « Guides » avec toggles par option
 - Persistance des préférences en `localStorage`
@@ -49,7 +50,7 @@ Lors du placement d’atomes et de composants sur un layout, le designer a besoi
 1. L’utilisateur commence un drag (ou resize) sur un élément non locké.
 2. Si au moins une option Guides est active, l’overlay apparaît.
 3. À chaque move, le système recalcule les guides pour la bbox courante.
-4. Si un bord/centre est à ≤ **3 mm** d’une cible : ligne d’alignement **fine** ; si `|Δ| < snapGrid` : ligne **épaisse**.
+4. Si un bord/centre est à ≤ **3 mm** d’une cible : ligne **dashed** (centre) ou **dotted** (bord) ; si `|Δ| < snapGrid` : ligne **solid** (actif). Toutes en 1 px.
 5. Si Marges est actif : traits de cote + labels `N.N mm` vers les éléments **proches** en horizontal et vertical (voisin le plus proche de chaque côté H/B/G/D) ; style « égal » si L≈R ou T≈B (`|gapA - gapB| < snapGrid`).
 6. Si Cadres est actif : outline dashed sur chaque élément candidat.
 7. Au mouseup, l’overlay disparaît.
@@ -83,8 +84,9 @@ Clé `localStorage` : `card-designer.guideOptions` (JSON objet des 5 booléens).
 | Hors geste | Pas d’overlay |
 | Geste, aucune option | Pas d’overlay |
 | Geste + option | Overlay SVG `pointer-events: none` |
-| Proche (≤3 mm, et `|Δ| ≥ snapGrid`) | Ligne d’alignement **fine** (~1 px), couleur accent atténuée |
-| Aligné (`|Δ| < snapGrid`) | Ligne d’alignement **épaisse** (~2–3 px), couleur accent |
+| Proche centre (≤3 mm, `|Δ| ≥ snapGrid`, source layout/center) | Ligne **1 px dashed**, couleur accent atténuée |
+| Proche bord (≤3 mm, `|Δ| ≥ snapGrid`, source edge) | Ligne **1 px dotted**, couleur accent atténuée |
+| Aligné / actif (`|Δ| < snapGrid`) | Ligne **1 px solid**, couleur accent |
 | Marge normale | Trait fin + label mm (voisins H et V) |
 | Marges opposées égales | Trait/label plus vif (même teinte accent) |
 | Cadre candidat | Outline dashed discret |
@@ -129,7 +131,7 @@ Structure d’un guide calculé :
 
 ```js
 // Ligne d’alignement (émise si |Δ| ≤ 3 mm)
-// strong = true si |Δ| < snapGrid (épaisse), false sinon (fine)
+// strong = true si |Δ| < snapGrid (solid), false sinon (dashed centre / dotted bord selon source)
 { kind: 'line', axis: 'x'|'y', position_mm: number, strong: boolean, source: 'layout'|'edge'|'center' }
 
 // Marge
@@ -206,7 +208,7 @@ N/A — purement frontend / store local.
 
 - [x] Pendant un drag, resize ou flèches, les guides configurés s’affichent *(code ; QA navigateur recommandée)*
 - [x] Aucun magnétisme : la position finale n’est pas altérée par les guides (seul le snap grille existant s’applique)
-- [x] Ligne d’alignement **fine** si `|Δ| ≤ 3 mm`, **épaisse** si `|Δ| < snapGrid` ; rien si `> 3 mm` *(couvert par tests unitaires)*
+- [x] Ligne d’alignement si `|Δ| ≤ 3 mm` (dashed centre / dotted bord), **solid** si `|Δ| < snapGrid` ; rien si `> 3 mm` *(calcul couvert par tests ; styles overlay)*
 - [x] Centres layout H et V fonctionnent *(couvert par tests unitaires)*
 - [x] Alignement bords et centres entre éléments fonctionne *(couvert par tests unitaires)*
 - [x] Marges vers voisins proches H **et** V + style « égal » si L≈R ou T≈B *(couvert par tests unitaires)*
@@ -230,7 +232,7 @@ N/A — purement frontend / store local.
 Aucune — décisions figées en brainstorming (2026-07-17) + amendements auteur :
 - Centres = layout only (pas centre-à-centre layout/élément comme option séparée au-delà de `elementCenters`)
 - Drag + resize + flèches
-- Seuils lignes : visible ≤ 3 mm (fine), strong si `|Δ| < snapGrid` (épaisse)
+- Seuils lignes : visible ≤ 3 mm (dashed centre / dotted bord), strong si `|Δ| < snapGrid` (solid 1 px)
 - Marges = voisins proches H et V + highlight égalité
 - UI = menu Guides (pas toggles toujours visibles)
 
