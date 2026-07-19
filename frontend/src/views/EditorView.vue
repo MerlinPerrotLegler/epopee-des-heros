@@ -37,7 +37,6 @@ function isInputFocused() {
   return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT'
 }
 
-// Autosave on Ctrl+S
 function onKeyDown(e) {
   if ((e.ctrlKey || e.metaKey) && e.key === 's') {
     e.preventDefault()
@@ -46,19 +45,28 @@ function onKeyDown(e) {
     }
   }
 
-  // Delete selected element (not when typing in an input)
-  if (e.key === 'Delete' && store.selectedElementId && !isInputFocused()) {
-    store.removeElement(store.selectedElementId)
+  if (isInputFocused()) return
+
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+    if (store.selectedItemId) {
+      e.preventDefault()
+      store.duplicateItem(store.selectedItemId)
+    }
+    return
   }
 
-  // Ctrl+A: focus & select the "text" param input of the selected element
+  if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedItemId) {
+    e.preventDefault()
+    store.removeItem(store.selectedItemId)
+    return
+  }
+
   if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-    if (!isInputFocused() && store.selectedElementId) {
+    if (store.selectedElementId) {
       e.preventDefault()
       const input = document.querySelector('[data-param-key="text"]')
       if (input) { input.focus(); input.select() }
     }
-    // when already in an input: let the browser select-all natively
   }
 }
 

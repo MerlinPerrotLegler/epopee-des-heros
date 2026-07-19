@@ -35,11 +35,25 @@ function onKeyDown(e) {
     e.preventDefault()
     store.saveDefinition()
   }
-  if (e.key === 'Delete' && store.selectedElementId && !isInputFocused()) {
-    store.removeElement(store.selectedElementId)
+
+  if (isInputFocused()) return
+
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
+    if (store.selectedItemId) {
+      e.preventDefault()
+      store.duplicateItem(store.selectedItemId)
+    }
+    return
   }
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedItemId) {
+    e.preventDefault()
+    store.removeItem(store.selectedItemId)
+    return
+  }
+
   if ((e.ctrlKey || e.metaKey) && e.key === 'a') {
-    if (!isInputFocused() && store.selectedElementId) {
+    if (store.selectedElementId) {
       e.preventDefault()
       const input = document.querySelector('[data-param-key="text"]')
       if (input) { input.focus(); input.select() }
