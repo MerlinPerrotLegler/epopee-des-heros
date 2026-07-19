@@ -25,6 +25,7 @@
         <h1>Bibliothèque média</h1>
         <div class="tab-bar">
           <button class="tab-btn" :class="{ active: activeTab === 'library' }" @click="activeTab = 'library'">Médias</button>
+          <button class="tab-btn" :class="{ active: activeTab === 'chemin' }" @click="activeTab = 'chemin'">Chemin</button>
           <button class="tab-btn" :class="{ active: activeTab === 'pictorgame' }" @click="activeTab = 'pictorgame'">Pictorgame</button>
           <button class="tab-btn" :class="{ active: activeTab === 'missing' }" @click="activeTab = 'missing'">Manquants</button>
         </div>
@@ -40,6 +41,11 @@
       </div>
     </header>
 
+    <!-- Chemin (Track textures) tab -->
+    <div v-if="activeTab === 'chemin'" class="chemin-tab">
+      <CheminPanel />
+    </div>
+
     <!-- Pictorgame tab -->
     <div v-if="activeTab === 'pictorgame'" class="pictorgame-tab">
       <PictorgamePanel />
@@ -50,24 +56,11 @@
       <MissingMediaList />
     </div>
 
-    <div v-if="activeTab === 'library'" class="track-filters">
-      <span>Textures track</span>
-      <select v-model="trackTypeFilter">
-        <option value="">Tous les types</option>
-        <option v-for="type in trackTypes" :key="type.id" :value="type.name">{{ type.name }}</option>
-      </select>
-      <select v-model="trackTagFilter">
-        <option value="">Tous les tags</option>
-        <option v-for="tag in trackTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
-      </select>
-      <button v-if="trackTypeFilter || trackTagFilter" class="btn-ghost btn-sm" @click="clearTrackFilters">Effacer</button>
-    </div>
-
     <div v-if="activeTab === 'library'" class="media-layout">
-      <!-- Folders -->
+      <!-- Folders (system Chemin/Track live in the Chemin tab) -->
       <div class="folder-tree">
         <div
-          v-for="f in folders" :key="f.id"
+          v-for="f in libraryFolders" :key="f.id"
           class="folder-item"
           :class="{ active: currentFolder === f.id, 'drop-target': dragOver === f.id }"
           @click="currentFolder = f.id"
@@ -168,12 +161,6 @@
             <button class="btn-primary btn-sm" @click="copyId(preview.id); preview = null">⧉ Copier l'ID</button>
           </div>
         </div>
-        <TrackMetaForm
-          v-if="isTrack(preview)"
-          :media="preview"
-          @saved="onTrackSaved"
-          @catalogs-changed="loadTrackCatalogs"
-        />
       </div>
     </div>
 
@@ -208,8 +195,10 @@ import { ref, computed, onMounted } from 'vue'
 import { api } from '@/utils/api.js'
 import MissingMediaList from '@/components/media/MissingMediaList.vue'
 import PictorgamePanel from '@/components/media/PictorgamePanel.vue'
-import TrackMetaForm from '@/components/media/TrackMetaForm.vue'
+import CheminPanel from '@/components/media/CheminPanel.vue'
 import { useInlineRename } from '@/composables/useInlineRename.js'
+
+const SYSTEM_FOLDER_IDS = new Set(['chemin', 'chemin-track'])
 
 const activeTab     = ref('library')
 const folders       = ref([])
@@ -222,23 +211,16 @@ const removeBgOnUpload = ref(false)
 const preview       = ref(null)
 const draggedMedia  = ref(null)
 const dragOver      = ref(null)
-const trackTypes    = ref([])
-const trackTags     = ref([])
-const trackTypeFilter = ref('')
-const trackTagFilter = ref('')
+
+/** Folders shown in the Médias tab (exclude Chemin system folders). */
+const libraryFolders = computed(() =>
+  folders.value.filter((f) => !SYSTEM_FOLDER_IDS.has(f.id)),
+)
 
 const filteredMedia = computed(() => {
-  let rows = currentFolder.value === 'root'
-    ? media.value
-    : media.value.filter(m => m.folder_id === currentFolder.value)
-  if (trackTypeFilter.value || trackTagFilter.value) {
-    rows = rows.filter((m) => {
-      if (!isTrack(m)) return false
-      if (trackTypeFilter.value && m.track_meta?.type !== trackTypeFilter.value) return false
-      if (trackTagFilter.value && !(m.tags || []).some((tag) => tag.id === trackTagFilter.value)) return false
-      return true
-    })
-  }
+  const rows = currentFolder.value === 'root'
+    ? media.value.filter((m) => !isTrack(m))
+    : media.value.filter((m) => m.folder_id === currentFolder.value && !isTrack(m))
   return rows
 })
 
@@ -277,7 +259,7 @@ const {
 )
 
 function canRenameFolder(f) {
-  return f.id !== 'root' && f.id !== 'default' && f.id !== 'builtin'
+  return f.id !== 'root' && f.id !== 'default' && f.id !== 'builtin' && !SYSTEM_FOLDER_IDS.has(f.id)
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -287,24 +269,8 @@ function canRemoveBg(m) { return isImage(m) && !isSvg(m) }
 function fileExt(m)     { return m.original_name?.split('.').pop()?.toUpperCase() || 'FILE' }
 function isTrack(m)      { return m?.kind === 'track' || m?.folder_id === 'chemin-track' }
 
-function clearTrackFilters() {
-  trackTypeFilter.value = ''
-  trackTagFilter.value = ''
-}
-
-async function loadTrackCatalogs() {
-  ;[trackTypes.value, trackTags.value] = await Promise.all([
-    api.getTrackTypes(),
-    api.getTrackTags(),
-  ])
-}
-
 async function loadMedia() {
-  const [regularMedia, trackMedia] = await Promise.all([
-    api.getMedia(),
-    api.getTrackTextures(),
-  ])
-  media.value = [...regularMedia, ...trackMedia]
+  media.value = await api.getMedia()
 }
 
 // ── Load ──────────────────────────────────────────────────────────────────────
@@ -313,7 +279,6 @@ onMounted(async () => {
     const [loadedFolders] = await Promise.all([
       api.getFolders(),
       loadMedia(),
-      loadTrackCatalogs(),
     ])
     folders.value = loadedFolders
   } catch (e) { console.error('Failed to load media', e) }
@@ -347,17 +312,6 @@ async function upload(e) {
       const newFiles = results.filter(r => !r.duplicate && !existingIds.has(r.id))
       const duplicates = results.filter(r => r.duplicate)
       media.value.push(...newFiles)
-      const uploadedTrack = results.find((result) => isTrack(result))
-      if (uploadedTrack) {
-        const tracks = await api.getTrackTextures()
-        const refreshed = tracks.find((track) => track.id === uploadedTrack.id)
-        if (refreshed) {
-          const index = media.value.findIndex((item) => item.id === refreshed.id)
-          if (index === -1) media.value.push(refreshed)
-          else media.value[index] = refreshed
-          preview.value = refreshed
-        }
-      }
       if (duplicates.length) {
         showToast(`Déjà présent : ${duplicates.map(r => r.original_name).join(', ')}`, 'info')
       } else if (removeBgOnUpload.value) {
@@ -469,13 +423,6 @@ async function confirmDeleteMedia() {
   if (preview.value?.id === m.id) preview.value = null
 }
 
-function onTrackSaved(updated) {
-  const index = media.value.findIndex((item) => item.id === updated.id)
-  if (index !== -1) media.value[index] = updated
-  preview.value = updated
-  showToast('Métadonnées track enregistrées')
-}
-
 function copyId(id) { navigator.clipboard.writeText(id) }
 function onDragStart(m) { draggedMedia.value = m }
 
@@ -512,18 +459,7 @@ async function onDropToFolder(targetFolderId) {
 }
 .rembg-toggle input { cursor: pointer; }
 
-.missing-tab, .pictorgame-tab { padding: 8px 0; }
-.track-filters {
-  display: flex; align-items: center; gap: 8px; margin-bottom: 12px;
-  padding: 8px; background: var(--bg-secondary); border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
-}
-.track-filters span { font-size: 11px; color: var(--text-muted); }
-.track-filters select {
-  padding: 4px 7px; font-size: 11px; color: var(--text-primary);
-  background: var(--bg-primary); border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-}
+.missing-tab, .pictorgame-tab, .chemin-tab { padding: 8px 0; }
 .media-layout { display: flex; gap: 16px; }
 
 /* Model download banner */
