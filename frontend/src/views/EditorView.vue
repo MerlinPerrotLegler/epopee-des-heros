@@ -22,7 +22,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onBeforeUnmount } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import EditorPanel from '@/components/editor/EditorPanel.vue'
@@ -70,8 +70,20 @@ function onKeyDown(e) {
   }
 }
 
+watch(
+  () => props.id,
+  async (newId, oldId) => {
+    if (oldId != null && oldId !== newId) {
+      await store.leaveLayoutEditor(oldId)
+    }
+    if (newId) {
+      await store.enterLayoutEditor(newId)
+    }
+  },
+  { immediate: true },
+)
+
 onMounted(() => {
-  store.enterLayoutEditor(props.id)
   document.addEventListener('keydown', onKeyDown)
 })
 onBeforeUnmount(() => {
