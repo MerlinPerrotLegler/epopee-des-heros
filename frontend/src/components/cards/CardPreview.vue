@@ -13,6 +13,7 @@
             :params="resolvedParams(el)"
             :width_mm="el.width_mm"
             :height_mm="el.height_mm"
+            final-render
           />
           <InlineComponentRenderer
             v-else-if="el.type === 'component'"
@@ -171,6 +172,7 @@ const InlineComponentRenderer = defineComponent({
             params: el.params || {},
             width_mm: el.width_mm,
             height_mm: el.height_mm,
+            finalRender: true,
           })
         ])))
       ])

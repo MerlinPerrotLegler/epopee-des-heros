@@ -36,7 +36,7 @@
         class="card-boundary"
         ref="cardBoundaryRef"
         :style="cardStyle"
-        @dragover.prevent="onDropDragOver"
+        @dragover="onDropDragOver"
         @drop="onDropAdd"
       >
         <!-- Grid overlay -->
@@ -89,6 +89,27 @@
             :selected="store.selectedElementId === el.id"
             :live-stroke="(drawingMode.active.value && drawingMode.drawingElementId.value === el.id) ? drawingMode.liveStroke.value : null"
           />
+
+          <div
+            v-if="el.type === 'atom' && el.atomType === 'trakPath'"
+            class="trak-path-hit-area"
+            :style="trakPathHitAreaStyle(el)"
+          />
+
+          <template
+            v-if="el.type === 'atom' && el.atomType === 'trakPath' && store.selectedElementId === el.id && !el._layerLocked"
+          >
+            <button
+              v-for="control in trakPathAddControls(el)"
+              :key="control.direction"
+              class="trak-path-add"
+              :style="{ left: mmCss(control.x), top: mmCss(control.y) }"
+              :title="`Ajouter un segment vers ${control.direction}`"
+              :aria-label="`Ajouter un segment vers ${control.direction}`"
+              @mousedown.stop
+              @click.stop="appendTrakPathSegment(el, control.direction)"
+            >+</button>
+          </template>
 
           <!-- Component renderer -->
           <ComponentRenderer
@@ -194,11 +215,22 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { useConfigStore } from '@/stores/config.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
-import { hitTestCardTrackCell } from '@/utils/cardTrackLayout.js'
+import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
+import {
+  buildCardTrackFootprints,
+  hitTestCardTrackCell,
+} from '@/utils/cardTrackLayout.js'
+import {
+  buildTrakPathCells,
+  orthogonalDirections,
+  trakPathInteractiveBounds,
+} from '@/utils/trakPathLayout.js'
 import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
 import { getOneToOneZoom } from '@/utils/physicalScale.js'
+import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import AtomRenderer from './AtomRenderer.vue'
 import ComponentRenderer from './ComponentRenderer.vue'
 import DrawingToolbar from './DrawingToolbar.vue'
@@ -206,8 +238,11 @@ import AlignmentGuidesOverlay from './AlignmentGuidesOverlay.vue'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
+import { buildPlanTileElement, findPlanContext } from '@/utils/planTiles.js'
 
 const store = useEditorStore()
+const configStore = useConfigStore()
+const { byLogicalId: trackTexturesByLogicalId } = useTrackTextures()
 const containerRef    = ref(null)
 const cardBoundaryRef = ref(null)
 
@@ -217,6 +252,7 @@ const resizeHandles = ['n', 's', 'e', 'w', 'ne', 'nw', 'se', 'sw']
 
 const cardW = computed(() => store.layout?.width_mm || 63)
 const cardH = computed(() => Number(store.layout?.height_mm) || 88)
+const activePlanContext = computed(() => findPlanContext(store.layers, store.selectedItemId))
 
 const dragDrop = useDragAndDrop(
   store,
@@ -276,6 +312,66 @@ function resolvedParams(el) {
   return el.params || {}
 }
 
+function effectiveAtomParams(el) {
+  return resolveEffectiveAtomParams({
+    atomType: el.atomType,
+    params: resolvedParams(el),
+    config: configStore.config,
+  })
+}
+
+function trakPathLayout(el) {
+  const params = effectiveAtomParams(el)
+  return buildTrakPathCells({
+    segments: params.segments,
+    cellSize: params.cellSize ?? 0.1,
+    n_start: params.n_start ?? 0,
+    cellOverrides: params.cellOverrides || {},
+    texturesById: trackTexturesByLogicalId.value,
+    width_mm: el.width_mm,
+    height_mm: el.height_mm,
+  })
+}
+
+function trakPathHitAreaStyle(el) {
+  const layout = trakPathLayout(el)
+  const bounds = trakPathInteractiveBounds({
+    ...layout,
+    width_mm: el.width_mm,
+    height_mm: el.height_mm,
+  })
+  return {
+    width: mmCss(bounds.width),
+    height: mmCss(bounds.height),
+  }
+}
+
+function trakPathAddControls(el) {
+  const cells = trakPathLayout(el).cells
+  const lastCell = cells.at(-1)
+  if (!lastCell) return []
+
+  const offset = 2.5
+  return orthogonalDirections(lastCell.direction).map((direction) => {
+    let x = lastCell.cx
+    let y = lastCell.cy
+    if (direction === 'left') x -= lastCell.w / 2 + offset
+    if (direction === 'right') x += lastCell.w / 2 + offset
+    if (direction === 'up') y -= lastCell.h / 2 + offset
+    if (direction === 'down') y += lastCell.h / 2 + offset
+    return { direction, x, y }
+  })
+}
+
+function appendTrakPathSegment(el, direction) {
+  const effectiveParams = effectiveAtomParams(el)
+  const segments = Array.isArray(effectiveParams.segments) ? [...effectiveParams.segments] : []
+  segments.push({ direction, count: 3 })
+  store.updateElement(el.id, {
+    params: { ...(el.params || {}), segments },
+  })
+}
+
 function onElementDblClick(_e, el) {
   if (el.type === 'atom' && el.atomType === 'drawing' && !el._layerLocked) {
     drawingMode.enter(el.id)
@@ -291,8 +387,9 @@ function onElementMouseDown(e, el) {
   store.selectedElementId = el.id
   store.selectedItemId = el.id // sync calque → flèches / panneau calques
 
-  // Clic sur une case d'un CardTrack déjà sélectionné → sélection de case
-  if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' && el.atomType === 'cardTrack') {
+  // Clic sur une case d'une piste déjà sélectionnée → sélection de case
+  if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' &&
+      (el.atomType === 'cardTrack' || el.atomType === 'trakPath')) {
     const cardEl = cardBoundaryRef.value
     if (cardEl) {
       const { x_mm, y_mm } = clientPointToCardMm(
@@ -300,7 +397,28 @@ function onElementMouseDown(e, el) {
       )
       const relX_mm = x_mm - el.x_mm
       const relY_mm = y_mm - el.y_mm
-      const idx = hitTestCardTrackCell(el.params || {}, el.width_mm, el.height_mm, relX_mm, relY_mm)
+      let idx = null
+      if (el.atomType === 'cardTrack') {
+        const footprintByIndex = buildCardTrackFootprints(
+          el.params || {},
+          el.width_mm,
+          el.height_mm,
+          trackTexturesByLogicalId.value,
+        )
+        idx = hitTestCardTrackCell(
+          el.params || {},
+          el.width_mm,
+          el.height_mm,
+          relX_mm,
+          relY_mm,
+          footprintByIndex,
+        )
+      } else {
+        idx = trakPathLayout(el).cells.find((cell) =>
+          relX_mm >= cell.x && relX_mm < cell.x + cell.w &&
+          relY_mm >= cell.y && relY_mm < cell.y + cell.h
+        )?.idx ?? null
+      }
       if (idx !== null) {
         store.activeCellIdx = idx
         return // pas de drag : l'utilisateur sélectionne une case
@@ -338,11 +456,42 @@ function onWheel(e) {
 
 function onDropDragOver(e) {
   const types = Array.from(e.dataTransfer?.types || [])
-  const hasPayload = types.includes('application/x-card-designer-add')
-  if (hasPayload) e.dataTransfer.dropEffect = 'copy'
+  const hasAddPayload = types.includes('application/x-card-designer-add')
+  const hasActivePlanTile = types.includes('application/x-card-designer-plan-tile')
+    && activePlanContext.value
+    && !store.readOnly
+  if (!hasAddPayload && !hasActivePlanTile) return
+  e.preventDefault()
+  e.dataTransfer.dropEffect = 'copy'
 }
 
 function onDropAdd(e) {
+  const rawPlanTile = e.dataTransfer?.getData('application/x-card-designer-plan-tile')
+  if (rawPlanTile) {
+    const planContext = activePlanContext.value
+    if (!planContext || !cardBoundaryRef.value || store.readOnly) return
+
+    let payload = null
+    try {
+      payload = JSON.parse(rawPlanTile)
+    } catch {
+      return
+    }
+    const element = buildPlanTileElement(payload, planContext)
+    if (!element) return
+
+    e.preventDefault()
+    const { x_mm, y_mm } = clientPointToCardMm(
+      cardBoundaryRef.value, e.clientX, e.clientY, cardW.value, cardH.value
+    )
+    store.addElement({
+      ...element,
+      x_mm: store.snap(x_mm),
+      y_mm: store.snap(y_mm),
+    }, planContext.group.id)
+    return
+  }
+
   const raw = e.dataTransfer?.getData('application/x-card-designer-add')
   if (!raw) return
 
@@ -354,13 +503,18 @@ function onDropAdd(e) {
   }
   if (!payload || !cardBoundaryRef.value) return
 
+  e.preventDefault()
   // Position de drop en mm dans la carte (coordonnées relatives au card-boundary)
   const { x_mm: dropXmm, y_mm: dropYmm } = clientPointToCardMm(
     cardBoundaryRef.value, e.clientX, e.clientY, cardW.value, cardH.value
   )
 
   let element = null
+  let created = null
   if (payload.kind === 'atom' && payload.atomType) {
+    if (payload.atomType === 'plan') {
+      created = store.addPlan()
+    }
     element = {
       type: 'atom',
       atomType: payload.atomType,
@@ -377,7 +531,7 @@ function onDropAdd(e) {
   if (!element) return
 
   // Ajout puis repositionnement proche du point de lâcher (centré sous le curseur)
-  const created = store.addElement(element)
+  created ??= store.addElement(element)
   if (!created) return
   if (created.type === 'atom' && BACKGROUND_ATOM_TYPES.has(created.atomType)) return
 
@@ -582,6 +736,37 @@ function startPan(e) {
   cursor: default;
   opacity: 0.5;
   pointer-events: none;
+}
+
+.trak-path-hit-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: all;
+}
+
+.trak-path-add {
+  position: absolute;
+  z-index: 150;
+  width: 4mm;
+  height: 4mm;
+  padding: 0;
+  transform: translate(-50%, -50%);
+  border: 0.2mm solid white;
+  border-radius: 50%;
+  background: var(--accent-primary);
+  color: white;
+  font-size: 2.8mm;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  pointer-events: all;
+  box-shadow: 0 0.3mm 1mm rgba(0, 0, 0, 0.35);
+}
+
+.trak-path-add:hover {
+  filter: brightness(1.15);
 }
 
 /* Resize handles (CSS mm — scale with card world / viewport zoom) */

@@ -94,6 +94,10 @@ export const PARAM_HELP = {
 
   // ── AtomDice8 / AtomDice12 / iconMap / badge ───────────────────────────────
   value:         'Valeur (dé, ou clé de checklist pour iconMap/badge — souvent bindée)',
+  penColor:      'Couleur des traits de plume sur le dé (vide = couleur du texte)',
+  penWidth:      'Épaisseur max du fuseau de plume en mm',
+  penSeed:       'Graine des variantes de plume (change le motif)',
+  penPoolSize:   'Nombre de variantes de trait dans le pool',
 
   // ── AtomCaracteristique ────────────────────────────────────────────────────
   stat:          'Statistique affichée (FOR, DEX, INI, CHA, MAG, DEV, VIE)',
@@ -146,6 +150,10 @@ export const PARAM_HELP = {
   thickness:     'Épaisseur de la ligne en millimètres',
   style:         'Style du tracé : plein, tirets, pointillés',
 
+  // ── AtomPlan ──────────────────────────────────────────────────────────────
+  tileGroupId:   'Identifiant du groupe canvas lié (rempli automatiquement à la création)',
+  guideVisible:  'Afficher le contour pointillé du plan dans l\'éditeur (masqué à l\'impression)',
+
   // ── AtomSeparator / AtomCadre ─────────────────────────────────────────────
   tier:          'Niveau d\'ornementation : fin (à la main), basic, rare, epic, mythique, legendaire',
   seed:          'Graine de variation du tracé (même seed = même rendu)',
@@ -165,22 +173,17 @@ export const PARAM_HELP = {
   n:             'Numéro affiché dans cette case de coin',
   textRotation:  'Angle de rotation du numéro en degrés (45 = diagonal)',
 
-  // ── AtomTrak ──────────────────────────────────────────────────────────────
+  // ── AtomTrak / AtomTrakPath / AtomCardTrack ───────────────────────────────
   n_start:       'Premier numéro de la piste (inclus)',
   n_end:         'Dernier numéro de la piste (inclus)',
   reverse:       'Inverser le sens : afficher de n_end vers n_start (début ↔ fin)',
   direction:     'Orientation de la piste : horizontale ou verticale',
-  cellSize_mm:   'Taille de chaque case en millimètres',
+  cellSize:      'Taille de base d\'une case en ratio (0–1] de la dimension le long de la piste',
   caps:          'Ajouter des triangles en pointe aux deux extrémités de la piste',
-  borderTop:     'Afficher la bordure haute de la piste',
-  borderRight:   'Afficher la bordure droite de la piste',
-  borderBottom:  'Afficher la bordure basse de la piste',
-  borderLeft:    'Afficher la bordure gauche de la piste',
-  penStyle:      'Séparateurs et bordures en traits de plume (comme CardTrack)',
-  penSeed:       'Graine des variantes de plume (change le motif)',
-  penPoolSize:   'Nombre de variantes de trait dans le pool',
-  penColor:      'Couleur des traits de plume (vide = couleur de bordure)',
-  penWidth:      'Épaisseur max du fuseau de plume en mm',
+  segments:      'Enchaînement de segments du trakPath : direction (haut/bas/gauche/droite) et nombre de cases',
+  textureId:     'Identifiant logique de la texture Track assignée à la case',
+  coin:          'Rotation de la texture sur la case : 0, 90, 180 ou 270 degrés',
+  textureSource: 'Origine de la texture : choix manuel (user), tirage Mélanger (system), ou aucune (null)',
 
   // ── AtomCardTrack ─────────────────────────────────────────────────────────
   // n_start et n_end définis ci-dessus avec sens adapté au CardTrack :
@@ -191,7 +194,7 @@ export const PARAM_HELP = {
   textOrientation: 'Orientation du texte dans les cases : parallèle au bord (défaut) ou perpendiculaire',
   cornerTextMode:  'Angle du texte dans les cases de coin : bisectrice à 45°, parallèle, perpendiculaire, ou personnalisé',
   cornerTextAngle: 'Angle personnalisé pour le texte des coins (en degrés)',
-  cellOverrides:   'Surcharges visuelles par case. Utilisez la section "Édition par case" ci-dessus.',
+  cellOverrides:   'Surcharges par case : textureId, coin (0/90/180/270), textureSource (user/system/null)',
   thicknessH_mm:   'Épaisseur des pistes haut et bas (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
   thicknessV_mm:   'Épaisseur des pistes gauche et droite (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
 

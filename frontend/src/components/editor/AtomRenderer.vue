@@ -1,5 +1,5 @@
 <template>
-  <div class="atom-render" :class="{ 'atom-render--overflow': atomType === 'die8' || atomType === 'die12' }">
+  <div class="atom-render" :class="{ 'atom-render--overflow': ['die8', 'die12', 'trakPath'].includes(atomType) }">
     <component
       v-if="atomComponent"
       :is="atomComponent"
@@ -15,7 +15,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
+import { useConfigStore } from '@/stores/config.js'
+import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
 
 import AtomBackgroundTexture        from '@/atoms/components/AtomBackgroundTexture.vue'
 import AtomBackgroundGradientLinear from '@/atoms/components/AtomBackgroundGradientLinear.vue'
@@ -43,9 +44,11 @@ import AtomRectangle           from '@/atoms/components/AtomRectangle.vue'
 import AtomLine                from '@/atoms/components/AtomLine.vue'
 import AtomTrak                from '@/atoms/components/AtomTrak.vue'
 import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
+import AtomTrakPath            from '@/atoms/components/AtomTrakPath.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
 import AtomCadre               from '@/atoms/components/AtomCadre.vue'
+import AtomPlan                from '@/atoms/components/AtomPlan.vue'
 import AtomDrawing             from '@/atoms/components/AtomDrawing.vue'
 import AtomRichText            from '@/atoms/components/AtomRichText.vue'
 
@@ -76,9 +79,11 @@ const ATOM_COMPONENTS = {
   line:                AtomLine,
   trak:                AtomTrak,
   trakCorner:          AtomTrakCorner,
+  trakPath:            AtomTrakPath,
   cardTrack:           AtomCardTrack,
   separator:           AtomSeparator,
   cadre:               AtomCadre,
+  plan:                AtomPlan,
   drawing:             AtomDrawing,
   richText:            AtomRichText,
 }
@@ -89,6 +94,7 @@ const props = defineProps({
   width_mm:   Number,
   height_mm:  Number,
   selected:   { type: Boolean, default: false },
+  finalRender:{ type: Boolean, default: false },
   liveStroke: { type: Object, default: null },   // only used by AtomDrawing
 })
 
@@ -97,34 +103,20 @@ const configStore = useConfigStore()
 const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
 
 // Extra props passed only to specific atom types (avoids spurious $attrs warnings)
-const extraProps = computed(() =>
-  props.atomType === 'drawing' ? { liveStroke: props.liveStroke } : {}
-)
+const extraProps = computed(() => {
+  if (props.atomType === 'drawing') return { liveStroke: props.liveStroke }
+  if (['trak', 'trakCorner', 'trakPath', 'cardTrack', 'plan'].includes(props.atomType)) {
+    return { printMode: props.finalRender }
+  }
+  return {}
+})
 
 // Merge params with global config: null values in params are replaced by the config value
-const resolvedParams = computed(() => {
-  const cfg = configStore.config
-  const resolved = { ...props.params }
-  for (const [key, cfgVal] of Object.entries(cfg)) {
-    if (cfgVal !== null && cfgVal !== undefined && resolved[key] === null) {
-      resolved[key] = cfgVal
-    }
-  }
-
-  const atomRules = cfg?.[ATOM_PARAM_RULES_KEY]?.[props.atomType] || {}
-  for (const [paramKey, rule] of Object.entries(atomRules)) {
-    // rows checklist : appliquer dès qu'une fixedValue tableau est définie
-    if (paramKey === 'rows' && Array.isArray(rule?.fixedValue) && rule.fixedValue.length) {
-      resolved[paramKey] = rule.fixedValue
-      continue
-    }
-    if (rule?.fixedEnabled && Object.prototype.hasOwnProperty.call(rule || {}, 'fixedValue')) {
-      resolved[paramKey] = rule.fixedValue
-    }
-  }
-
-  return resolved
-})
+const resolvedParams = computed(() => resolveEffectiveAtomParams({
+  atomType: props.atomType,
+  params: props.params,
+  config: configStore.config,
+}))
 </script>
 
 <style scoped>

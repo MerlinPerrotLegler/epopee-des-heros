@@ -1,10 +1,4 @@
 <template>
-  <!--
-    AtomTrak — Piste numérotée droite (track).
-    Affiche une rangée de cellules numérotées de n_start à n_end.
-    Séparateurs / bordures : traits de plume (même moteur que CardTrack)
-    ou traits droits selon penStyle + borderTop/Right/Bottom/Left.
-  -->
   <svg
     width="100%"
     height="100%"
@@ -12,83 +6,60 @@
     preserveAspectRatio="xMidYMid meet"
     overflow="visible"
   >
-    <!-- Fond des cellules (sans stroke si plume / bordures sélectives) -->
-    <g v-for="(n, i) in cells" :key="`cell-${n}-${i}`">
+    <g v-for="cell in cellLayouts" :key="`cell-${cell.n}-${cell.idx}`">
       <polygon
-        v-if="params.caps && i === 0"
-        :points="capPoints('start', i)"
+        v-if="params.caps && cell.idx === 0"
+        :points="capPoints('start', cell)"
         :fill="params.bgColor || '#2a3050'"
-        :stroke="cellStroke"
-        :stroke-width="cellStrokeW"
       />
       <polygon
-        v-else-if="params.caps && i === cells.length - 1"
-        :points="capPoints('end', i)"
+        v-else-if="params.caps && cell.idx === cellLayouts.length - 1"
+        :points="capPoints('end', cell)"
         :fill="params.bgColor || '#2a3050'"
-        :stroke="cellStroke"
-        :stroke-width="cellStrokeW"
       />
       <rect
         v-else
-        :x="cellX(i)" :y="cellY(i)"
-        :width="cellW" :height="cellH"
+        :x="sv(cell.x)" :y="sv(cell.y)"
+        :width="sv(cell.w)" :height="sv(cell.h)"
         :fill="params.bgColor || '#2a3050'"
-        :stroke="cellStroke"
-        :stroke-width="cellStrokeW"
+      />
+      <image
+        v-if="cell.texture"
+        :href="`/uploads/${cell.texture.mediaId}`"
+        :x="sv(cell.x)" :y="sv(cell.y)"
+        :width="sv(cell.w)" :height="sv(cell.h)"
+        preserveAspectRatio="xMidYMid meet"
+        :opacity="textureOpacity(cell)"
+        :transform="`rotate(${cell.coin},${sv(cell.cx)},${sv(cell.cy)})`"
       />
 
       <text
-        :x="labelX(i)" :y="labelY(i)"
+        :x="sv(cell.cx)" :y="sv(cell.cy)"
         text-anchor="middle"
         dominant-baseline="central"
         :fill="params.textColor || '#ffffff'"
         :font-size="fontSizePx"
         :font-family="params.fontFamily || 'Outfit'"
         font-weight="600"
-      >{{ n }}</text>
-    </g>
-
-    <!-- Séparateurs + bordures : mode traits droits -->
-    <g v-if="!penEnabled" pointer-events="none">
-      <line
-        v-for="(s, i) in plainLines"
-        :key="`line-${i}`"
-        :x1="s.x1" :y1="s.y1" :x2="s.x2" :y2="s.y2"
-        :stroke="borderColor"
-        :stroke-width="borderPx"
-      />
-    </g>
-
-    <!-- Séparateurs + bordures : mode plume (fuseaux rempli) -->
-    <g v-if="penEnabled" pointer-events="none">
-      <path
-        v-for="(stroke, i) in strokePaths"
-        :key="`pen-${i}`"
-        :d="stroke.d"
-        :fill="penColor"
-        stroke="none"
-      />
+      >{{ cell.n }}</text>
     </g>
   </svg>
 </template>
 
 <script setup>
 import { computed } from 'vue'
-import {
-  buildStrokePool,
-  buildLinearSeparators,
-  buildOuterBorders,
-  variantToPath,
-  pickVariant,
-} from '@/utils/cardTrackStrokes.js'
+import { useTrackTextures } from '@/composables/useTrackTextures.js'
+import { baseCellSizeMm, cellFootprintMm } from '@/utils/trackFootprint.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
+  printMode: { type: Boolean, default: false },
 })
 
 const p = computed(() => props.params)
+const { byLogicalId } = useTrackTextures()
 
 const cells = computed(() => {
   const start = p.value.n_start ?? 0
@@ -107,65 +78,58 @@ const cells = computed(() => {
 const isVertical = computed(() => p.value.direction === 'vertical')
 
 const SCALE = 10
-function toSVG(mm) { return mm * SCALE }
+function sv(mm) { return mm * SCALE }
 
-const cellSz = computed(() => toSVG(p.value.cellSize_mm || 5))
-const borderPx = computed(() => toSVG(p.value.borderWidth || 0.2))
-const fontSizePx = computed(() => toSVG(p.value.fontSize || 2.5))
-const borderColor = computed(() => p.value.borderColor || '#6c7aff')
-
-const cellW = computed(() => cellSz.value)
-const cellH = computed(() => cellSz.value)
-
-const svgW = computed(() =>
-  isVertical.value ? cellSz.value : cellSz.value * cells.value.length
-)
-const svgH = computed(() =>
-  isVertical.value ? cellSz.value * cells.value.length : cellSz.value
-)
-
-const penEnabled = computed(() => p.value.penStyle === true)
-const penColor = computed(() => p.value.penColor || borderColor.value)
-const penHalfWidthSVG = computed(() => (p.value.penWidth ?? 0.4) / 2 * SCALE)
-
-// Pas de stroke sur les cellules si plume, ou si on dessine les côtés à part
-const cellStroke = computed(() =>
-  penEnabled.value || useSelectiveBorders.value ? 'none' : borderColor.value
-)
-const cellStrokeW = computed(() =>
-  penEnabled.value || useSelectiveBorders.value ? 0 : borderPx.value
-)
-
-const borderSides = computed(() => ({
-  top:    p.value.borderTop    !== false,
-  right:  p.value.borderRight  !== false,
-  bottom: p.value.borderBottom !== false,
-  left:   p.value.borderLeft   !== false,
+const baseSizeMm = computed(() => baseCellSizeMm({
+  cellSize: p.value.cellSize ?? 0.1,
+  axisLengthMm: isVertical.value ? props.height_mm : props.width_mm,
 }))
+const fontSizePx = computed(() => sv(p.value.fontSize || 2.5))
 
-const useSelectiveBorders = computed(() => {
-  const s = borderSides.value
-  return !(s.top && s.right && s.bottom && s.left)
+const cellLayouts = computed(() => {
+  let offset = 0
+  return cells.value.map((n, idx) => {
+    const override = p.value.cellOverrides?.[idx] || {}
+    const texture = byLogicalId.value[override.textureId] || null
+    const footprint = cellFootprintMm(
+      baseSizeMm.value,
+      baseSizeMm.value,
+      texture?.margins,
+    )
+    const x = isVertical.value ? 0 : offset
+    const y = isVertical.value ? offset : 0
+    offset += isVertical.value ? footprint.h : footprint.w
+    return {
+      idx,
+      n,
+      x,
+      y,
+      w: footprint.w,
+      h: footprint.h,
+      cx: x + footprint.w / 2,
+      cy: y + footprint.h / 2,
+      texture,
+      coin: Number(override.coin) || 0,
+      textureSource: override.textureSource,
+    }
+  })
 })
 
-function cellX(i) {
-  return isVertical.value ? 0 : i * cellSz.value
-}
-function cellY(i) {
-  return isVertical.value ? i * cellSz.value : 0
-}
-function labelX(i) {
-  return cellX(i) + cellW.value / 2
-}
-function labelY(i) {
-  return cellY(i) + cellH.value / 2
+// Le viewBox reste celui de la boîte logique de l'atome : 1 mm SVG reste
+// 1 mm physique. Les empreintes plus grandes débordent sans être remises à
+// l'échelle dans la boîte.
+const svgW = computed(() => sv(props.width_mm))
+const svgH = computed(() => sv(props.height_mm))
+
+function textureOpacity(cell) {
+  return cell.textureSource === 'system' && !props.printMode ? 0.35 : 1
 }
 
-function capPoints(side, i) {
-  const x = cellX(i)
-  const y = cellY(i)
-  const w = cellW.value
-  const h = cellH.value
+function capPoints(side, cell) {
+  const x = sv(cell.x)
+  const y = sv(cell.y)
+  const w = sv(cell.w)
+  const h = sv(cell.h)
   if (!isVertical.value) {
     if (side === 'start') {
       return `${x},${y + h / 2} ${x + w},${y} ${x + w},${y + h}`
@@ -177,40 +141,4 @@ function capPoints(side, i) {
   }
   return `${x},${y} ${x + w},${y} ${x + w / 2},${y + h}`
 }
-
-const separators = computed(() =>
-  buildLinearSeparators(cells.value.length, cellSz.value, isVertical.value)
-)
-
-const outerBorders = computed(() =>
-  buildOuterBorders(svgW.value, svgH.value, borderSides.value)
-)
-
-const allSegments = computed(() => [...separators.value, ...outerBorders.value])
-
-const plainLines = computed(() => {
-  if (penEnabled.value) return []
-  // Mode classique plein cadre : les rects portent déjà le stroke
-  if (!useSelectiveBorders.value) return []
-  // Bordures sélectives : séparateurs + côtés activés en traits droits
-  return allSegments.value
-})
-
-const strokePool = computed(() =>
-  penEnabled.value
-    ? buildStrokePool(p.value.penPoolSize ?? 4, p.value.penSeed ?? 1)
-    : []
-)
-
-const strokePaths = computed(() => {
-  if (!penEnabled.value) return []
-  const seed = p.value.penSeed ?? 1
-  return allSegments.value.map((sep, i) => {
-    const variant = pickVariant(strokePool.value, seed, sep.pairIdx + i * 17)
-    if (!variant) return null
-    return {
-      d: variantToPath(sep.x1, sep.y1, sep.x2, sep.y2, variant, penHalfWidthSVG.value),
-    }
-  }).filter(Boolean)
-})
 </script>

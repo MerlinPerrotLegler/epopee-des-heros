@@ -102,6 +102,10 @@ watch(() => store.selectedElementId, (id) => {
 })
 
 function addAtom(type) {
+  if (type === 'plan') {
+    store.addPlan()
+    return
+  }
   const defaults = getAtomDefaults(type)
   store.addElement(defaults)
 }

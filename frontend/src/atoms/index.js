@@ -389,19 +389,9 @@ export const ATOM_TYPES = {
       bgColor:     null,      // null → config globale
       textColor:   null,      // null → config globale
       fontSize:    2.5,
-      borderColor: null,      // null → config globale
-      borderWidth: 0.2,
-      borderTop:    true,
-      borderRight:  true,
-      borderBottom: true,
-      borderLeft:   true,
       svgMediaId:  null,     // SVG décoratif optionnel
       textRotation: 45,      // rotation du chiffre en degrés
-      penStyle:    true,
-      penSeed:     1,
-      penPoolSize: 4,
-      penColor:    null,
-      penWidth:    0.4,
+      cellOverrides: {},     // { 0: { textureId, coin, textureSource } }
     },
     defaultSize: { width_mm: 5, height_mm: 5 }
   },
@@ -414,27 +404,31 @@ export const ATOM_TYPES = {
       n_end:       10,
       reverse:     false, // true = afficher de n_end vers n_start
       direction:   'horizontal', // 'horizontal' | 'vertical'
-      cellSize_mm: 5,
+      cellSize:    0.1,   // ratio (0–1] de la dimension le long de la piste
       bgColor:     null,      // null → config globale
       textColor:   null,      // null → config globale
       fontSize:    2.5,
       fontFamily:  null,
-      borderColor: null,      // null → config globale
-      borderWidth: 0.2,
-      // Bordures externes (côtés de la piste)
-      borderTop:    true,
-      borderRight:  true,
-      borderBottom: true,
-      borderLeft:   true,
       caps:        false, // triangles rectangles aux extrémités
-      // Traits de plume (même moteur que CardTrack)
-      penStyle:    true,
-      penSeed:     1,
-      penPoolSize: 4,
-      penColor:    null,  // null → borderColor
-      penWidth:    0.4,   // mm
+      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource } }
     },
     defaultSize: { width_mm: 55, height_mm: 5 }
+  },
+
+  trakPath: {
+    label: 'Trak Path',
+    icon: '⤷',
+    defaultParams: {
+      cellSize: 0.1,
+      n_start: 0,
+      segments: [{ direction: 'right', count: 5 }],
+      bgColor: null,
+      textColor: null,
+      fontSize: 2.5,
+      fontFamily: null,
+      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource } }
+    },
+    defaultSize: { width_mm: 55, height_mm: 25 },
   },
 
   cardTrack: {
@@ -461,18 +455,9 @@ export const ATOM_TYPES = {
       textColor:    null,         // null → config globale
       fontSize:     2.5,
       fontFamily:   null,
-      borderColor:  null,         // null → config globale
-      borderWidth:  0.2,
       svgMediaId:   null,         // SVG décoratif dans tous les coins
       // ── Surcharges par case ────────────────────────────────────────
-      cellOverrides: {},          // { [idx]: { bgColor?, svgMediaId? } }
-      // ── Traits de plume entre cases ───────────────────────────────
-      penStyle:    true,          // true = fuseaux SVG à la plume (remplace les bordures rect)
-      penSeedH:    1,             // seed des variantes — séparateurs bords haut/bas
-      penSeedV:    2,             // seed des variantes — séparateurs bords gauche/droite
-      penPoolSize: 4,             // nombre de variantes dans chaque pool (min 1)
-      penColor:    null,          // null → utilise borderColor
-      penWidth:    0.4,           // épaisseur max du fuseau en mm (half-width = penWidth/2)
+      cellOverrides: {},          // { [idx]: { textureId, coin, textureSource } }
     },
     defaultSize: { width_mm: 63, height_mm: 88 }
   },
@@ -487,6 +472,16 @@ export const ATOM_TYPES = {
       direction: 'horizontal',  // 'horizontal' | 'vertical'
     },
     defaultSize: { width_mm: 40, height_mm: 2 }
+  },
+
+  plan: {
+    label: 'Plan',
+    icon: '▦',
+    defaultParams: {
+      tileGroupId: null,   // id du groupe lié (posé à la création)
+      guideVisible: true,  // contour guide éditeur
+    },
+    defaultSize: { width_mm: 40, height_mm: 40 },
   },
 
   cadre: {

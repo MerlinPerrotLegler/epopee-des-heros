@@ -129,6 +129,26 @@ async function runMysqlMigrations(pool) {
     tag_id VARCHAR(36) NOT NULL,
     PRIMARY KEY (media_id, tag_id)
   ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter('ALTER TABLE media ADD COLUMN track_meta TEXT NULL')
+  await tryAlter(`CREATE TABLE IF NOT EXISTS track_types (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(128) NOT NULL UNIQUE,
+    color VARCHAR(32) NOT NULL DEFAULT '#888888',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter(`CREATE TABLE IF NOT EXISTS track_tags (
+    id VARCHAR(64) PRIMARY KEY,
+    name VARCHAR(128) NOT NULL UNIQUE,
+    color VARCHAR(32) NOT NULL DEFAULT '#888888',
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter(`CREATE TABLE IF NOT EXISTS media_track_tags (
+    media_id VARCHAR(255) NOT NULL,
+    tag_id VARCHAR(64) NOT NULL,
+    PRIMARY KEY (media_id, tag_id)
+  ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4`)
+  await tryAlter("INSERT IGNORE INTO media_folders (id, name, parent_id) VALUES ('chemin', 'Chemin', 'root'), ('chemin-track', 'Track', 'chemin')")
+  await tryAlter("INSERT IGNORE INTO track_types (id, name, color) VALUES ('tt-droit', 'droit', '#6c7aff'), ('tt-coin', 'coin', '#c9a227'), ('tt-impasse', 'impasse', '#888888')")
 }
 
 function initSqliteSync() {
@@ -268,6 +288,43 @@ function initSqliteSync() {
   try {
     sqliteDb.exec("CREATE UNIQUE INDEX IF NOT EXISTS idx_media_picto_ref ON media(picto_ref) WHERE kind = 'picto' AND picto_ref IS NOT NULL")
   } catch {}
+  try {
+    sqliteDb.exec('ALTER TABLE media ADD COLUMN track_meta TEXT')
+  } catch {}
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS track_types (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL DEFAULT '#888888',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch {}
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS track_tags (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL UNIQUE,
+      color TEXT NOT NULL DEFAULT '#888888',
+      created_at TEXT DEFAULT (datetime('now'))
+    )`)
+  } catch {}
+  try {
+    sqliteDb.exec(`CREATE TABLE IF NOT EXISTS media_track_tags (
+      media_id TEXT NOT NULL REFERENCES media(id) ON DELETE CASCADE,
+      tag_id TEXT NOT NULL REFERENCES track_tags(id) ON DELETE CASCADE,
+      PRIMARY KEY (media_id, tag_id)
+    )`)
+  } catch {}
+  try {
+    sqliteDb.exec(`INSERT OR IGNORE INTO media_folders (id, name, parent_id) VALUES
+      ('chemin', 'Chemin', 'root'),
+      ('chemin-track', 'Track', 'chemin')`)
+  } catch {}
+  try {
+    sqliteDb.exec(`INSERT OR IGNORE INTO track_types (id, name, color) VALUES
+      ('tt-droit', 'droit', '#6c7aff'),
+      ('tt-coin', 'coin', '#c9a227'),
+      ('tt-impasse', 'impasse', '#888888')`)
+  } catch {}
   seedInitialAdminIfNeededSync(sqliteDb)
   adapter = createSqliteAdapter(sqliteDb)
 }
@@ -337,7 +394,7 @@ export async function initDatabase() {
 
 export async function createSnapshot(label, codeVersion) {
   const db = getDb()
-  const tables = ['card_types', 'media_folders', 'media', 'picto_tags', 'media_picto_tags', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings', 'users']
+  const tables = ['card_types', 'media_folders', 'media', 'picto_tags', 'media_picto_tags', 'track_types', 'track_tags', 'media_track_tags', 'molecules', 'components', 'layouts', 'import_jobs', 'card_instances', 'import_mappings', 'users']
   const dump = {}
   for (const table of tables) {
     dump[table] = await db.prepare(`SELECT * FROM ${table}`).all()
@@ -357,7 +414,7 @@ export async function restoreSnapshot(snapshotId) {
   const snapshot = await db.prepare('SELECT * FROM snapshots WHERE id = ?').get(snapshotId)
   if (!snapshot) throw new Error('Snapshot not found')
   const dump = typeof snapshot.dump === 'string' ? JSON.parse(snapshot.dump) : snapshot.dump
-  const tables = ['layout_locks', 'card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media_picto_tags', 'media', 'picto_tags', 'media_folders', 'card_types', 'users']
+  const tables = ['layout_locks', 'card_instances', 'import_mappings', 'import_jobs', 'layouts', 'components', 'molecules', 'media_track_tags', 'media_picto_tags', 'media', 'track_tags', 'track_types', 'picto_tags', 'media_folders', 'card_types', 'users']
 
   if (useMysql()) {
     await db.transaction(async (tx) => {

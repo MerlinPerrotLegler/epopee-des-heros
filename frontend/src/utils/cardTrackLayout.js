@@ -6,6 +6,7 @@
  *
  * TOUTE modification ici affecte simultanément le rendu ET la détection de clic.
  */
+import { cellFootprintMm } from './trackFootprint.js'
 
 // ── Calcul des paramètres structurels ──────────────────────────────────────────
 /**
@@ -120,7 +121,7 @@ function getCornerRot(corner, params) {
  *   x, y, w, h, cx, cy, textRot
  * }>}
  */
-export function buildCardTrackCells(params, width_mm, height_mm) {
+export function buildCardTrackCells(params, width_mm, height_mm, footprintByIndex = {}) {
   const { tc, lc, csH, csV, total } = computeCardTrackLayout(params, width_mm, height_mm)
 
   const rots = getStraightRots(params.textOrientation)
@@ -137,43 +138,117 @@ export function buildCardTrackCells(params, width_mm, height_mm) {
 
   const n0  = params.n_start ?? 0
   const raw = []
+  const footprint = (idx) => ({
+    w: Number(footprintByIndex?.[idx]?.w) || csH,
+    h: Number(footprintByIndex?.[idx]?.h) || csV,
+  })
+  const addCell = (cell) => {
+    const idx = raw.length
+    const size = footprint(idx)
+    raw.push({
+      ...cell,
+      ...size,
+      idx,
+      cx: cell.x + size.w / 2,
+      cy: cell.y + size.h / 2,
+    })
+    return raw[idx]
+  }
 
   // ── Coin TL ── bisectrice entre haut(180°) et gauche(90°) → 135°
-  raw.push({ isCorner: true,  corner: 'TL', x: 0,            y: 0,            textRot: getCornerRot('TL', params) })
+  const topLeft = addCell({
+    isCorner: true, corner: 'TL', x: 0, y: 0,
+    textRot: getCornerRot('TL', params),
+  })
 
   // ── Bord haut (gauche → droite) ──
-  for (let i = 0; i < tc; i++)
-    raw.push({ isCorner: false, side: 'top',    x: (i + 1) * csH, y: 0,            textRot: rots.top    })
+  let topX = topLeft.x + topLeft.w
+  for (let i = 0; i < tc; i++) {
+    const cell = addCell({ isCorner: false, side: 'top', x: topX, y: 0, textRot: rots.top })
+    topX += cell.w
+  }
 
   // ── Coin TR ── bisectrice entre haut(180°) et droite(270°) → 225°
-  raw.push({ isCorner: true,  corner: 'TR', x: (tc + 1) * csH, y: 0,            textRot: getCornerRot('TR', params) })
+  const topRight = addCell({
+    isCorner: true, corner: 'TR', x: topX, y: 0,
+    textRot: getCornerRot('TR', params),
+  })
 
   // ── Bord droit (haut → bas) ──
-  for (let i = 0; i < lc; i++)
-    raw.push({ isCorner: false, side: 'right',  x: (tc + 1) * csH, y: (i + 1) * csV, textRot: rots.right  })
+  let rightY = topRight.y + topRight.h
+  for (let i = 0; i < lc; i++) {
+    const cell = addCell({
+      isCorner: false, side: 'right', x: topRight.x, y: rightY, textRot: rots.right,
+    })
+    rightY += cell.h
+  }
 
   // ── Coin BR ── bisectrice entre droite(270°) et bas(0°/360°) → 315°
-  raw.push({ isCorner: true,  corner: 'BR', x: (tc + 1) * csH, y: (lc + 1) * csV, textRot: getCornerRot('BR', params) })
+  const bottomRight = addCell({
+    isCorner: true, corner: 'BR', x: topRight.x, y: rightY,
+    textRot: getCornerRot('BR', params),
+  })
 
   // ── Bord bas (droite → gauche, sens horaire) ──
-  for (let i = 0; i < tc; i++)
-    raw.push({ isCorner: false, side: 'bottom', x: (tc - i) * csH, y: (lc + 1) * csV, textRot: rots.bottom })
+  let bottomX = bottomRight.x
+  for (let i = 0; i < tc; i++) {
+    const size = footprint(raw.length)
+    bottomX -= size.w
+    addCell({
+      isCorner: false, side: 'bottom', x: bottomX, y: bottomRight.y, textRot: rots.bottom,
+    })
+  }
 
   // ── Coin BL ── bisectrice entre bas(0°) et gauche(90°) → 45°
-  raw.push({ isCorner: true,  corner: 'BL', x: 0,            y: (lc + 1) * csV, textRot: getCornerRot('BL', params) })
+  const bottomLeftSize = footprint(raw.length)
+  bottomX -= bottomLeftSize.w
+  const bottomLeft = addCell({
+    isCorner: true, corner: 'BL', x: bottomX, y: bottomRight.y,
+    textRot: getCornerRot('BL', params),
+  })
 
   // ── Bord gauche (bas → haut, sens horaire) ──
-  for (let i = 0; i < lc; i++)
-    raw.push({ isCorner: false, side: 'left',   x: 0,            y: (lc - i) * csV, textRot: rots.left   })
+  let leftY = bottomLeft.y
+  for (let i = 0; i < lc; i++) {
+    const size = footprint(raw.length)
+    leftY -= size.h
+    addCell({
+      isCorner: false, side: 'left', x: bottomLeft.x, y: leftY, textRot: rots.left,
+    })
+  }
 
-  return raw.map((cell, idx) => ({
+  // Les longueurs cumulées des empreintes peuvent différer entre les côtés
+  // opposés. Recaler la branche de retour (BL + gauche) sous TL ferme l'anneau
+  // sans redimensionner les cases.
+  const lastCell = raw[raw.length - 1]
+  const closureDx = topLeft.x - bottomLeft.x
+  const closureDy = topLeft.y + topLeft.h - lastCell.y
+  const bottomLeftIdx = 3 + 2 * tc + lc
+
+  return raw.map((cell) => ({
     ...cell,
-    idx,
-    n:  n0 + ((idx - startOffset + total) % total),
-    w:  csH,
-    h:  csV,
-    cx: cell.x + csH / 2,
-    cy: cell.y + csV / 2,
+    ...(cell.idx >= bottomLeftIdx
+      ? {
+          x: cell.x + closureDx,
+          y: cell.y + closureDy,
+          cx: cell.cx + closureDx,
+          cy: cell.cy + closureDy,
+        }
+      : {}),
+    n: n0 + ((cell.idx - startOffset + total) % total),
+  }))
+}
+
+/**
+ * Construit les empreintes texturées depuis le même layout de base que le
+ * rendu et le hit-test. Les clés du catalogue sont les ids logiques.
+ */
+export function buildCardTrackFootprints(params, width_mm, height_mm, textureByLogicalId = {}) {
+  const baseCells = buildCardTrackCells(params, width_mm, height_mm)
+  return Object.fromEntries(baseCells.map((cell) => {
+    const textureId = params.cellOverrides?.[cell.idx]?.textureId
+    const texture = textureByLogicalId?.[textureId]
+    return [cell.idx, cellFootprintMm(cell.w, cell.h, texture?.margins)]
   }))
 }
 
@@ -183,8 +258,15 @@ export function buildCardTrackCells(params, width_mm, height_mm) {
  * @param {number} relY_mm  y du clic en mm depuis le coin haut-gauche de l'atom
  * @returns {number|null}   idx de la cellule, ou null si hors piste
  */
-export function hitTestCardTrackCell(params, width_mm, height_mm, relX_mm, relY_mm) {
-  const cells = buildCardTrackCells(params, width_mm, height_mm)
+export function hitTestCardTrackCell(
+  params,
+  width_mm,
+  height_mm,
+  relX_mm,
+  relY_mm,
+  footprintByIndex = {},
+) {
+  const cells = buildCardTrackCells(params, width_mm, height_mm, footprintByIndex)
   for (const cell of cells) {
     if (relX_mm >= cell.x && relX_mm < cell.x + cell.w &&
         relY_mm >= cell.y && relY_mm < cell.y + cell.h) {

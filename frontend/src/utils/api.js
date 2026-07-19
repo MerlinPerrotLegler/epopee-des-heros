@@ -204,6 +204,27 @@ export const api = {
     })
   },
 
+  // Track textures
+  getTrackTypes: () => request('/track-types'),
+  createTrackType: (data) => request('/track-types', { method: 'POST', body: data }),
+  updateTrackType: (id, data) => request(`/track-types/${id}`, { method: 'PATCH', body: data }),
+  deleteTrackType: (id) => request(`/track-types/${id}`, { method: 'DELETE' }),
+
+  getTrackTags: () => request('/track-tags'),
+  createTrackTag: (data) => request('/track-tags', { method: 'POST', body: data }),
+  updateTrackTag: (id, data) => request(`/track-tags/${id}`, { method: 'PATCH', body: data }),
+  deleteTrackTag: (id) => request(`/track-tags/${id}`, { method: 'DELETE' }),
+
+  getTrackTextures: (type, tagIds) => {
+    const q = new URLSearchParams()
+    if (type) q.set('type', type)
+    ;(tagIds || []).forEach((tag) => q.append('tag', tag))
+    const qs = q.toString()
+    return request(qs ? `/track-textures?${qs}` : '/track-textures')
+  },
+  patchTrackTexture: (mediaId, data) =>
+    request(`/track-textures/${mediaId}`, { method: 'PATCH', body: data }),
+
   // Card Types
   getCardTypes: () => request('/card-types'),
   createCardType: (data) => request('/card-types', { method: 'POST', body: data }),

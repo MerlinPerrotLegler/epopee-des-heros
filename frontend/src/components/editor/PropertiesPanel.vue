@@ -130,17 +130,28 @@
       </div>
     </div>
 
-    <!-- ── Section spéciale CardTrack : édition par case ── -->
-    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'cardTrack'">
+    <!-- ── Textures des atomes de piste ── -->
+    <div class="panel-section" v-if="isTrackAtom">
+      <div class="panel-section-title">Textures de piste</div>
+      <div class="track-actions">
+        <button type="button" class="clear-btn" @click="clearAllTextures">Vider</button>
+        <button type="button" class="clear-btn" @click="openPropagatePicker">Propager</button>
+        <button type="button" class="clear-btn" @click="shuffleAll">Mélanger</button>
+      </div>
+      <div v-if="trackTextureError" class="ct-hint">Catalogue indisponible.</div>
+    </div>
+
+    <!-- ── Section spéciale pistes : édition par case ── -->
+    <div class="panel-section" v-if="supportsCellSelection">
       <div class="panel-section-title">Édition par case</div>
-      <div class="field-row" v-if="store.activeCellIdx !== null">
-        <label style="color:var(--accent-primary)">Case #{{ store.activeCellIdx }}</label>
+      <div class="field-row" v-if="activeTrackCellIdx !== null">
+        <label style="color:var(--accent-primary)">Case #{{ activeTrackCellIdx }}</label>
         <button class="clear-btn" @click="clearCellOverride">✕ Réinitialiser</button>
       </div>
       <div class="ct-hint" v-else>
-        Cliquez une case du CardTrack dans le canvas pour la sélectionner.
+        Cliquez une case de la piste dans le canvas pour la sélectionner.
       </div>
-      <template v-if="store.activeCellIdx !== null">
+      <template v-if="activeTrackCellIdx !== null">
         <div class="field-row">
           <label>Fond</label>
           <ColorPickerAlpha
@@ -149,11 +160,60 @@
           />
         </div>
         <div class="field-row">
-          <label>SVG ID</label>
-          <input :value="activeCellOverride.svgMediaId || ''" @input="setCellProp('svgMediaId', $event.target.value || undefined)" placeholder="media ID" style="flex:1; font-family:var(--font-mono); font-size:10px" />
-          <MediaPicker :model-value="activeCellOverride.svgMediaId || null" @update:model-value="setCellProp('svgMediaId', $event || undefined)" />
+          <label>Texture</label>
+          <input
+            type="number"
+            :value="activeCellOverride.textureId ?? ''"
+            @input="setCellTextureId($event.target.value)"
+            placeholder="ID"
+            style="flex:1"
+          />
+          <button type="button" class="clear-btn" @click="cellPickerOpen = true">Choisir</button>
+        </div>
+        <div class="field-row">
+          <label>Rotation</label>
+          <select
+            :value="activeCellOverride.coin ?? 0"
+            @change="setCellProp('coin', Number($event.target.value), true)"
+            style="flex:1"
+          >
+            <option v-for="angle in TRACK_COINS" :key="angle" :value="angle">{{ angle }}°</option>
+          </select>
+          <button type="button" class="clear-btn" @click="shuffleActiveCell">Mélanger</button>
         </div>
       </template>
+    </div>
+
+    <!-- ── TrakPath : édition des segments ── -->
+    <div class="panel-section" v-if="el.type === 'atom' && el.atomType === 'trakPath'">
+      <div class="panel-section-title">Segments</div>
+      <div
+        v-for="(segment, index) in trackSegments"
+        :key="`segment-${index}`"
+        class="segment-row"
+      >
+        <span class="segment-index">{{ index + 1 }}</span>
+        <select :value="segment.direction" @change="updateTrackSegment(index, 'direction', $event.target.value)">
+          <option v-for="direction in TRACK_DIRECTIONS" :key="direction" :value="direction">
+            {{ direction }}
+          </option>
+        </select>
+        <input
+          type="number"
+          min="1"
+          step="1"
+          :value="segment.count"
+          @input="updateTrackSegment(index, 'count', Math.max(1, Number($event.target.value) || 1))"
+        />
+      </div>
+      <button
+        type="button"
+        class="clear-btn segment-remove"
+        :disabled="trackSegments.length <= 1"
+        @click="removeLastTrackSegment"
+      >
+        Supprimer le dernier segment
+      </button>
     </div>
 
     <!-- ── Section spéciale : éditeur de dégradé ── -->
@@ -230,7 +290,7 @@
       <!-- cellOverrides, stops, pens/strokes (drawing), params IA → gérés par sections dédiées -->
       <div
         v-for="(value, key) in effectiveParams" :key="key" class="param-block"
-        v-show="key !== 'cellOverrides' && key !== 'rows' && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && (key === 'content' || key === 'bulletIcon' || key === 'checkboxIcon' || key === 'checkboxIconChecked')) && !(el.atomType === 'picto' && (key === 'tag' || key === 'ref' || key === 'view')) && !isParamHidden(key)"
+        v-show="key !== 'cellOverrides' && key !== 'rows' && !(el.atomType === 'trakPath' && key === 'segments') && !(isGradientAtom && key === 'stops') && key !== 'ai_prompt_template' && key !== 'ai_media_type' && !(el.atomType === 'drawing' && (key === 'pens' || key === 'strokes' || key === 'activePenIdx' || key === 'moveLocked')) && !(el.atomType === 'richText' && (key === 'content' || key === 'bulletIcon' || key === 'checkboxIcon' || key === 'checkboxIconChecked')) && !(el.atomType === 'picto' && (key === 'tag' || key === 'ref' || key === 'view')) && !isParamHidden(key)"
       >
         <div class="param-header">
           <label class="param-label" :title="key">{{ paramLabel(key) }}</label>
@@ -541,6 +601,27 @@
   <div class="properties-empty" v-else>
     <p>Sélectionnez un élément pour voir ses propriétés.</p>
   </div>
+
+  <TrackTexturePicker
+    :open="propagatePickerOpen"
+    :textures="trackTextures"
+    :coin="propagateCoin"
+    :loading="trackTexturesLoading"
+    @update:coin="propagateCoin = $event"
+    @select="propagateTexture"
+    @close="propagatePickerOpen = false"
+  />
+  <TrackTexturePicker
+    :open="cellPickerOpen"
+    :textures="trackTextures"
+    :model-value="activeCellOverride.textureId ?? null"
+    :coin="activeCellOverride.coin ?? 0"
+    :context="activeCellMatchContext"
+    :loading="trackTexturesLoading"
+    @update:coin="setCellProp('coin', $event, true)"
+    @select="selectCellTexture"
+    @close="cellPickerOpen = false"
+  />
 </template>
 
 <script setup>
@@ -558,7 +639,36 @@ import MediaPicker from './MediaPicker.vue'
 import ColorPickerAlpha from './ColorPickerAlpha.vue'
 import RichTextSlashMenu from './RichTextSlashMenu.vue'
 import RichTextDocModal from './RichTextDocModal.vue'
+import TrackTexturePicker from './TrackTexturePicker.vue'
 import { api } from '@/utils/api.js'
+import { useTrackTextures } from '@/composables/useTrackTextures.js'
+import { buildCardTrackCells } from '@/utils/cardTrackLayout.js'
+import { buildTrakPathCells } from '@/utils/trakPathLayout.js'
+import {
+  clearAllTextureOverrides,
+  propagateTextureOverrides,
+  shuffleTrackTextures,
+} from '@/utils/trackMatch.js'
+
+const TRACK_ATOMS = new Set(['trak', 'trakCorner', 'cardTrack', 'trakPath'])
+const TRACK_COINS = [0, 90, 180, 270]
+const TRACK_DIRECTIONS = ['right', 'down', 'left', 'up']
+const LEGACY_TRACK_PARAMS = new Set([
+  'borderColor',
+  'borderWidth',
+  'borderTop',
+  'borderRight',
+  'borderBottom',
+  'borderLeft',
+  'penStyle',
+  'penSeed',
+  'penSeedH',
+  'penSeedV',
+  'penPoolSize',
+  'penColor',
+  'penWidth',
+  'cellSize_mm',
+])
 
 // ── AI config (media types + configured state) ──────────────────────────────
 const aiMediaTypes = ref([
@@ -590,6 +700,34 @@ const selectedGroup = computed(() => {
 })
 const fontsStore = useFontsStore()
 const pictosStore = usePictosStore()
+const {
+  byLogicalId: trackTexturesByLogicalId,
+  loading: trackTexturesLoading,
+  error: trackTextureError,
+} = useTrackTextures()
+const propagatePickerOpen = ref(false)
+const cellPickerOpen = ref(false)
+const propagateCoin = ref(0)
+
+const trackTextures = computed(() =>
+  Object.values(trackTexturesByLogicalId.value).sort((a, b) => a.id - b.id))
+const isTrackAtom = computed(() =>
+  el.value?.type === 'atom' && TRACK_ATOMS.has(el.value.atomType))
+const supportsCellSelection = computed(() =>
+  el.value?.type === 'atom' &&
+  (el.value.atomType === 'cardTrack' || el.value.atomType === 'trakPath'))
+const activeTrackCellIdx = computed(() =>
+  supportsCellSelection.value && store.activeCellIdx !== null
+    ? store.activeCellIdx
+    : null)
+
+watch(
+  () => el.value?.id,
+  () => {
+    propagatePickerOpen.value = false
+    cellPickerOpen.value = false
+  },
+)
 
 watch(
   () => el.value?.atomType,
@@ -779,26 +917,205 @@ function removeMapRow(index) {
   updateParam('rows', rows)
 }
 
-// ── Gestion des overrides par case (CardTrack) ─────────────────────────────
-const activeCellOverride = computed(() => {
-  if (store.activeCellIdx === null || !el.value) return {}
-  return el.value.params?.cellOverrides?.[store.activeCellIdx] ?? {}
+// ── Gestion des textures et overrides par case ─────────────────────────────
+const trackCells = computed(() => {
+  if (!isTrackAtom.value) return []
+  const params = effectiveParams.value
+  const atomType = el.value.atomType
+
+  if (atomType === 'cardTrack') {
+    const cornerDirections = { TL: 'up', TR: 'right', BR: 'down', BL: 'left' }
+    const cells = buildCardTrackCells(params, el.value.width_mm, el.value.height_mm)
+    return cells.map((cell, index) => ({
+      idx: cell.idx,
+      requiredType: cell.isCorner ? 'coin' : 'droit',
+      requiredAlignment: cell.side === 'left' || cell.side === 'right'
+        ? 'vertical'
+        : 'horizontal',
+      direction: cell.isCorner
+        ? cornerDirections[cell.corner]
+        : (cell.side === 'left' || cell.side === 'right' ? 'vertical' : 'horizontal'),
+      neighborIdxs: [
+        cells[(index - 1 + cells.length) % cells.length].idx,
+        cells[(index + 1) % cells.length].idx,
+      ],
+    }))
+  }
+
+  if (atomType === 'trakPath') {
+    return buildTrakPathCells({
+      segments: params.segments,
+      cellSize: params.cellSize ?? 0.1,
+      n_start: params.n_start ?? 0,
+      cellOverrides: params.cellOverrides || {},
+      texturesById: trackTexturesByLogicalId.value,
+      width_mm: el.value.width_mm,
+      height_mm: el.value.height_mm,
+    }).cells
+  }
+
+  if (atomType === 'trakCorner') {
+    return [{
+      idx: 0,
+      requiredType: 'coin',
+      requiredAlignment: 'both',
+      direction: 'up',
+      neighborIdxs: [],
+    }]
+  }
+
+  const count = Math.abs((Number(params.n_end) || 0) - (Number(params.n_start) || 0)) + 1
+  const vertical = params.direction === 'vertical'
+  return Array.from({ length: count }, (_, idx) => ({
+    idx,
+    requiredType: idx === 0 || idx === count - 1 ? 'impasse' : 'droit',
+    requiredAlignment: vertical ? 'vertical' : 'horizontal',
+    direction: vertical
+      ? (idx === 0 ? 'up' : idx === count - 1 ? 'down' : 'vertical')
+      : (idx === 0 ? 'left' : idx === count - 1 ? 'right' : 'horizontal'),
+    neighborIdxs: [
+      ...(idx > 0 ? [idx - 1] : []),
+      ...(idx < count - 1 ? [idx + 1] : []),
+    ],
+  }))
 })
 
-function setCellProp(prop, value) {
-  const overrides = { ...(el.value.params.cellOverrides || {}) }
-  const cellData  = { ...(overrides[store.activeCellIdx] || {}) }
+const activeCellOverride = computed(() => {
+  if (activeTrackCellIdx.value === null || !el.value) return {}
+  return el.value.params?.cellOverrides?.[activeTrackCellIdx.value] ?? {}
+})
+
+const activeCellMatchContext = computed(() => {
+  if (activeTrackCellIdx.value === null) return null
+  const cell = trackCells.value.find((entry) => entry.idx === activeTrackCellIdx.value)
+  if (!cell) return null
+  const overrides = el.value.params?.cellOverrides || {}
+  const neighborTextureIds = (cell.neighborIdxs || [])
+    .map((idx) => overrides[idx]?.textureId)
+    .filter((textureId) => textureId != null)
+  return {
+    requiredType: cell.requiredType,
+    requiredAlignment: cell.requiredAlignment,
+    neighborTextureIds,
+  }
+})
+
+function setCellProp(prop, value, markAsUser = false) {
+  if (activeTrackCellIdx.value === null) return
+  const overrides = { ...(el.value.params?.cellOverrides || {}) }
+  const cellData = { ...(overrides[activeTrackCellIdx.value] || {}) }
   if (value === undefined || value === '') {
     delete cellData[prop]
   } else {
     cellData[prop] = value
   }
+  if (markAsUser && cellData.textureId != null) cellData.textureSource = 'user'
   if (Object.keys(cellData).length === 0) {
-    delete overrides[store.activeCellIdx]
+    delete overrides[activeTrackCellIdx.value]
   } else {
-    overrides[store.activeCellIdx] = cellData
+    overrides[activeTrackCellIdx.value] = cellData
   }
   updateParam('cellOverrides', overrides)
+}
+
+function setCellTextureId(rawValue) {
+  if (rawValue === '') {
+    setCellProp('textureId', undefined)
+    setCellProp('textureSource', undefined)
+    return
+  }
+  setCellProp('textureId', Number(rawValue), true)
+}
+
+function selectCellTexture({ textureId, coin }) {
+  if (activeTrackCellIdx.value === null) return
+  const overrides = { ...(el.value.params?.cellOverrides || {}) }
+  overrides[activeTrackCellIdx.value] = {
+    ...(overrides[activeTrackCellIdx.value] || {}),
+    textureId,
+    coin,
+    textureSource: 'user',
+  }
+  updateParam('cellOverrides', overrides)
+  cellPickerOpen.value = false
+}
+
+function clearAllTextures() {
+  updateParam('cellOverrides', clearAllTextureOverrides(el.value.params?.cellOverrides || {}))
+}
+
+function openPropagatePicker() {
+  propagateCoin.value = 0
+  propagatePickerOpen.value = true
+}
+
+function propagateTexture({ textureId, coin }) {
+  updateParam(
+    'cellOverrides',
+    propagateTextureOverrides(
+      trackCells.value,
+      { textureId, coin },
+      el.value.params?.cellOverrides || {},
+    ),
+  )
+  propagatePickerOpen.value = false
+}
+
+function shuffleAll() {
+  const next = shuffleTrackTextures({
+    cells: trackCells.value,
+    textures: trackTextures.value,
+    existingOverrides: el.value.params?.cellOverrides || {},
+  })
+  updateParam('cellOverrides', next)
+}
+
+function shuffleActiveCell() {
+  if (activeTrackCellIdx.value === null) return
+  const cell = trackCells.value.find((entry) => entry.idx === activeTrackCellIdx.value)
+  if (!cell) return
+
+  const current = el.value.params?.cellOverrides || {}
+  const pinnedNeighbors = Object.fromEntries(
+    (cell.neighborIdxs || [])
+      .filter((idx) => current[idx]?.textureId != null)
+      .map((idx) => [idx, { ...current[idx], textureSource: 'user' }]),
+  )
+  const shuffled = shuffleTrackTextures({
+    cells: [cell],
+    textures: trackTextures.value,
+    existingOverrides: pinnedNeighbors,
+  })
+  const overrides = { ...current }
+  if (shuffled[cell.idx]) {
+    overrides[cell.idx] = {
+      ...(overrides[cell.idx] || {}),
+      ...shuffled[cell.idx],
+      textureSource: 'system',
+    }
+  } else {
+    const cellData = { ...(overrides[cell.idx] || {}) }
+    delete cellData.textureId
+    delete cellData.coin
+    delete cellData.textureSource
+    if (Object.keys(cellData).length) overrides[cell.idx] = cellData
+    else delete overrides[cell.idx]
+  }
+  updateParam('cellOverrides', overrides)
+}
+
+const trackSegments = computed(() =>
+  Array.isArray(effectiveParams.value.segments) ? effectiveParams.value.segments : [])
+
+function updateTrackSegment(index, key, value) {
+  const segments = trackSegments.value.map((segment, segmentIndex) =>
+    segmentIndex === index ? { ...segment, [key]: value } : { ...segment })
+  updateParam('segments', segments)
+}
+
+function removeLastTrackSegment() {
+  if (trackSegments.value.length <= 1) return
+  updateParam('segments', trackSegments.value.slice(0, -1))
 }
 
 // ── Gestion des plumes (AtomDrawing) ──────────────────────────────────────
@@ -809,10 +1126,10 @@ function updatePen(penIdx, prop, value) {
 }
 
 function clearCellOverride() {
-  const overrides = { ...(el.value.params.cellOverrides || {}) }
-  delete overrides[store.activeCellIdx]
+  if (activeTrackCellIdx.value === null) return
+  const overrides = { ...(el.value.params?.cellOverrides || {}) }
+  delete overrides[activeTrackCellIdx.value]
   updateParam('cellOverrides', overrides)
-  store.activeCellIdx = null
 }
 
 function paramLabel(key) {
@@ -896,6 +1213,7 @@ function atomParamRule(paramKey) {
 }
 
 function isParamHidden(paramKey) {
+  if (isTrackAtom.value && LEGACY_TRACK_PARAMS.has(paramKey)) return true
   return !!atomParamRule(paramKey).hidden
 }
 
@@ -1000,6 +1318,45 @@ function isParamFixed(paramKey) {
   font-size: 10px;
   font-style: italic;
   padding: 4px 0;
+}
+
+.track-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.track-actions .clear-btn {
+  flex: 1;
+  margin-left: 0;
+}
+
+.segment-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 58px;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.segment-index {
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+  text-align: center;
+}
+
+.segment-row input,
+.segment-row select {
+  min-width: 0;
+}
+
+.segment-remove {
+  margin-top: 4px;
+  margin-left: 0;
+}
+
+.segment-remove:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .clear-btn {

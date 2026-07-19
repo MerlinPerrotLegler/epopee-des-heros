@@ -16,21 +16,29 @@
       <div class="editor-canvas-wrapper" ref="canvasWrapper">
         <EditorCanvas />
       </div>
+
+      <!-- Contextual right dock: Plan tiles -->
+      <div v-if="planContext" class="editor-panel-right">
+        <PlanTilesPanel :plan-context="planContext" />
+      </div>
     </div>
   </div>
   <div v-else class="editor-loading">Chargement…</div>
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount } from 'vue'
+import { computed, ref, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { findPlanContext } from '@/utils/planTiles.js'
 import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import EditorPanel from '@/components/editor/EditorPanel.vue'
 import EditorCanvas from '@/components/editor/EditorCanvas.vue'
+import PlanTilesPanel from '@/components/editor/PlanTilesPanel.vue'
 
 const props = defineProps({ id: String })
 const store = useEditorStore()
 const panelWidth = ref(320)
+const planContext = computed(() => findPlanContext(store.layers, store.selectedItemId))
 
 function isInputFocused() {
   const tag = document.activeElement?.tagName
@@ -146,9 +154,18 @@ function startPanelResize(e) {
 
 .editor-canvas-wrapper {
   flex: 1;
+  min-width: 0;
   overflow: hidden;
   position: relative;
   background: var(--bg-deep);
+}
+
+.editor-panel-right {
+  width: 280px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-primary);
 }
 
 .editor-loading {

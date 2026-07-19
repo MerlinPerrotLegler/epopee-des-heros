@@ -1,10 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, computed, watch } from 'vue'
 import { api, acquireLayoutLock } from '@/utils/api.js'
-import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
+import { BACKGROUND_ATOM_TYPES, getAtomDefaults } from '@/atoms/index.js'
 import { migrateDefinitionSizing, REF_HEIGHT_MM } from '@/utils/migrateSizing.js'
 import { computeAlignmentGuides } from '@/utils/alignmentGuides.js'
 import { cloneLayerItem } from '@/utils/cloneLayerItem.js'
+import { isPlanMarker, nudgeableSiblingIds } from '@/utils/planTiles.js'
 
 const MAX_HISTORY = 0
 const AUTO_SAVE_DELAY_MS = 1500
@@ -171,6 +172,17 @@ export const useEditorStore = defineStore('editor', () => {
       if (item.id === id) return items
       if (item.kind === 'group') {
         const found = _findParentArray(item.children || [], id)
+        if (found) return found
+      }
+    }
+    return null
+  }
+
+  function _findParentGroup(items, id, parentGroup = null) {
+    for (const item of items) {
+      if (item.id === id) return parentGroup
+      if (item.kind === 'group') {
+        const found = _findParentGroup(item.children || [], id, item)
         if (found) return found
       }
     }
@@ -619,6 +631,45 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty()
   }
 
+  function addPlan() {
+    if (!assertEditable() || !layout.value) return
+    const defaults = getAtomDefaults('plan')
+    if (!defaults) return
+
+    _snapshot()
+    const groupId = crypto.randomUUID()
+    const plan = {
+      id: crypto.randomUUID(),
+      kind: 'element',
+      name: '',
+      locked: false,
+      visible: true,
+      opacity: 1,
+      x_mm: 0,
+      y_mm: 0,
+      rotation: 0,
+      nameInLayout: '',
+      ...defaults,
+      params: {
+        ...defaults.params,
+        tileGroupId: groupId,
+      },
+    }
+    definition.value.layers.push({
+      id: groupId,
+      kind: 'group',
+      name: 'Plan',
+      locked: false,
+      visible: true,
+      opacity: 1,
+      children: [plan],
+    })
+    selectedElementId.value = plan.id
+    selectedItemId.value = plan.id
+    markDirty()
+    return plan
+  }
+
   function updateItem(id, updates) {
     if (!assertEditable()) return
     const item = _findItem(definition.value.layers, id)
@@ -630,14 +681,24 @@ export const useEditorStore = defineStore('editor', () => {
 
   function removeItem(id) {
     if (!assertEditable()) return
-    const parentArr = _findParentArray(definition.value.layers, id)
+    const item = _findItem(definition.value.layers, id)
+    if (!item) return
+    const parentGroup = isPlanMarker(item)
+      ? _findParentGroup(definition.value.layers, id)
+      : null
+    const removeId = parentGroup?.id || id
+    const parentArr = _findParentArray(definition.value.layers, removeId)
     if (!parentArr) return
-    const idx = parentArr.findIndex(i => i.id === id)
+    const idx = parentArr.findIndex(i => i.id === removeId)
     if (idx === -1) return
     _snapshot()
-    parentArr.splice(idx, 1)
-    if (selectedItemId.value === id) selectedItemId.value = null
-    if (selectedElementId.value === id) selectedElementId.value = null
+    const [removed] = parentArr.splice(idx, 1)
+    if (selectedItemId.value && _findItem([removed], selectedItemId.value)) {
+      selectedItemId.value = null
+    }
+    if (selectedElementId.value && _findItem([removed], selectedElementId.value)) {
+      selectedElementId.value = null
+    }
     markDirty()
   }
 
@@ -673,6 +734,21 @@ export const useEditorStore = defineStore('editor', () => {
     if (!assertEditable()) return
     const parentArr = _findParentArray(definition.value.layers, id)
     if (!parentArr) return
+
+    if (parentArr.some(isPlanMarker)) {
+      const siblingIds = nudgeableSiblingIds(parentArr)
+      const siblingIdx = siblingIds.indexOf(id)
+      if (siblingIdx === -1) return
+      const nextSiblingIdx = direction === 'forward' ? siblingIdx + 1 : siblingIdx - 1
+      if (nextSiblingIdx < 0 || nextSiblingIdx >= siblingIds.length) return
+      const idx = parentArr.findIndex(item => item.id === id)
+      const swapIdx = parentArr.findIndex(item => item.id === siblingIds[nextSiblingIdx])
+      _snapshot()
+      ;[parentArr[idx], parentArr[swapIdx]] = [parentArr[swapIdx], parentArr[idx]]
+      markDirty()
+      return
+    }
+
     const idx = parentArr.findIndex(i => i.id === id)
     if (idx === -1) return
     const newIdx = direction === 'forward' ? idx + 1 : idx - 1
@@ -793,16 +869,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function removeElement(elementId) {
-    if (!assertEditable()) return
-    const parentArr = _findParentArray(definition.value.layers, elementId)
-    if (!parentArr) return
-    const idx = parentArr.findIndex(i => i.id === elementId)
-    if (idx === -1) return
-    _snapshot()
-    parentArr.splice(idx, 1)
-    if (selectedElementId.value === elementId) selectedElementId.value = null
-    if (selectedItemId.value === elementId) selectedItemId.value = null
-    markDirty()
+    removeItem(elementId)
   }
 
   function duplicateItem(id) {
@@ -886,7 +953,7 @@ export const useEditorStore = defineStore('editor', () => {
     history, canUndo, undo, _snapshot,
     loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
     // Group/item ops
-    addGroup, addLayer, updateItem, updateLayer, removeItem, removeLayer,
+    addGroup, addLayer, addPlan, updateItem, updateLayer, removeItem, removeLayer,
     moveItemToGroup, moveGroupBy, reorderItemAroundTarget, nudgeItemInStack,
     // Move selected
     moveSelected,
