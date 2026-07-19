@@ -73,7 +73,7 @@
                 <path d="M1.5 11.5 5.2 8.2l2.3 2.2 2-1.4 4.5 3.2" fill="none" stroke="currentColor" stroke-width="1.3" />
                 <path d="M12.2 4.2v3.2M10.6 5.8h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
               </svg>
-              Image
+              Upload
             </button>
             <button
               type="button"

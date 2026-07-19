@@ -1,5 +1,16 @@
 <template>
   <div class="chemin-panel">
+    <Transition name="banner">
+      <div v-if="downloadProgress" class="model-banner">
+        <span class="model-banner-label">
+          Chargement du modèle IA… {{ downloadPct }}%
+        </span>
+        <div class="model-progress-track">
+          <div class="model-progress-fill" :style="{ width: downloadPct + '%' }"></div>
+        </div>
+      </div>
+    </Transition>
+
     <div v-if="loading" class="ch-loading">Chargement…</div>
     <div v-else-if="loadError" class="ch-load-error">{{ loadError }}</div>
     <div v-else class="ch-layout">
@@ -46,8 +57,16 @@
             Orientation : droit L→R · coin haut→gauche · impasse haut.
           </p>
           <div class="ch-toolbar-actions">
-            <button class="btn-primary btn-sm" :disabled="uploading" @click="uploadInput?.click()">
-              {{ uploading ? 'Upload…' : '+ Upload texture' }}
+            <button class="btn-primary btn-sm" :disabled="uploading" @click="pickUpload(false)">
+              {{ uploading && !removeBgNext ? 'Upload…' : '+ Upload texture' }}
+            </button>
+            <button
+              class="btn-ghost btn-sm"
+              :disabled="uploading"
+              title="Upload avec suppression du fond"
+              @click="pickUpload(true)"
+            >
+              {{ uploading && removeBgNext ? 'Traitement…' : 'Sans fond' }}
             </button>
             <input
               ref="uploadInput"
@@ -143,9 +162,15 @@ const activeType = ref('')
 const activeTagIds = ref([])
 const uploadInput = ref(null)
 const uploading = ref(false)
+const removeBgNext = ref(false)
 const preview = ref(null)
 const confirmDelete = ref(null)
 const deleting = ref(false)
+const downloadProgress = ref(null)
+const downloadPct = computed(() => {
+  if (!downloadProgress.value?.total) return 0
+  return Math.round((downloadProgress.value.current / downloadProgress.value.total) * 100)
+})
 
 const filteredTracks = computed(() => {
   return tracks.value.filter((t) => {
@@ -187,13 +212,33 @@ async function loadAll() {
   }
 }
 
+function pickUpload(withRemoveBg) {
+  if (uploading.value) return
+  removeBgNext.value = !!withRemoveBg
+  uploadInput.value?.click()
+}
+
 async function onUpload(e) {
   const files = e.target.files
   if (!files?.length) return
+  const withRemoveBg = removeBgNext.value
   uploading.value = true
+  downloadProgress.value = null
   try {
+    const { applyRemoveBgToFiles } = await import('@/utils/applyRemoveBgToFiles.js')
+    const processed = await applyRemoveBgToFiles(files, {
+      enabled: withRemoveBg,
+      onProgress(key, current, total) {
+        if (key.includes('fetch') && total > 0) {
+          downloadProgress.value = { current, total }
+        } else {
+          downloadProgress.value = null
+        }
+      },
+    })
+    downloadProgress.value = null
     const fd = new FormData()
-    for (const f of files) fd.append('files', f)
+    for (const f of processed) fd.append('files', f)
     fd.append('folder_id', TRACK_FOLDER)
     const results = await api.uploadMedia(fd)
     await loadTracks()
@@ -208,6 +253,8 @@ async function onUpload(e) {
     loadError.value = err.message || 'Upload échoué'
   } finally {
     uploading.value = false
+    removeBgNext.value = false
+    downloadProgress.value = null
     if (uploadInput.value) uploadInput.value.value = ''
   }
 }
@@ -269,6 +316,16 @@ onMounted(loadAll)
 .ch-hint { margin: 0; font-size: 12px; color: var(--text-muted); max-width: 520px; line-height: 1.4; }
 .ch-hint code { font-size: 11px; }
 .ch-toolbar-actions { display: flex; gap: 8px; align-items: center; }
+.model-banner {
+  background: var(--bg-tertiary); border: 1px solid var(--accent-primary);
+  border-radius: var(--radius-sm); padding: 8px 12px;
+  margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;
+}
+.model-banner-label { font-size: 11px; color: var(--accent-primary); }
+.model-progress-track { height: 4px; border-radius: 2px; background: var(--bg-deep); overflow: hidden; }
+.model-progress-fill { height: 100%; border-radius: 2px; background: var(--accent-primary); transition: width 200ms; }
+.banner-enter-active, .banner-leave-active { transition: opacity 150ms; }
+.banner-enter-from, .banner-leave-to { opacity: 0; }
 .media-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 10px; }
 .media-card {
   background: var(--bg-secondary); border: 1px solid var(--border-subtle);

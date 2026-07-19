@@ -32,11 +32,8 @@
       </div>
       <div v-if="activeTab === 'library'" style="display:flex; gap:8px; align-items:center">
         <button class="btn-ghost" @click="showNewFolder = true">+ Dossier</button>
-        <label class="rembg-toggle" title="Traiter chaque image avant envoi">
-          <input type="checkbox" v-model="removeBgOnUpload" :disabled="!!processingId" />
-          Supprimer le fond
-        </label>
-        <button class="btn-primary" :disabled="!!processingId" @click="fileInput.click()">⤒ Upload</button>
+        <button class="btn-primary" :disabled="!!processingId" @click="pickUpload(false)">⤒ Upload</button>
+        <button class="btn-ghost" :disabled="!!processingId" title="Upload avec suppression du fond" @click="pickUpload(true)">Sans fond</button>
         <input ref="fileInput" type="file" multiple accept="image/*" style="display:none" @change="upload" />
       </div>
     </header>
@@ -207,7 +204,7 @@ const currentFolder = ref('root')
 const showNewFolder = ref(false)
 const newFolderName = ref('')
 const fileInput     = ref(null)
-const removeBgOnUpload = ref(false)
+const removeBgNext  = ref(false)
 const preview       = ref(null)
 const draggedMedia  = ref(null)
 const dragOver      = ref(null)
@@ -285,15 +282,22 @@ onMounted(async () => {
 })
 
 // ── Upload ────────────────────────────────────────────────────────────────────
+function pickUpload(withRemoveBg) {
+  if (processingId.value) return
+  removeBgNext.value = !!withRemoveBg
+  fileInput.value?.click()
+}
+
 async function upload(e) {
   const raw = e.target.files
   if (!raw?.length) return
+  const withRemoveBg = removeBgNext.value
   processingId.value = '__upload__'
   downloadProgress.value = null
   try {
     const { applyRemoveBgToFiles } = await import('@/utils/applyRemoveBgToFiles.js')
     const files = await applyRemoveBgToFiles(raw, {
-      enabled: removeBgOnUpload.value,
+      enabled: withRemoveBg,
       onProgress(key, current, total) {
         if (key.includes('fetch') && total > 0) {
           downloadProgress.value = { current, total }
@@ -314,7 +318,7 @@ async function upload(e) {
       media.value.push(...newFiles)
       if (duplicates.length) {
         showToast(`Déjà présent : ${duplicates.map(r => r.original_name).join(', ')}`, 'info')
-      } else if (removeBgOnUpload.value) {
+      } else if (withRemoveBg) {
         showToast('Upload terminé (fond supprimé)')
       }
     }
@@ -324,6 +328,7 @@ async function upload(e) {
   } finally {
     processingId.value = null
     downloadProgress.value = null
+    removeBgNext.value = false
     if (fileInput.value) fileInput.value.value = ''
   }
 }
@@ -447,17 +452,6 @@ async function onDropToFolder(targetFolderId) {
 .tab-btn { background: none; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer; font-size: 12px; padding: 5px 12px; margin-bottom: -1px; }
 .tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active { color: var(--accent-primary); border-bottom-color: var(--accent-primary); font-weight: 600; }
-
-.rembg-toggle {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--text-muted);
-  user-select: none;
-  cursor: pointer;
-}
-.rembg-toggle input { cursor: pointer; }
 
 .missing-tab, .pictorgame-tab, .chemin-tab { padding: 8px 0; }
 .media-layout { display: flex; gap: 16px; }
