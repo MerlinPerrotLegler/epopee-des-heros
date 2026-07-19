@@ -151,6 +151,44 @@ button {
 
 .btn-sm { padding: 4px 8px; font-size: 11px; }
 
+/* Segmented button group (Upload | Sans fond) */
+.btn-split {
+  display: inline-flex;
+  align-items: stretch;
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  overflow: hidden;
+  background: transparent;
+}
+.btn-split > button {
+  border: none;
+  border-radius: 0;
+  margin: 0;
+  box-shadow: none;
+}
+.btn-split > button + button {
+  border-left: 1px solid var(--border-default);
+}
+.btn-split > .btn-primary {
+  background: var(--accent-primary);
+  color: white;
+}
+.btn-split > .btn-primary:hover {
+  background: var(--accent-primary-hover);
+}
+.btn-split > .btn-ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border-left: 1px solid var(--border-default);
+}
+.btn-split > .btn-ghost:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+.btn-split > .btn-ghost:first-child {
+  border-left: none;
+}
+
 /* Panel sections */
 .panel-section {
   border-bottom: 1px solid var(--border-subtle);

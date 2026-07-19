@@ -57,17 +57,19 @@
             Orientation : droit L→R · coin haut→gauche · impasse haut · omnidirectionnel auto 0°.
           </p>
           <div class="ch-toolbar-actions">
-            <button class="btn-primary btn-sm" :disabled="uploading" @click="pickUpload(false)">
-              {{ uploading && !removeBgNext ? 'Upload…' : '+ Upload texture' }}
-            </button>
-            <button
-              class="btn-ghost btn-sm"
-              :disabled="uploading"
-              title="Upload avec suppression du fond"
-              @click="pickUpload(true)"
-            >
-              {{ uploading && removeBgNext ? 'Traitement…' : 'Sans fond' }}
-            </button>
+            <div class="btn-split">
+              <button class="btn-primary btn-sm" :disabled="uploading" @click="pickUpload(false)">
+                {{ uploading && !removeBgNext ? 'Upload…' : '+ Upload texture' }}
+              </button>
+              <button
+                class="btn-ghost btn-sm"
+                :disabled="uploading"
+                title="Upload avec suppression du fond"
+                @click="pickUpload(true)"
+              >
+                {{ uploading && removeBgNext ? 'Traitement…' : 'Sans fond' }}
+              </button>
+            </div>
             <input
               ref="uploadInput"
               type="file"

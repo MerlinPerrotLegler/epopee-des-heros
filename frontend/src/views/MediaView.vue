@@ -32,8 +32,10 @@
       </div>
       <div v-if="activeTab === 'library'" style="display:flex; gap:8px; align-items:center">
         <button class="btn-ghost" @click="showNewFolder = true">+ Dossier</button>
-        <button class="btn-primary" :disabled="!!processingId" @click="pickUpload(false)">⤒ Upload</button>
-        <button class="btn-ghost" :disabled="!!processingId" title="Upload avec suppression du fond" @click="pickUpload(true)">Sans fond</button>
+        <div class="btn-split">
+          <button class="btn-primary" :disabled="!!processingId" @click="pickUpload(false)">⤒ Upload</button>
+          <button class="btn-ghost" :disabled="!!processingId" title="Upload avec suppression du fond" @click="pickUpload(true)">Sans fond</button>
+        </div>
         <input ref="fileInput" type="file" multiple accept="image/*" style="display:none" @change="upload" />
       </div>
     </header>

@@ -57,8 +57,10 @@
           </div>
           <div class="pg-toolbar-actions">
             <button class="btn-ghost btn-sm" @click="openLinkPicker">+ Lier média</button>
-            <button class="btn-primary btn-sm" :disabled="!!processingId" @click="pickUpload(false)">+ Upload picto</button>
-            <button class="btn-ghost btn-sm" :disabled="!!processingId" title="Upload avec suppression du fond" @click="pickUpload(true)">Sans fond</button>
+            <div class="btn-split">
+              <button class="btn-primary btn-sm" :disabled="!!processingId" @click="pickUpload(false)">+ Upload picto</button>
+              <button class="btn-ghost btn-sm" :disabled="!!processingId" title="Upload avec suppression du fond" @click="pickUpload(true)">Sans fond</button>
+            </div>
             <input ref="uploadInput" type="file" accept="image/*" style="display:none" @change="onUploadFile" />
           </div>
         </div>

@@ -59,37 +59,39 @@
 
         <div class="mp-footer">
           <div class="mp-footer-left">
-            <button
-              type="button"
-              class="mp-clear"
-              :class="{ 'is-blocked': !canUpload }"
-              :aria-disabled="!canUpload || !!uploading"
-              :title="addImageTitle"
-              @click="pickFile(false)"
-            >
-              <svg class="mp-ico" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3" />
-                <circle cx="5.2" cy="6" r="1.1" fill="currentColor" />
-                <path d="M1.5 11.5 5.2 8.2l2.3 2.2 2-1.4 4.5 3.2" fill="none" stroke="currentColor" stroke-width="1.3" />
-                <path d="M12.2 4.2v3.2M10.6 5.8h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-              </svg>
-              Upload
-            </button>
-            <button
-              type="button"
-              class="mp-clear"
-              :class="{ 'is-blocked': !canUpload }"
-              :aria-disabled="!canUpload || !!uploading"
-              :title="addNobgTitle"
-              @click="pickFile(true)"
-            >
-              <svg class="mp-ico" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
-                <path d="M2 3.5h7.5a1 1 0 0 1 1 1V12H3a1 1 0 0 1-1-1V3.5Z" fill="none" stroke="currentColor" stroke-width="1.3" />
-                <path d="M5.5 7.2 8 9.5l2.8-3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
-                <path d="M10.5 3.2 14 6.7M14 3.2 10.5 6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
-              </svg>
-              Sans fond
-            </button>
+            <div class="btn-split mp-upload-split">
+              <button
+                type="button"
+                class="mp-clear"
+                :class="{ 'is-blocked': !canUpload }"
+                :aria-disabled="!canUpload || !!uploading"
+                :title="addImageTitle"
+                @click="pickFile(false)"
+              >
+                <svg class="mp-ico" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <rect x="1.5" y="2.5" width="13" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.3" />
+                  <circle cx="5.2" cy="6" r="1.1" fill="currentColor" />
+                  <path d="M1.5 11.5 5.2 8.2l2.3 2.2 2-1.4 4.5 3.2" fill="none" stroke="currentColor" stroke-width="1.3" />
+                  <path d="M12.2 4.2v3.2M10.6 5.8h3.2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                </svg>
+                Upload
+              </button>
+              <button
+                type="button"
+                class="mp-clear"
+                :class="{ 'is-blocked': !canUpload }"
+                :aria-disabled="!canUpload || !!uploading"
+                :title="addNobgTitle"
+                @click="pickFile(true)"
+              >
+                <svg class="mp-ico" viewBox="0 0 16 16" width="12" height="12" aria-hidden="true">
+                  <path d="M2 3.5h7.5a1 1 0 0 1 1 1V12H3a1 1 0 0 1-1-1V3.5Z" fill="none" stroke="currentColor" stroke-width="1.3" />
+                  <path d="M5.5 7.2 8 9.5l2.8-3.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round" />
+                  <path d="M10.5 3.2 14 6.7M14 3.2 10.5 6.7" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" />
+                </svg>
+                Sans fond
+              </button>
+            </div>
             <input
               ref="fileInput"
               type="file"
@@ -481,6 +483,18 @@ onBeforeUnmount(() => {
   align-items: center;
   gap: 4px;
   min-width: 0;
+}
+
+.mp-popover .mp-upload-split {
+  border-color: var(--border-default);
+  flex-shrink: 0;
+}
+.mp-popover .mp-upload-split > .mp-clear {
+  padding: 3px 8px;
+  border-radius: 0;
+}
+.mp-popover .mp-upload-split > .mp-clear + .mp-clear {
+  border-left: 1px solid var(--border-default);
 }
 
 .mp-popover .mp-clear {
