@@ -150,6 +150,10 @@ export const PARAM_HELP = {
   thickness:     'Épaisseur de la ligne en millimètres',
   style:         'Style du tracé : plein, tirets, pointillés',
 
+  // ── AtomPlan ──────────────────────────────────────────────────────────────
+  tileGroupId:   'Identifiant du groupe canvas lié (rempli automatiquement à la création)',
+  guideVisible:  'Afficher le contour pointillé du plan dans l\'éditeur (masqué à l\'impression)',
+
   // ── AtomSeparator / AtomCadre ─────────────────────────────────────────────
   tier:          'Niveau d\'ornementation : fin (à la main), basic, rare, epic, mythique, legendaire',
   seed:          'Graine de variation du tracé (même seed = même rendu)',

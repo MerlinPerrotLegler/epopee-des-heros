@@ -48,6 +48,7 @@ import AtomTrakPath            from '@/atoms/components/AtomTrakPath.vue'
 import AtomCardTrack           from '@/atoms/components/AtomCardTrack.vue'
 import AtomSeparator           from '@/atoms/components/AtomSeparator.vue'
 import AtomCadre               from '@/atoms/components/AtomCadre.vue'
+import AtomPlan                from '@/atoms/components/AtomPlan.vue'
 import AtomDrawing             from '@/atoms/components/AtomDrawing.vue'
 import AtomRichText            from '@/atoms/components/AtomRichText.vue'
 
@@ -82,6 +83,7 @@ const ATOM_COMPONENTS = {
   cardTrack:           AtomCardTrack,
   separator:           AtomSeparator,
   cadre:               AtomCadre,
+  plan:                AtomPlan,
   drawing:             AtomDrawing,
   richText:            AtomRichText,
 }
@@ -103,7 +105,7 @@ const atomComponent = computed(() => ATOM_COMPONENTS[props.atomType] ?? null)
 // Extra props passed only to specific atom types (avoids spurious $attrs warnings)
 const extraProps = computed(() => {
   if (props.atomType === 'drawing') return { liveStroke: props.liveStroke }
-  if (['trak', 'trakCorner', 'trakPath', 'cardTrack'].includes(props.atomType)) {
+  if (['trak', 'trakCorner', 'trakPath', 'cardTrack', 'plan'].includes(props.atomType)) {
     return { printMode: props.finalRender }
   }
   return {}

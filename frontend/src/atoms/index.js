@@ -474,6 +474,16 @@ export const ATOM_TYPES = {
     defaultSize: { width_mm: 40, height_mm: 2 }
   },
 
+  plan: {
+    label: 'Plan',
+    icon: '▦',
+    defaultParams: {
+      tileGroupId: null,   // id du groupe lié (posé à la création)
+      guideVisible: true,  // contour guide éditeur
+    },
+    defaultSize: { width_mm: 40, height_mm: 40 },
+  },
+
   cadre: {
     label: 'Cadre',
     icon: '▭',
