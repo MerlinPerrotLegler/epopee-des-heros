@@ -15,7 +15,8 @@
 
 <script setup>
 import { computed } from 'vue'
-import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
+import { useConfigStore } from '@/stores/config.js'
+import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
 
 import AtomBackgroundTexture        from '@/atoms/components/AtomBackgroundTexture.vue'
 import AtomBackgroundGradientLinear from '@/atoms/components/AtomBackgroundGradientLinear.vue'
@@ -109,29 +110,11 @@ const extraProps = computed(() => {
 })
 
 // Merge params with global config: null values in params are replaced by the config value
-const resolvedParams = computed(() => {
-  const cfg = configStore.config
-  const resolved = { ...props.params }
-  for (const [key, cfgVal] of Object.entries(cfg)) {
-    if (cfgVal !== null && cfgVal !== undefined && resolved[key] === null) {
-      resolved[key] = cfgVal
-    }
-  }
-
-  const atomRules = cfg?.[ATOM_PARAM_RULES_KEY]?.[props.atomType] || {}
-  for (const [paramKey, rule] of Object.entries(atomRules)) {
-    // rows checklist : appliquer dès qu'une fixedValue tableau est définie
-    if (paramKey === 'rows' && Array.isArray(rule?.fixedValue) && rule.fixedValue.length) {
-      resolved[paramKey] = rule.fixedValue
-      continue
-    }
-    if (rule?.fixedEnabled && Object.prototype.hasOwnProperty.call(rule || {}, 'fixedValue')) {
-      resolved[paramKey] = rule.fixedValue
-    }
-  }
-
-  return resolved
-})
+const resolvedParams = computed(() => resolveEffectiveAtomParams({
+  atomType: props.atomType,
+  params: props.params,
+  config: configStore.config,
+}))
 </script>
 
 <style scoped>

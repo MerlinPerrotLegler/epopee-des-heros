@@ -8,6 +8,13 @@ export function orthogonalDirections(direction) {
   return []
 }
 
+export function trakPathInteractiveBounds({ contentW, contentH, width_mm, height_mm }) {
+  return {
+    width: Math.max(Number(width_mm) || 0, Number(contentW) || 0),
+    height: Math.max(Number(height_mm) || 0, Number(contentH) || 0),
+  }
+}
+
 function alignmentForDirection(direction) {
   return direction === 'left' || direction === 'right' ? 'horizontal' : 'vertical'
 }

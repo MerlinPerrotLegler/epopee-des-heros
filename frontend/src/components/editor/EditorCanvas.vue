@@ -90,6 +90,12 @@
             :live-stroke="(drawingMode.active.value && drawingMode.drawingElementId.value === el.id) ? drawingMode.liveStroke.value : null"
           />
 
+          <div
+            v-if="el.type === 'atom' && el.atomType === 'trakPath'"
+            class="trak-path-hit-area"
+            :style="trakPathHitAreaStyle(el)"
+          />
+
           <template
             v-if="el.type === 'atom' && el.atomType === 'trakPath' && store.selectedElementId === el.id && !el._layerLocked"
           >
@@ -209,13 +215,19 @@
 <script setup>
 import { ref, computed, watch, onMounted, onBeforeUnmount } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
+import { useConfigStore } from '@/stores/config.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
+import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
 import {
   buildCardTrackFootprints,
   hitTestCardTrackCell,
 } from '@/utils/cardTrackLayout.js'
-import { buildTrakPathCells, orthogonalDirections } from '@/utils/trakPathLayout.js'
+import {
+  buildTrakPathCells,
+  orthogonalDirections,
+  trakPathInteractiveBounds,
+} from '@/utils/trakPathLayout.js'
 import { mmCss, CSS_PX_PER_MM, clientPointToCardMm } from '@/utils/cssMm.js'
 import { getOneToOneZoom } from '@/utils/physicalScale.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
@@ -228,6 +240,7 @@ import { isHexLayout, hexClipPathCss } from '@/utils/hexGeometry.js'
 import { useDrawingMode } from '@/composables/useDrawingMode.js'
 
 const store = useEditorStore()
+const configStore = useConfigStore()
 const { byLogicalId: trackTexturesByLogicalId } = useTrackTextures()
 const containerRef    = ref(null)
 const cardBoundaryRef = ref(null)
@@ -297,16 +310,38 @@ function resolvedParams(el) {
   return el.params || {}
 }
 
+function effectiveAtomParams(el) {
+  return resolveEffectiveAtomParams({
+    atomType: el.atomType,
+    params: resolvedParams(el),
+    config: configStore.config,
+  })
+}
+
 function trakPathLayout(el) {
+  const params = effectiveAtomParams(el)
   return buildTrakPathCells({
-    segments: el.params?.segments,
-    cellSize: el.params?.cellSize ?? 0.1,
-    n_start: el.params?.n_start ?? 0,
-    cellOverrides: el.params?.cellOverrides || {},
+    segments: params.segments,
+    cellSize: params.cellSize ?? 0.1,
+    n_start: params.n_start ?? 0,
+    cellOverrides: params.cellOverrides || {},
     texturesById: trackTexturesByLogicalId.value,
     width_mm: el.width_mm,
     height_mm: el.height_mm,
   })
+}
+
+function trakPathHitAreaStyle(el) {
+  const layout = trakPathLayout(el)
+  const bounds = trakPathInteractiveBounds({
+    ...layout,
+    width_mm: el.width_mm,
+    height_mm: el.height_mm,
+  })
+  return {
+    width: mmCss(bounds.width),
+    height: mmCss(bounds.height),
+  }
 }
 
 function trakPathAddControls(el) {
@@ -327,7 +362,8 @@ function trakPathAddControls(el) {
 }
 
 function appendTrakPathSegment(el, direction) {
-  const segments = Array.isArray(el.params?.segments) ? [...el.params.segments] : []
+  const effectiveParams = effectiveAtomParams(el)
+  const segments = Array.isArray(effectiveParams.segments) ? [...effectiveParams.segments] : []
   segments.push({ direction, count: 3 })
   store.updateElement(el.id, {
     params: { ...(el.params || {}), segments },
@@ -662,6 +698,14 @@ function startPan(e) {
   cursor: default;
   opacity: 0.5;
   pointer-events: none;
+}
+
+.trak-path-hit-area {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 1;
+  pointer-events: all;
 }
 
 .trak-path-add {

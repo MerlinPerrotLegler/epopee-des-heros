@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildTrakPathCells, orthogonalDirections } from './trakPathLayout.js'
+import {
+  buildTrakPathCells,
+  orthogonalDirections,
+  trakPathInteractiveBounds,
+} from './trakPathLayout.js'
 
 const baseArgs = {
   cellSize: 0.1,
@@ -16,6 +20,32 @@ describe('orthogonalDirections', () => {
   it('returns the two perpendicular directions', () => {
     assert.deepEqual(orthogonalDirections('right').sort(), ['down', 'up'])
     assert.deepEqual(orthogonalDirections('up').sort(), ['left', 'right'])
+  })
+})
+
+describe('trakPathInteractiveBounds', () => {
+  it('covers rendered content that extends beyond the element box', () => {
+    assert.deepEqual(trakPathInteractiveBounds({
+      contentW: 72,
+      contentH: 31,
+      width_mm: 55,
+      height_mm: 25,
+    }), {
+      width: 72,
+      height: 31,
+    })
+  })
+
+  it('keeps the full element box when content is smaller', () => {
+    assert.deepEqual(trakPathInteractiveBounds({
+      contentW: 20,
+      contentH: 10,
+      width_mm: 55,
+      height_mm: 25,
+    }), {
+      width: 55,
+      height: 25,
+    })
   })
 })
 
