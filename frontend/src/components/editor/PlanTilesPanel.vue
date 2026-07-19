@@ -123,10 +123,13 @@ const filteredTextures = computed(() => {
 })
 
 const orientationHint = computed(() => {
+  if (typeFilter.value === 'omnidirectionnel') {
+    return 'Aucune orientation imposée — rotation auto = 0° (modifiable à la main).'
+  }
   if (typeFilter.value === 'coin') return 'Orientation attendue : du haut vers la gauche.'
   if (typeFilter.value === 'impasse') return 'Orientation attendue : ouverture vers le haut.'
   if (typeFilter.value === 'droit') return 'Orientation attendue : de gauche vers la droite.'
-  return 'Orientation : droit gauche → droite · coin haut → gauche · impasse vers le haut.'
+  return 'Orientation : droit gauche → droite · coin haut → gauche · impasse vers le haut · omnidirectionnel auto 0°.'
 })
 
 function textureLabel(texture) {

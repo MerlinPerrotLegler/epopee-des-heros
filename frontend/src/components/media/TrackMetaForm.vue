@@ -148,6 +148,9 @@ function resetForm(media) {
 watch(() => props.media, resetForm, { immediate: true })
 
 const orientationHint = computed(() => {
+  if (form.type === 'omnidirectionnel') {
+    return 'Aucune orientation imposée — rotation auto = 0° (modifiable à la main).'
+  }
   if (form.type === 'coin') return 'Orientation attendue : du haut vers la gauche.'
   if (form.type === 'impasse') return 'Orientation attendue : ouverture vers le haut.'
   return 'Orientation attendue : de gauche vers la droite.'
@@ -343,7 +346,7 @@ onMounted(async () => {
 </script>
 
 <style scoped>
-.track-meta-form { width: min(640px, 75vw); display: flex; flex-direction: column; gap: 12px; }
+.track-meta-form { width: 100%; max-width: 100%; box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; }
 .tm-heading { display: flex; justify-content: space-between; align-items: center; }
 .tm-heading strong { color: var(--text-primary); }
 .tm-success { color: #22c55e; font-size: 11px; }

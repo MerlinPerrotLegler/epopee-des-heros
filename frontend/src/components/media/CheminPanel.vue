@@ -54,7 +54,7 @@
         <div class="ch-toolbar">
           <p class="ch-hint">
             Textures Track — dossier système <code>Chemin/Track</code>.
-            Orientation : droit L→R · coin haut→gauche · impasse haut.
+            Orientation : droit L→R · coin haut→gauche · impasse haut · omnidirectionnel auto 0°.
           </p>
           <div class="ch-toolbar-actions">
             <button class="btn-primary btn-sm" :disabled="uploading" @click="pickUpload(false)">
@@ -353,8 +353,14 @@ onMounted(loadAll)
 }
 .preview-modal {
   background: var(--bg-primary); border-radius: var(--radius-lg);
-  padding: 16px; max-width: min(560px, 94vw); max-height: 90vh; overflow: auto;
-  position: relative; display: flex; flex-direction: column; gap: 12px;
+  padding: 20px 24px;
+  width: min(960px, 96vw);
+  max-width: min(960px, 96vw);
+  max-height: 92vh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  position: relative; display: flex; flex-direction: column; gap: 14px;
+  box-sizing: border-box;
 }
 .preview-close {
   position: absolute; top: 8px; right: 8px; background: none; border: none;
@@ -364,7 +370,7 @@ onMounted(loadAll)
   background: var(--bg-tertiary); border-radius: var(--radius-md);
   display: flex; align-items: center; justify-content: center; min-height: 160px;
 }
-.preview-thumb-wrap img { max-width: 100%; max-height: 240px; object-fit: contain; }
+.preview-thumb-wrap img { max-width: 100%; max-height: 280px; object-fit: contain; }
 .preview-meta { display: flex; flex-direction: column; gap: 4px; }
 .preview-meta code { font-size: 11px; color: var(--text-muted); }
 .modal {
