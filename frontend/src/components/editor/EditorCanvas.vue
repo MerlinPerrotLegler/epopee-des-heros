@@ -476,7 +476,11 @@ function onDropAdd(e) {
   )
 
   let element = null
+  let created = null
   if (payload.kind === 'atom' && payload.atomType) {
+    if (payload.atomType === 'plan') {
+      created = store.addPlan()
+    }
     element = {
       type: 'atom',
       atomType: payload.atomType,
@@ -493,7 +497,7 @@ function onDropAdd(e) {
   if (!element) return
 
   // Ajout puis repositionnement proche du point de lâcher (centré sous le curseur)
-  const created = store.addElement(element)
+  created ??= store.addElement(element)
   if (!created) return
   if (created.type === 'atom' && BACKGROUND_ATOM_TYPES.has(created.atomType)) return
 
