@@ -4,6 +4,7 @@
  */
 export function pickCoin(requiredOrientation, textureType) {
   const dir = requiredOrientation
+  if (textureType === 'omnidirectionnel') return 0
   if (textureType === 'droit') {
     if (dir === 'vertical' || dir === 'up' || dir === 'down') return 90
     return 0
@@ -37,7 +38,10 @@ function voisinsMatch(texture, neighborTextureIds) {
 
 export function isTextureCompatible(texture, { requiredType, requiredAlignment, neighborTextureIds }) {
   if (!texture) return false
-  if (texture.type !== requiredType) return false
+  const typeOk =
+    texture.type === requiredType ||
+    texture.type === 'omnidirectionnel'
+  if (!typeOk) return false
   if (!alignmentMatches(texture.alignment, requiredAlignment)) return false
   return voisinsMatch(texture, neighborTextureIds)
 }

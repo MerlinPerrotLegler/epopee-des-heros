@@ -4,6 +4,7 @@ import { describe, it } from 'node:test'
 import {
   clearAllTextureOverrides,
   isTextureCompatible,
+  pickCoin,
   propagateTextureOverrides,
   shuffleTrackTextures,
 } from './trackMatch.js'
@@ -98,5 +99,34 @@ describe('shuffleTrackTextures', () => {
     assert.ok(out[0].textureId != null)
     assert.equal(out[1].textureSource, 'user')
     assert.equal(out[1].textureId, 0)
+  })
+})
+
+const omniH = { id: 10, type: 'omnidirectionnel', alignment: 'horizontal', voisins: [] }
+const omniBoth = { id: 11, type: 'omnidirectionnel', alignment: 'both', voisins: [] }
+
+describe('omnidirectionnel', () => {
+  it('matches any required role when alignment OK', () => {
+    for (const requiredType of ['droit', 'coin', 'impasse']) {
+      assert.equal(
+        isTextureCompatible(omniBoth, { requiredType, requiredAlignment: 'horizontal', neighborTextureIds: [] }),
+        true,
+      )
+    }
+  })
+  it('still enforces alignment', () => {
+    assert.equal(
+      isTextureCompatible(omniH, { requiredType: 'droit', requiredAlignment: 'vertical', neighborTextureIds: [] }),
+      false,
+    )
+    assert.equal(
+      isTextureCompatible(omniH, { requiredType: 'coin', requiredAlignment: 'horizontal', neighborTextureIds: [] }),
+      true,
+    )
+  })
+  it('pickCoin always returns 0', () => {
+    for (const dir of ['horizontal', 'vertical', 'up', 'down', 'left', 'right']) {
+      assert.equal(pickCoin(dir, 'omnidirectionnel'), 0)
+    }
   })
 })
