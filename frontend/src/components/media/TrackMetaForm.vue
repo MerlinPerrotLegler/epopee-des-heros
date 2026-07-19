@@ -95,6 +95,7 @@
 
 <script setup>
 import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
+import { reloadTrackTextures } from '@/composables/useTrackTextures.js'
 import { api } from '@/utils/api.js'
 
 const props = defineProps({
@@ -186,6 +187,7 @@ async function save() {
     })
     saved.value = true
     tracks.value = tracks.value.map((track) => track.id === updated.id ? updated : track)
+    await reloadTrackTextures()
     emit('saved', updated)
   } catch (err) {
     error.value = err.message || 'Impossible d’enregistrer'
@@ -197,32 +199,38 @@ async function save() {
 async function createType(data) {
   await api.createTrackType(data)
   types.value = await api.getTrackTypes()
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 async function updateType(id, data) {
   await api.updateTrackType(id, data)
   types.value = await api.getTrackTypes()
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 async function deleteType(id) {
   await api.deleteTrackType(id)
   types.value = await api.getTrackTypes()
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 async function createTag(data) {
   await api.createTrackTag(data)
   tags.value = await api.getTrackTags()
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 async function updateTag(id, data) {
   await api.updateTrackTag(id, data)
   tags.value = await api.getTrackTags()
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 async function deleteTag(id) {
   await api.deleteTrackTag(id)
   tags.value = await api.getTrackTags()
   form.tagIds = form.tagIds.filter((tagId) => tagId !== id)
+  await reloadTrackTextures()
   emit('catalogs-changed')
 }
 

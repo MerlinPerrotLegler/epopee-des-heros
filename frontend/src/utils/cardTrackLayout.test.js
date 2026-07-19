@@ -8,7 +8,7 @@ import {
 } from './cardTrackLayout.js'
 
 describe('buildCardTrackCells variable footprints', () => {
-  it('places each edge sequentially without overlapping adjacent cells', () => {
+  it('places each edge without overlaps and closes at the top-left corner', () => {
     const params = { cells_top: 2, cells_left: 2 }
     const footprints = {
       0: { w: 12, h: 11 },
@@ -39,9 +39,9 @@ describe('buildCardTrackCells variable footprints', () => {
     assert.equal(cells[6].y, cells[5].y + cells[5].h)
     assert.equal(cells[7].x + cells[7].w, cells[6].x)
     assert.equal(cells[8].x + cells[8].w, cells[7].x)
-    assert.equal(cells[9].x + cells[9].w, cells[8].x)
     assert.equal(cells[10].y + cells[10].h, cells[9].y)
     assert.equal(cells[11].y + cells[11].h, cells[10].y)
+    assert.equal(cells[9].x, cells[0].x)
     assert.equal(cells[11].y, cells[0].y + cells[0].h)
 
     for (let i = 0; i < cells.length; i++) {

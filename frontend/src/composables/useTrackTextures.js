@@ -42,6 +42,14 @@ async function loadCatalogue() {
   return loadPromise
 }
 
+export async function reloadTrackTextures() {
+  const cachedLoad = loadPromise
+  if (cachedLoad) await cachedLoad
+  if (loadPromise !== cachedLoad) return loadPromise
+  loadPromise = null
+  return loadCatalogue()
+}
+
 export function useTrackTextures() {
   loadCatalogue()
   return {
@@ -49,6 +57,6 @@ export function useTrackTextures() {
     byLogicalId,
     loading: readonly(loading),
     error: readonly(error),
-    reload: loadCatalogue,
+    reload: reloadTrackTextures,
   }
 }

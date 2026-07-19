@@ -217,17 +217,23 @@ export function buildCardTrackCells(params, width_mm, height_mm, footprintByInde
     })
   }
 
-  // Les longueurs cumulées des empreintes verticales peuvent différer entre
-  // les côtés droit et gauche. Recaler la branche de retour (BL + gauche)
-  // sous TL ferme l'anneau sans redimensionner ni superposer les deux cases.
+  // Les longueurs cumulées des empreintes peuvent différer entre les côtés
+  // opposés. Recaler la branche de retour (BL + gauche) sous TL ferme l'anneau
+  // sans redimensionner les cases.
   const lastCell = raw[raw.length - 1]
+  const closureDx = topLeft.x - bottomLeft.x
   const closureDy = topLeft.y + topLeft.h - lastCell.y
   const bottomLeftIdx = 3 + 2 * tc + lc
 
   return raw.map((cell) => ({
     ...cell,
     ...(cell.idx >= bottomLeftIdx
-      ? { y: cell.y + closureDy, cy: cell.cy + closureDy }
+      ? {
+          x: cell.x + closureDx,
+          y: cell.y + closureDy,
+          cx: cell.cx + closureDx,
+          cy: cell.cy + closureDy,
+        }
       : {}),
     n: n0 + ((cell.idx - startOffset + total) % total),
   }))
