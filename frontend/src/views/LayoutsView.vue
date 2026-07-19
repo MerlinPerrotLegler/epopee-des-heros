@@ -35,20 +35,13 @@
       </button>
     </div>
 
-    <div class="items-list" v-if="filtered.length">
+    <div class="items-grid" v-if="filtered.length">
       <div
         v-for="l in filtered" :key="l.id"
-        class="item-row"
+        class="item-tile"
         @click="openEditor(l)"
       >
-        <div class="row-thumb" :style="thumbStyle(l)">
-          <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" alt="" />
-          <div v-else class="thumb-placeholder">
-            <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
-          </div>
-        </div>
-
-        <div class="row-main" @click.stop>
+        <div class="tile-title-row" @click.stop>
           <input
             v-if="renamingId === l.id"
             :ref="renameRef"
@@ -59,29 +52,41 @@
             @keydown.escape="cancelRename"
             @click.stop
           />
-          <div v-else class="row-name" @dblclick.stop="startRename(l)" :title="l.name">{{ l.name }}</div>
-          <div class="row-meta">
-            <span class="badge">{{ l.card_type }}</span>
-            <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
-            <span class="row-dims">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
-            <span v-if="l.is_back" class="tile-verso-badge">DOS</span>
+          <div v-else class="tile-name" @dblclick.stop="startRename(l)" :title="l.name">{{ l.name }}</div>
+          <span class="tile-dims">{{ l.width_mm }} × {{ l.height_mm }} mm</span>
+        </div>
+
+        <div class="tile-body">
+          <div class="tile-thumb" :style="thumbStyle(l)">
+            <img v-if="l.thumbnail" :src="l.thumbnail" class="thumb-img" alt="" />
+            <div v-else class="thumb-placeholder">
+              <span class="ph-dims">{{ l.width_mm }}×{{ l.height_mm }}</span>
+            </div>
+          </div>
+
+          <div class="tile-info">
+            <div class="tile-meta">
+              <span class="badge">{{ l.card_type }}</span>
+              <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
+              <span v-if="l.is_back" class="tile-verso-badge">DOS</span>
+            </div>
+
+            <div v-if="!l.is_back" class="tile-verso" @click.stop>
+              <span class="verso-label">Verso</span>
+              <select
+                class="verso-select"
+                :value="l.back_layout_id || ''"
+                @change="onVersoSelectChange(l, $event.target.value)"
+              >
+                <option value="">— Aucun —</option>
+                <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
+                <option value="__create__">+ Créer…</option>
+              </select>
+            </div>
           </div>
         </div>
 
-        <div v-if="!l.is_back" class="row-verso" @click.stop>
-          <span class="verso-label">Verso</span>
-          <select
-            class="verso-select"
-            :value="l.back_layout_id || ''"
-            @change="onVersoSelectChange(l, $event.target.value)"
-          >
-            <option value="">— Aucun —</option>
-            <option v-for="bl in versoLayouts" :key="bl.id" :value="bl.id">{{ bl.name }}</option>
-            <option value="__create__">+ Créer…</option>
-          </select>
-        </div>
-
-        <div class="row-actions" @click.stop>
+        <div class="tile-actions" @click.stop>
           <button type="button" class="act-btn" title="Configurer" @mousedown.prevent @click="openEdit(l)">⚙</button>
           <button type="button" class="act-btn" title="Renommer" @mousedown.prevent @click="startRename(l)">✎</button>
           <button type="button" class="act-btn" title="Dupliquer" @mousedown.prevent @click="duplicate(l)">⧉</button>
@@ -205,7 +210,7 @@ onMounted(async () => {
 })
 
 function thumbStyle(l) {
-  const MAX = 48
+  const MAX = 72
   const ratio = l.height_mm / l.width_mm
   return { width: `${MAX}px`, height: `${Math.round(MAX * ratio)}px` }
 }
@@ -337,27 +342,69 @@ async function confirmDelete(l) {
 }
 .face-tab.active .tab-count { background: rgba(108,122,255,0.15); color: var(--accent-primary); }
 
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 12px;
 }
 
-.item-row {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 8px 12px;
+.item-tile {
   background: var(--bg-secondary);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-lg);
+  padding: 12px;
   cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  position: relative;
   transition: border-color 120ms, background 120ms;
+}
+.item-tile:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
+
+.tile-title-row {
+  width: 100%;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
   min-width: 0;
 }
-.item-row:hover { border-color: var(--accent-primary); background: var(--bg-tertiary); }
+.tile-body { display: flex; gap: 12px; width: 100%; align-items: flex-start; }
 
-.row-thumb {
+.tile-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-weight: 600; font-size: 13px;
+  line-height: 1.4;
+  white-space: normal;
+  word-break: break-word;
+  cursor: text;
+}
+.tile-dims {
+  flex: 0 0 auto;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 1px 6px;
+  line-height: 1.5;
+}
+.tile-rename-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 13px; font-weight: 600; box-sizing: border-box;
+  background: var(--bg-deep); color: var(--text-primary);
+  border: 1px solid var(--accent-primary); border-radius: 3px;
+  padding: 2px 6px; outline: none;
+}
+
+.tile-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+
+.tile-thumb {
   flex-shrink: 0;
   background: #fff;
   border: 1px solid var(--border-subtle);
@@ -379,42 +426,15 @@ async function confirmDelete(l) {
     rgba(108,122,255,0.04) 8px
   );
 }
-.ph-dims { font-family: var(--font-mono); font-size: 9px; color: var(--text-secondary); font-weight: 600; }
+.ph-dims { font-family: var(--font-mono); font-size: 10px; color: var(--text-secondary); font-weight: 600; }
 
-.row-main {
-  flex: 1 1 auto;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 3px;
-}
-.row-name {
-  font-weight: 600;
-  font-size: 13px;
-  line-height: 1.3;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  cursor: text;
-}
-.row-meta {
+.tile-meta { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+.tile-verso {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
-}
-.row-dims {
-  font-family: var(--font-mono);
-  font-size: 11px;
-  color: var(--text-muted);
-}
-
-.row-verso {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  flex: 0 1 220px;
-  min-width: 140px;
+  width: 100%;
 }
 .verso-label { font-size: 10px; color: var(--text-muted); white-space: nowrap; }
 .verso-select {
@@ -429,14 +449,15 @@ async function confirmDelete(l) {
   color: var(--accent-primary); font-family: var(--font-mono);
 }
 
-.row-actions {
+.tile-actions {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
   display: flex;
   gap: 2px;
-  flex-shrink: 0;
-  margin-left: auto;
 }
 .act-btn {
-  width: 26px; height: 26px;
+  width: 22px; height: 22px;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg-deep); border: 1px solid var(--border-subtle);
   border-radius: 3px; cursor: pointer; font-size: 12px; color: var(--text-muted);
@@ -444,14 +465,6 @@ async function confirmDelete(l) {
 }
 .act-btn:hover { color: var(--text-primary); border-color: var(--accent-primary); background: var(--bg-tertiary); }
 .act-del:hover { color: #ef4444; border-color: #ef4444; }
-
-.tile-rename-input {
-  width: 100%;
-  font-size: 13px; font-weight: 600; box-sizing: border-box;
-  background: var(--bg-deep); color: var(--text-primary);
-  border: 1px solid var(--accent-primary); border-radius: 3px;
-  padding: 2px 6px; outline: none;
-}
 
 .dim-fixed {
   width: 40px; text-align: center; font-size: 12px;
