@@ -4,6 +4,7 @@ import { api, acquireLayoutLock } from '@/utils/api.js'
 import { BACKGROUND_ATOM_TYPES } from '@/atoms/index.js'
 import { migrateDefinitionSizing, REF_HEIGHT_MM } from '@/utils/migrateSizing.js'
 import { computeAlignmentGuides } from '@/utils/alignmentGuides.js'
+import { cloneLayerItem } from '@/utils/cloneLayerItem.js'
 
 const MAX_HISTORY = 0
 const AUTO_SAVE_DELAY_MS = 1500
@@ -799,24 +800,28 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty()
   }
 
-  function duplicateElement(elementId) {
+  function duplicateItem(id) {
     if (!assertEditable()) return
-    const parentArr = _findParentArray(definition.value.layers, elementId)
+    const parentArr = _findParentArray(definition.value.layers, id)
     if (!parentArr) return
-    const el = parentArr.find(i => i.id === elementId)
-    if (!el) return
+    const item = parentArr.find(i => i.id === id)
+    if (!item) return
     _snapshot()
-    const clone = JSON.parse(JSON.stringify(el))
-    clone.id = crypto.randomUUID()
-    clone.x_mm += 2
-    clone.y_mm += 2
-    clone.nameInLayout = clone.nameInLayout ? `${clone.nameInLayout}_copy` : ''
-    const idx = parentArr.indexOf(el)
+    const clone = cloneLayerItem(item)
+    const idx = parentArr.indexOf(item)
     parentArr.splice(idx + 1, 0, clone)
-    selectedElementId.value = clone.id
     selectedItemId.value = clone.id
+    if (clone.kind === 'group') {
+      selectedElementId.value = null
+    } else {
+      selectedElementId.value = clone.id
+    }
     markDirty()
     return clone
+  }
+
+  function duplicateElement(elementId) {
+    return duplicateItem(elementId)
   }
 
   // ── Data schema ───────────────────────────────────────────────────────────
@@ -881,7 +886,7 @@ export const useEditorStore = defineStore('editor', () => {
     // Move selected
     moveSelected,
     // Element ops
-    addElement, updateElement, removeElement, duplicateElement,
+    addElement, updateElement, removeElement, duplicateElement, duplicateItem,
     // Data schema
     addSchemaField, removeSchemaField,
     snap, _preloadComponents, invalidateComponentCache,
