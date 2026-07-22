@@ -1,17 +1,5 @@
 <template>
   <div v-if="open" class="rt-slash" :style="menuStyle" @mousedown="onMenuMouseDown">
-    <div class="rt-slash-search-wrap">
-      <input
-        ref="searchRef"
-        v-model="searchQuery"
-        class="rt-slash-search"
-        type="text"
-        :placeholder="searchPlaceholder"
-        autocomplete="off"
-        spellcheck="false"
-        @keydown="onSearchKeydown"
-      />
-    </div>
     <div v-if="phaseTitle" class="rt-slash-phase">{{ phaseTitle }}</div>
     <div ref="listRef" class="rt-slash-list">
       <div
@@ -52,18 +40,13 @@ pictosStore.load()
 
 const active = ref(0)
 const listRef = ref(null)
-const searchRef = ref(null)
-const searchQuery = ref('')
 
 const catalog = computed(() => getRichTextCatalog({ pictos: pictosStore.pictos }))
 
 const matchedCommand = computed(() => {
   const ctx = props.context
   if (!ctx?.name) return null
-  const exact = catalog.value.find((it) => it.command === ctx.name)
-  if (exact) return exact
-  // After picking a command, name is complete; during command phase name may be partial
-  return null
+  return catalog.value.find((it) => it.command === ctx.name) || null
 })
 
 const phase = computed(() => {
@@ -80,19 +63,20 @@ const argDef = computed(() => {
   return cmd.args[ctx.argIndex] || null
 })
 
+const filterQuery = computed(() => {
+  const ctx = props.context
+  if (!ctx) return ''
+  if (phase.value === 'arg') return ctx.partial || ''
+  return ctx.name || ''
+})
+
 const phaseTitle = computed(() => {
   if (phase.value === 'arg' && argDef.value) {
     return `Option : ${argDef.value.name}${argDef.value.optional ? ' (optionnel)' : ''}`
   }
-  return null
-})
-
-const searchPlaceholder = computed(() => {
-  if (phase.value === 'arg') {
-    if (argDef.value?.placeholder) return `Filtrer ou saisir… (${argDef.value.placeholder})`
-    return 'Filtrer les options…'
-  }
-  return 'Rechercher une commande…'
+  const q = filterQuery.value
+  if (q) return `Filtre : ${q}`
+  return 'Commandes'
 })
 
 const emptyHint = computed(() => {
@@ -133,7 +117,7 @@ function optionsForArg(def, ctx) {
 }
 
 const visibleItems = computed(() => {
-  const q = searchQuery.value.trim()
+  const q = filterQuery.value.trim()
   const ctx = props.context
   if (phase.value === 'arg' && argDef.value) {
     const opts = optionsForArg(argDef.value, ctx)
@@ -146,45 +130,20 @@ const visibleItems = computed(() => {
   return filterCatalog(catalog.value, q || ctx?.name || '')
 })
 
-watch(searchQuery, () => { active.value = 0 })
+watch(filterQuery, () => { active.value = 0 })
 watch(visibleItems, () => nextTick(scrollActiveIntoView))
 watch(active, () => nextTick(scrollActiveIntoView))
 
 watch(
   () => props.open,
   (v) => {
-    if (v) {
-      // Préremplir avec ce qui était déjà tapé après /
-      const ctx = props.context
-      searchQuery.value = ctx?.inArgs ? (ctx.partial || '') : (ctx?.name || '')
-      active.value = 0
-      nextTick(focusSearch)
-    } else {
-      searchQuery.value = ''
-    }
+    if (v) active.value = 0
   },
 )
 
-// Après passage commande → args (même open), reset filtre et refocus
-watch(phase, (p, prev) => {
-  if (!props.open) return
-  if (p !== prev) {
-    searchQuery.value = ''
-    active.value = 0
-    nextTick(focusSearch)
-  }
-})
-
-function focusSearch() {
-  const el = searchRef.value
-  if (!el) return
-  el.focus()
-  el.select()
-}
-
 function onMenuMouseDown(e) {
-  // Garder le focus dans le champ recherche : ne pas blur en cliquant la liste
-  if (e.target.tagName !== 'INPUT') e.preventDefault()
+  // Garder le focus dans le textarea : ne pas blur en cliquant la liste
+  e.preventDefault()
 }
 
 function scrollActiveIntoView() {
@@ -251,7 +210,7 @@ function acceptFreePartial() {
   const cmd = matchedCommand.value
   const def = argDef.value
   if (!ctx || !cmd || !def || phase.value !== 'arg') return false
-  const value = searchQuery.value.trim()
+  const value = (ctx.partial || '').trim()
   if (!value && !def.optional) return false
   const parts = value ? [...ctx.argsParts, value] : [...ctx.argsParts]
   const isLast = ctx.argIndex >= (cmd.args.length - 1) || (!value && def.optional)
@@ -269,7 +228,7 @@ function acceptFreePartial() {
   return true
 }
 
-function onSearchKeydown(e) {
+function onNavKeydown(e) {
   if (e.key === 'ArrowDown') {
     e.preventDefault()
     e.stopPropagation()
@@ -302,30 +261,17 @@ function onSearchKeydown(e) {
   }
 }
 
-/** Fallback si le focus est encore dans le textarea */
+/** Intercepte uniquement la navigation quand le menu est ouvert (focus textarea). */
 function onKey(e) {
   if (!props.open) return false
   if (['ArrowDown', 'ArrowUp', 'Enter', 'ArrowRight', 'Tab', 'Escape'].includes(e.key)) {
-    onSearchKeydown(e)
-    return true
-  }
-  // Redirect typing into search
-  if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-    e.preventDefault()
-    searchQuery.value += e.key
-    focusSearch()
-    return true
-  }
-  if (e.key === 'Backspace') {
-    e.preventDefault()
-    searchQuery.value = searchQuery.value.slice(0, -1)
-    focusSearch()
+    onNavKeydown(e)
     return true
   }
   return false
 }
 
-defineExpose({ onKey, focusSearch })
+defineExpose({ onKey })
 </script>
 
 <style scoped>
@@ -341,24 +287,6 @@ defineExpose({ onKey, focusSearch })
   padding: 0;
   display: flex;
   flex-direction: column;
-}
-.rt-slash-search-wrap {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.rt-slash-search {
-  width: 100%;
-  box-sizing: border-box;
-  padding: 5px 8px;
-  font-size: 12px;
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  background: var(--bg-primary);
-  color: var(--text-primary);
-  outline: none;
-}
-.rt-slash-search:focus {
-  border-color: var(--accent-primary);
 }
 .rt-slash-phase {
   font-size: 10px;

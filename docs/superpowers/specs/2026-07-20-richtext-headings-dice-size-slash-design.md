@@ -2,7 +2,7 @@
 
 | Field        | Value                                                                 |
 |--------------|-----------------------------------------------------------------------|
-| Status       | Draft                                                                 |
+| Status       | Done                                                                  |
 | Date         | 2026-07-20                                                            |
 | Scope        | `AtomRichText`, `richTextParser`, `RichTextSlashMenu`, `PropertiesPanel`, `GUIDE-richtext`, registry hints |
 | Out of scope | Nouveaux types de dés, params atome `headingMargins`, refonte WYSIWYG |

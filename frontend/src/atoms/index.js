@@ -495,6 +495,7 @@ export const ATOM_TYPES = {
       titleBgColor: null,   // fond derrière le titre (coupure du bord)
       tier:        'basic',     // mêmes tiers que séparateur
       seed:        42,
+      strokeWidth: 0.12,        // mm — épaisseur uniforme du trait
       color:       null,        // couleur du trait
       bgColor:     null,        // fond intérieur optionnel
       bgOpacity:   1,

@@ -155,8 +155,9 @@ export const PARAM_HELP = {
   guideVisible:  'Afficher le contour pointillé du plan dans l\'éditeur (masqué à l\'impression)',
 
   // ── AtomSeparator / AtomCadre ─────────────────────────────────────────────
-  tier:          'Niveau d\'ornementation : fin (à la main), basic, rare, epic, mythique, legendaire',
+  tier:          'Niveau d\'ornementation : fin (trait simple), basic (double trait + ornements), rare+ (croix)',
   seed:          'Graine de variation du tracé (même seed = même rendu)',
+  strokeWidth:   'Épaisseur uniforme du trait en millimètres',
   showTitle:     'Afficher le titre sur le bord haut du cadre',
   titleAlign:    'Alignement du titre du cadre : gauche, centre, droite',
   titleColor:    'Couleur du titre du cadre',

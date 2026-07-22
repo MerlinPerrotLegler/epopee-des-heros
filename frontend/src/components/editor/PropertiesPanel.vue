@@ -752,13 +752,9 @@ function syncSlashFromTextarea(ta) {
   const before = val.slice(0, pos)
   const ctx = parseSlashContext(before)
   if (ctx) {
-    const wasOpen = rtSlashOpen.value
     rtSlashContext.value = ctx
     rtSlashOpen.value = true
     rtSlashAnchor.value = { top: ta.offsetHeight + 4, left: 8 }
-    if (!wasOpen) {
-      nextTick(() => rtSlash.value?.focusSearch?.())
-    }
   } else {
     closeRtSlash({ restoreFocus: false })
   }
@@ -785,9 +781,7 @@ function onRtInput(e) {
     const elTa = rtTextarea.value || ta
     try { elTa.setSelectionRange(pos, pos) } catch { /* ignore */ }
     syncSlashFromTextarea(elTa)
-    if (!rtSlashOpen.value) {
-      elTa.focus()
-    }
+    elTa.focus()
   })
 }
 
@@ -816,7 +810,7 @@ function replaceRtSlash({ start, text, close }) {
   nextTick(() => {
     ta.setSelectionRange(caret, caret)
     syncSlashFromTextarea(ta)
-    nextTick(() => rtSlash.value?.focusSearch?.())
+    ta.focus()
   })
 }
 
@@ -1164,7 +1158,7 @@ const INTEGER_PARAMS = new Set([
 
 function paramStep(key) {
   if (INTEGER_PARAMS.has(key)) return 1
-  if (key === 'fontSize' || key === 'maxFontSize' || key === 'cornerSize') return 0.1
+  if (key === 'fontSize' || key === 'maxFontSize' || key === 'cornerSize' || key === 'strokeWidth') return 0.1
   if (key === 'fadeTop_mm' || key === 'fadeBottom_mm' || key === 'fadeLeft_mm' || key === 'fadeRight_mm') return 0.1
   return 0.5
 }

@@ -137,12 +137,14 @@ $$$pow(x,2)$$$         bloc centré
 ### Dés
 
 
-| Syntaxe   | Effet                          |
-| --------- | ------------------------------ |
-| `/d8{3}`  | Dé 8 (atome Dice8), text `3`   |
-| `/d12{7}` | Dé 12 (atome Dice12), text `7` |
-| `/d8`     | Text `D8`                      |
-| `/d12`    | Text `D12`                     |
+| Syntaxe        | Effet                                      |
+| -------------- | ------------------------------------------ |
+| `/d8{3}`       | Dé 8 (atome Dice8), text `3`               |
+| `/d8{3, 1.5}`  | Idem, icône ×1.5 (multiplicateur `size`)   |
+| `/d12{7}`      | Dé 12 (atome Dice12), text `7`             |
+| `/d12{7, 2}`   | Idem, icône ×2                             |
+| `/d8`          | Text `D8`                                  |
+| `/d12`         | Text `D12`                                 |
 
 
 
@@ -248,6 +250,7 @@ Le type de ressource atome **Pièces** s’appelle désormais `pieces` (ancienne
 /separator{basic,2}
 
 Jet : /d8{4} + /FOR{+1}
+Jet gros : /d8{4, 1.8}
 
 Récompense => $<reward.text>
 

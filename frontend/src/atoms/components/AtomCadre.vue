@@ -9,7 +9,7 @@
       width="100%"
       height="100%"
       :viewBox="`0 0 ${svgW} ${svgH}`"
-      preserveAspectRatio="none"
+      preserveAspectRatio="xMidYMid meet"
       overflow="visible"
     >
       <rect
@@ -113,6 +113,7 @@ const paths = computed(() =>
   buildFramePaths(svgW.value, svgH.value, tier.value, seed.value, {
     titleGapWidth: titleGapWidth.value,
     titleCenterX: svgW.value / 2,
+    strokeWidthMm: props.params.strokeWidth ?? 0.12,
   })
 )
 

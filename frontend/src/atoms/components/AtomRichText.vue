@@ -6,7 +6,7 @@
           :is="'h' + token.level"
           v-if="token.type === 'heading'"
           class="rt-heading"
-          :style="{ fontSize: headingSize(token.level), ...blockAlign(token) }"
+          :style="{ fontSize: headingSize(token.level), ...headingMargin(token.level), ...blockAlign(token) }"
         >
           <RtInline :nodes="token.children" v-bind="inlineBind" />
         </component>
@@ -42,7 +42,7 @@
             width="100%"
             height="100%"
             :viewBox="`0 0 ${sepSvgW} ${(token.height_mm || 12) * SEP_SCALE}`"
-            preserveAspectRatio="none"
+            preserveAspectRatio="xMidYMid meet"
             overflow="visible"
           >
             <g
@@ -242,6 +242,11 @@ function headingSize(level) {
   return mmCss(fontSize_mm.value * scale)
 }
 
+function headingMargin(level) {
+  const bottom = [0, 0.55, 0.45, 0.35, 0.28, 0.22, 0.18][level] || 0.18
+  return { marginTop: '0.15em', marginBottom: `${bottom}em` }
+}
+
 function getFixedAtomParam(atomType, paramKey, fallback) {
   const allRules = configStore.config?.[ATOM_PARAM_RULES_KEY] || {}
   const rule = (allRules[atomType] || {})[paramKey]
@@ -296,16 +301,18 @@ function dataValue(name) {
   return data[name] != null ? String(data[name]) : ''
 }
 
-const dieSpanStyle = computed(() => ({
-  display: 'inline-block',
-  width: mmCss(dieSize.value),
-  height: mmCss(dieSize.value),
-  verticalAlign: 'middle',
-}))
+function dieInlineStyle(size) {
+  return {
+    display: 'inline-block',
+    width: mmCss(size),
+    height: mmCss(size),
+    verticalAlign: 'middle',
+  }
+}
 
 const inlineBind = computed(() => ({
   dieSize: dieSize.value,
-  dieSpanStyle: dieSpanStyle.value,
+  dieInlineStyle,
   color: color.value,
   fontFamily: fontFamily.value,
   fontSize_mm: fontSize_mm.value,
@@ -322,7 +329,7 @@ const RtInline = defineComponent({
   props: {
     nodes: { type: Array, default: () => [] },
     dieSize: Number,
-    dieSpanStyle: Object,
+    dieInlineStyle: Function,
     color: String,
     fontFamily: String,
     fontSize_mm: Number,
@@ -343,13 +350,15 @@ const RtInline = defineComponent({
           return h('span', { key: i, class: 'rt-arrow' }, '→')
         }
         if (token.type === 'die' && token.sides === 8) {
-          return h('span', { key: i, class: 'rt-die', style: props.dieSpanStyle }, [
-            h(AtomDice8, { params: props.diePenParams(token.value, 8), width_mm: props.dieSize, height_mm: props.dieSize }),
+          const size = props.dieSize * (token.scale || 1)
+          return h('span', { key: i, class: 'rt-die', style: dieInlineStyle(size) }, [
+            h(AtomDice8, { params: props.diePenParams(token.value, 8), width_mm: size, height_mm: size }),
           ])
         }
         if (token.type === 'die' && token.sides === 12) {
-          return h('span', { key: i, class: 'rt-die', style: props.dieSpanStyle }, [
-            h(AtomDice12, { params: props.diePenParams(token.value, 12), width_mm: props.dieSize, height_mm: props.dieSize }),
+          const size = props.dieSize * (token.scale || 1)
+          return h('span', { key: i, class: 'rt-die', style: dieInlineStyle(size) }, [
+            h(AtomDice12, { params: props.diePenParams(token.value, 12), width_mm: size, height_mm: size }),
           ])
         }
         if (token.type === 'stat') {
@@ -435,7 +444,7 @@ const RtInline = defineComponent({
 
 <style scoped>
 .rich-text-atom { display: block; width: 100%; height: 100%; }
-.rt-heading { margin: 0.15em 0; font-weight: 700; line-height: 1.2; }
+.rt-heading { margin: 0; font-weight: 700; line-height: 1.2; }
 .rt-separator {
   width: 100%;
   margin: 0.25em 0;

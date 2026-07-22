@@ -14,8 +14,17 @@ describe('tokenizeInline shortcodes', () => {
     const dice = t.filter((x) => x.type === 'die')
     assert.equal(dice[0].sides, 8)
     assert.equal(dice[0].value, '3')
+    assert.equal(dice[0].scale, 1)
     assert.equal(dice[1].sides, 12)
     assert.equal(dice[1].value, '?')
+    assert.equal(dice[1].scale, 1)
+  })
+
+  it('parses /d8{3, 1.5} size multiplier', () => {
+    const t = tokenizeInline('/d8{3, 1.5} /d12{7, 2}')
+    const dice = t.filter((x) => x.type === 'die')
+    assert.equal(dice[0].scale, 1.5)
+    assert.equal(dice[1].scale, 2)
   })
 
   it('parses /svg with color and () form', () => {

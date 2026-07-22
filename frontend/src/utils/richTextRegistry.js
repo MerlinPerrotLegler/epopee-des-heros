@@ -26,14 +26,20 @@ export function getRichTextCatalog({ pictos = [] } = {}) {
 
   items.push(
     {
-      id: 'sc-d8', kind: 'builtin', group: 'Shortcodes', label: 'Dé 8', hint: '/d8{valeur}',
+      id: 'sc-d8', kind: 'builtin', group: 'Shortcodes', label: 'Dé 8', hint: '/d8{valeur[, size]}',
       insert: '/d8{', command: 'd8',
-      args: [{ name: 'valeur', options: ['1', '2', '3', '4', '5', '6', '7', '8', '?'], free: true }],
+      args: [
+        { name: 'valeur', options: ['1', '2', '3', '4', '5', '6', '7', '8', '?'], free: true },
+        { name: 'size', free: true, placeholder: '1.5', optional: true },
+      ],
     },
     {
-      id: 'sc-d12', kind: 'builtin', group: 'Shortcodes', label: 'Dé 12', hint: '/d12{valeur}',
+      id: 'sc-d12', kind: 'builtin', group: 'Shortcodes', label: 'Dé 12', hint: '/d12{valeur[, size]}',
       insert: '/d12{', command: 'd12',
-      args: [{ name: 'valeur', options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '?'], free: true }],
+      args: [
+        { name: 'valeur', options: ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '?'], free: true },
+        { name: 'size', free: true, placeholder: '1.5', optional: true },
+      ],
     },
     {
       id: 'sc-svg', kind: 'builtin', group: 'Shortcodes', label: 'SVG', hint: '/svg{file,#color?}',

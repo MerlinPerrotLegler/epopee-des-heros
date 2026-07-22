@@ -168,7 +168,9 @@ function shortcodeToToken(name, args, rawInner) {
     if (rawInner == null) v = `D${sides}`
     else if (rawInner.trim() === '') v = '?'
     else v = args[0] || '?'
-    return { type: 'die', sides, value: v }
+    const scaleRaw = Number(args[1])
+    const scale = Number.isFinite(scaleRaw) && scaleRaw > 0 ? scaleRaw : 1
+    return { type: 'die', sides, value: v, scale }
   }
 
   if (name === 'svg') {
