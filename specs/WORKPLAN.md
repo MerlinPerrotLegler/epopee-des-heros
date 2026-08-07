@@ -173,6 +173,7 @@ GLOBAL                     █████████████░░░░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-07 (2) | **Page /status** : HTML public clair + `/api/health` JSON ; boot dégradé si DB KO (plus de process.exit) pour diagnostiquer MySQL Hostinger sans 503 opaque. |
 | 2026-08-07 | **Fix Hostinger better-sqlite3** : `better-sqlite3` passé en `optionalDependencies` + lazy-load (mode SQLite seulement) ; retrait `puppeteer` inutilisé ; `.env.example` précise MySQL obligatoire sur Hostinger (glibc trop ancienne pour le natif). |
 | 2026-07-20 (2) | **Atome Cadre** : refonte `frameStrokes.js` — double trait d'épaisseur uniforme (rects SVG, param `strokeWidth` mm), ornements aux coins et milieux de côté (style cadre décoratif), tiers `fin`=trait simple / `basic+`=double+ornements ; `preserveAspectRatio meet` pour redimensionnement proportionnel. Tests `frameStrokes.test.js` 7/7 OK. |
 | 2026-07-20 (1) | **RichText** : `margin-bottom` titres par niveau (em décroissants h1→h6) ; argument optionnel `size` sur `/d8`/`/d12` (multiplicateur icône) ; fix menu `/` — focus reste dans le textarea, filtre depuis le contenu (retrait champ recherche dédié). Spec `2026-07-20-richtext-headings-dice-size-slash-design.md`. Tests parser 15/15 OK. |

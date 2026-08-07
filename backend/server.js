@@ -34,6 +34,7 @@ import pictosRouter from './routes/pictos.js';
 import trackTypesRouter from './routes/trackTypes.js';
 import trackTagsRouter from './routes/trackTags.js';
 import trackTexturesRouter from './routes/trackTextures.js';
+import statusRouter, { bootState } from './routes/status.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -82,6 +83,9 @@ app.use(session({
   },
 }));
 
+// Status public (HTML + JSON) — accessible même si la DB est KO
+app.use(statusRouter);
+
 // Serve uploaded media files (pas d'auth — les <img> du navigateur n'envoient pas de session)
 // Disque cache d'abord, fallback BLOB MySQL/SQLite
 app.use('/uploads', uploadsRouter);
@@ -127,7 +131,7 @@ if (existsSync(DIST_DIR)) {
     },
   }));
   app.get('*', (req, res, next) => {
-    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/')) {
+    if (req.path.startsWith('/api/') || req.path.startsWith('/uploads/') || req.path === '/status') {
       return next();
     }
     // Chunk JS/CSS manquant : ne pas envoyer index.html (sinon erreur MIME / import dynamique)
@@ -158,15 +162,32 @@ process.on('SIGINT', () => { closeDb(); process.exit(0); });
 process.on('SIGTERM', () => { closeDb(); process.exit(0); });
 
 async function main() {
-  await initDatabase();
-  await seedBuiltins();
+  try {
+    await initDatabase();
+    bootState.dbReady = true;
+    bootState.dbError = null;
+    try {
+      await seedBuiltins();
+      bootState.seeded = true;
+    } catch (seedErr) {
+      console.error('[server] seedBuiltins failed:', seedErr.message);
+      bootState.seeded = false;
+    }
+  } catch (dbErr) {
+    bootState.dbReady = false;
+    bootState.dbError = dbErr.message;
+    console.error('[server] Database init failed — serveur démarré en mode dégradé. Voir /status');
+    console.error('[server]', dbErr);
+  }
 
   app.listen(PORT, () => {
     console.log(`Card Designer API running on http://localhost:${PORT}`);
+    console.log(`[server] Status page: http://localhost:${PORT}/status`);
     const admin = process.env.ADMIN_USER || process.env.AUTH_USER || 'admin';
     console.log(`Auth: session login (admin: ${admin})`);
     console.log(`[server] DATA_DIR=${DATA_DIR}`);
-    console.log(`[server] DB=${useMysql() ? 'MySQL' : 'SQLite'}`);
+    console.log(`[server] DB=${useMysql() ? 'MySQL' : 'SQLite'} ready=${bootState.dbReady}`);
+    if (bootState.dbError) console.log(`[server] DB error: ${bootState.dbError}`);
     console.log('[server] Media storage=BLOB en base (media.content)');
     if (DEBUG_HTTP) console.log('[debug] HTTP logs enabled (DEBUG_HTTP=1)');
     if (DEBUG_ERRORS) console.log('[debug] Detailed error logs enabled (DEBUG_ERRORS=1)');
