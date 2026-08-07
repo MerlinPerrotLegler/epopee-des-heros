@@ -1,4 +1,4 @@
-import Database from 'better-sqlite3'
+import { createRequire } from 'module'
 import { readFileSync, existsSync, mkdirSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
@@ -10,6 +10,7 @@ import { createMysqlPool } from './mysqlPool.js'
 import { createMysqlAdapter, createSqliteAdapter } from './adapter.js'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
+const require = createRequire(import.meta.url)
 
 if (!existsSync(DATA_DIR)) mkdirSync(DATA_DIR, { recursive: true })
 const DB_PATH = join(DATA_DIR, 'card-designer.db')
@@ -21,6 +22,23 @@ let mysqlPool = null
 /** Interface async unifiée pour les routes */
 let adapter = null
 const DB_DEBUG = process.env.DB_DEBUG === '1' || process.env.BACKEND_DEBUG === '1'
+
+/**
+ * Charge better-sqlite3 uniquement en mode SQLite local.
+ * Sur Hostinger (glibc ancienne), le module optionnel peut échouer à l'install —
+ * le mode MySQL (DATABASE_URL) ne l'utilise jamais.
+ */
+function loadBetterSqlite3() {
+  try {
+    return require('better-sqlite3')
+  } catch (e) {
+    throw new Error(
+      'better-sqlite3 indisponible (module natif optionnel). ' +
+        'En local : npm install. Sur Hostinger : définir DATABASE_URL (MySQL). ' +
+        `Détail: ${e.message}`,
+    )
+  }
+}
 
 export function getSqliteSync() {
   if (useMysql()) throw new Error('getSqliteSync: mode MySQL actif')
@@ -152,6 +170,7 @@ async function runMysqlMigrations(pool) {
 }
 
 function initSqliteSync() {
+  const Database = loadBetterSqlite3()
   sqliteDb = new Database(DB_PATH)
   sqliteDb.pragma('journal_mode = WAL')
   sqliteDb.pragma('foreign_keys = ON')

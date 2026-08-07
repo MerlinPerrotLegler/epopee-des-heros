@@ -5,7 +5,7 @@ import { parseJsonColumn } from '../db/sqlDialect.js';
 const router = Router();
 
 // Get export data (card instances with their layout definitions)
-// The actual PDF rendering happens client-side or via puppeteer
+// The actual PDF rendering happens client-side
 router.post('/prepare', async (req, res) => {
   const db = getDb();
   const { card_ids, layout_id, card_type, page_width_mm, page_height_mm, bleed_mm, cut_marks } = req.body;
