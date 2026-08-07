@@ -7,3 +7,5 @@ backend/data/
 *.db-shm
 game-rules/*
 .worktrees/
+.DS_Store
+**/.DS_Store
