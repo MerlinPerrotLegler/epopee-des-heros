@@ -34,13 +34,13 @@
               placeholder="Au moins 6 caractères"
             />
           </label>
-          <label class="field">
-            <span class="label">Rôle</span>
-            <select v-model="create.role">
+          <div class="field">
+            <label class="label" for="create-role">Rôle</label>
+            <select id="create-role" v-model="create.role">
               <option value="user">Utilisateur</option>
               <option value="admin">Administrateur</option>
             </select>
-          </label>
+          </div>
           <button type="submit" class="btn-primary" :disabled="creating">
             {{ creating ? 'Création…' : 'Créer le compte' }}
           </button>
@@ -111,13 +111,13 @@
             <span class="label">Identifiant</span>
             <input v-model="editForm.username" type="text" required autocomplete="off" />
           </label>
-          <label class="field">
-            <span class="label">Rôle</span>
-            <select v-model="editForm.role">
+          <div class="field">
+            <label class="label" for="edit-role">Rôle</label>
+            <select id="edit-role" v-model="editForm.role">
               <option value="user">Utilisateur</option>
               <option value="admin">Administrateur</option>
             </select>
-          </label>
+          </div>
           <label class="field">
             <span class="label">Nouveau mot de passe</span>
             <input

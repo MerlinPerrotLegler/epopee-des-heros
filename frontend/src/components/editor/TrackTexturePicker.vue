@@ -6,12 +6,12 @@
         <button type="button" class="picker-close" aria-label="Fermer" @click="$emit('close')">✕</button>
       </div>
 
-      <label v-if="showCoin" class="coin-field">
-        Rotation
-        <select :value="coin" @change="$emit('update:coin', Number($event.target.value))">
+      <div v-if="showCoin" class="coin-field">
+        <span>Rotation</span>
+        <select aria-label="Rotation" :value="coin" @change="$emit('update:coin', Number($event.target.value))">
           <option v-for="angle in COINS" :key="angle" :value="angle">{{ angle }}°</option>
         </select>
-      </label>
+      </div>
 
       <div v-if="loading" class="picker-empty">Chargement…</div>
       <div v-else-if="!textures.length" class="picker-empty">Aucune texture disponible.</div>

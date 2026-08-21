@@ -181,6 +181,7 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (9) | **Fix select qui se ferme une fois sur deux** : `<select>` sorti des `<label>` (clic synthétique Chrome/Safari) ; focus `preventScroll` pour les panneaux `overflow:auto` ; MediaPicker ignore le menu natif hors DOM. Tests `nativeSelect.test.js` 7/7. |
 | 2026-08-21 (8) | **Texte par case des pistes** : `cellOverrides.text` remplace le numéro auto (`trak`, `trakCorner`, `trakPath`, `cardTrack`). Champ Texte dans « Édition par case » ; sélection de case étendue à `trak` / `trakCorner`. Mélanger/Vider conserve le texte. Tests layout + `resolveTrackCellText` verts. |
 | 2026-08-21 (7) | **Fix snap grille** : décocher « Grille / snap » désactive désormais `store.snap()` (drag, resize, drop) ; flèches en 0,1 mm (1 mm avec Shift). Cause : `showGrid` ne masquait que l’overlay. Tests store 9/9 OK. |
 | 2026-08-21 (6) | **TSD-028 Multi-sélection calques** : Cmd/Ctrl+clic (panneau + canvas), drag/flèches du set, grouper via ⊞ ou ⌘G, Delete/⌘D sur le set. Layout et composant. Tests store 7/7 OK. |

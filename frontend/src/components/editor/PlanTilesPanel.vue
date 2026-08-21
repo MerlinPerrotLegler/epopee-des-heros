@@ -9,15 +9,15 @@
     </header>
 
     <div class="panel-controls">
-      <label class="field">
-        <span>Type</span>
-        <select v-model="typeFilter">
+      <div class="field">
+        <label for="plan-type-filter">Type</label>
+        <select id="plan-type-filter" v-model="typeFilter">
           <option value="">Tous les types</option>
           <option v-for="type in textureTypes" :key="type" :value="type">
             {{ type }}
           </option>
         </select>
-      </label>
+      </div>
 
       <label class="field">
         <span>Rechercher</span>

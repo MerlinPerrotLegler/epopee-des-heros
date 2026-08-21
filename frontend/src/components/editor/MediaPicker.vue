@@ -110,6 +110,7 @@
 <script setup>
 import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { api } from '@/utils/api.js'
+import { shouldIgnorePopoverOutsideMouseDown } from '@/utils/nativeSelect.js'
 
 const props = defineProps({
   modelValue: { type: String, default: null },
@@ -298,9 +299,13 @@ function select(m) {
 
 function onOutsideClick(e) {
   if (!open.value) return
-  const inWrap = wrapRef.value?.contains(e.target)
-  const inPop = popoverRef.value?.contains(e.target)
-  if (!inWrap && !inPop) open.value = false
+  if (shouldIgnorePopoverOutsideMouseDown({
+    target: e.target,
+    activeElement: document.activeElement,
+    popoverEl: popoverRef.value,
+    wrapEl: wrapRef.value,
+  })) return
+  open.value = false
 }
 
 function onViewportChange() {

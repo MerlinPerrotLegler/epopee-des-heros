@@ -80,6 +80,7 @@ import { useEditorStore } from '@/stores/editor.js'
 import { useConfigStore } from '@/stores/config.js'
 import { useFontsStore } from '@/stores/fonts.js'
 import { useAuthStore } from '@/stores/auth.js'
+import { focusSelectWithoutScroll } from '@/utils/nativeSelect.js'
 
 const route = useRoute()
 const router = useRouter()
@@ -120,10 +121,18 @@ watch(
   { immediate: true },
 )
 
+function onMouseDown(e) {
+  focusSelectWithoutScroll(e.target)
+}
+
 onMounted(() => {
   document.addEventListener('keydown', onKeyDown)
+  document.addEventListener('mousedown', onMouseDown, true)
 })
-onUnmounted(() => document.removeEventListener('keydown', onKeyDown))
+onUnmounted(() => {
+  document.removeEventListener('keydown', onKeyDown)
+  document.removeEventListener('mousedown', onMouseDown, true)
+})
 </script>
 
 <style scoped>

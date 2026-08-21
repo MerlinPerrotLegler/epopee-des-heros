@@ -14,20 +14,20 @@
         <span>Label</span>
         <input v-model="form.label" placeholder="Libellé optionnel" />
       </label>
-      <label>
-        <span>Type</span>
-        <select v-model="form.type">
+      <div class="tm-field">
+        <label for="track-meta-type">Type</label>
+        <select id="track-meta-type" v-model="form.type">
           <option v-for="type in types" :key="type.id" :value="type.name">{{ type.name }}</option>
         </select>
-      </label>
-      <label>
-        <span>Alignement</span>
-        <select v-model="form.alignment">
+      </div>
+      <div class="tm-field">
+        <label for="track-meta-align">Alignement</label>
+        <select id="track-meta-align" v-model="form.alignment">
           <option value="both">Les deux</option>
           <option value="horizontal">Horizontal</option>
           <option value="vertical">Vertical</option>
         </select>
-      </label>
+      </div>
     </div>
 
     <p class="tm-hint">{{ orientationHint }}</p>
@@ -351,7 +351,7 @@ onMounted(async () => {
 .tm-heading strong { color: var(--text-primary); }
 .tm-success { color: #22c55e; font-size: 11px; }
 .tm-grid, .tm-margins { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.tm-grid label, .tm-margins label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--text-muted); }
+.tm-grid label, .tm-grid .tm-field, .tm-margins label { display: flex; flex-direction: column; gap: 4px; font-size: 10px; color: var(--text-muted); }
 .tm-grid input, .tm-grid select, .tm-margins input, .tm-catalog-row input {
   box-sizing: border-box; min-width: 0; padding: 5px 7px; font-size: 11px;
   color: var(--text-primary); background: var(--bg-secondary);
