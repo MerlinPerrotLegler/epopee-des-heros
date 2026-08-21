@@ -1190,6 +1190,7 @@ const ENUM_MAPS = {
   tier:            ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
   view:            ['icon', 'horizontal', 'vertical', 'horizontal-inverse', 'vertical-inverse', 'text'],
   cornerShape:     ['none', 'star4', 'star5', 'circle', 'square', 'triangle'],
+  fontStyle:       ['normal', 'italic'],
 }
 
 function getEnumOptions(key) {

@@ -37,6 +37,7 @@ function fitTextSize() {
     `max-width:${containerW}px`,
     `font-family:${props.params.fontFamily || 'Outfit'}`,
     `font-weight:${props.params.fontWeight || 400}`,
+    `font-style:${props.params.fontStyle || 'normal'}`,
     `line-height:${props.params.lineHeight || 1.3}`,
     'white-space:pre-wrap', 'word-break:break-word',
     'display:inline-block',
@@ -62,7 +63,7 @@ function fitTextSize() {
 onMounted(fitTextSize)
 watch(
   () => [props.params.text, props.params.autoSize, props.params.maxFontSize,
-         props.params.fontFamily, props.params.fontWeight, props.params.lineHeight,
+         props.params.fontFamily, props.params.fontWeight, props.params.fontStyle, props.params.lineHeight,
          props.width_mm, props.height_mm],
   () => nextTick(fitTextSize),
 )
@@ -84,6 +85,7 @@ const textStyle = computed(() => {
     fontFamily:   props.params.fontFamily || 'Outfit',
     fontSize,
     fontWeight:   props.params.fontWeight || 400,
+    fontStyle:    props.params.fontStyle || 'normal',
     color:        props.params.color || '#333',
     textAlign:    props.params.textAlign || 'center',
     lineHeight:   props.params.lineHeight || 1.3,

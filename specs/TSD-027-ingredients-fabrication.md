@@ -2,7 +2,7 @@
 
 | Field       | Value                                      |
 |-------------|--------------------------------------------|
-| Status      | Review                                     |
+| Status      | Done                                       |
 | Author      | @merlinperrot                              |
 | Created     | 2026-08-21                                 |
 | Last update | 2026-08-21                                 |
@@ -28,7 +28,7 @@ Les cartes d’équipement affichent un bloc **Ingrédients de fabrication** : u
 - Seed idempotent du composant **Ingrédients de fabrication** (56 × 28 mm)
 
 ### Out of scope
-- Réintroduire l’entité Molécule (table UI / routes)
+- Réintroduire l’entité Molécule comme unique mode de composition (le composant seed TSD-027 reste ; la molécule `mol-ingredients-fabrication` est aussi seedée, même définition)
 - Composants imbriqués dans un composant
 - Reflow (les cases restantes ne se recollent pas à gauche)
 - Répétition dynamique N illimité
@@ -229,18 +229,18 @@ Comportement seed :
 
 ## 6. Implementation steps
 
-- [ ] Helper `chamferRectPoints(w, h, cut)` + tests (clamp, cut=0 → rectangle)
-- [ ] Helper `diamondPoints(w, h)` + tests
-- [ ] Helper `ingredientSlots.js` + tests (vide, 2/6, trou 1+3, prefix)
-- [ ] `flattenComponentElements(def, { skipGroupNames })` + tests
-- [ ] `ATOM_TYPES.cadreChanfrein` / `losange` ; `AtomCadreChanfrein.vue` / `AtomLosange.vue` ; dispatcher `AtomRenderer.vue`
-- [ ] `paramHelp.js` + ENUM si besoin (aucun enum nouveau)
-- [ ] `ComponentRenderer` + `CardPreview` InlineComponentRenderer : `data`, `nameInLayout` (prefix), `hideEmptySlots`
-- [ ] `resolveElementParams(el, data, prefix + '.' + el.nameInLayout)` pour chaque atome interne
-- [ ] `EditorCanvas` : passe `previewData` + `el.nameInLayout` au renderer ; **`hideEmptySlots=false`**
-- [ ] CardPreview / print : **`hideEmptySlots=true`**
-- [ ] Seed JSON + insert idempotent au boot
-- [ ] Vérif `extractBindingPaths` : chemins `craft.ingredient1.ref` etc. (déjà récursif sur composants)
+- [x] Helper `chamferRectPoints(w, h, cut)` + tests (clamp, cut=0 → rectangle)
+- [x] Helper `diamondPoints(w, h)` + tests
+- [x] Helper `ingredientSlots.js` + tests (vide, 2/6, trou 1+3, prefix)
+- [x] `flattenComponentElements(def, { skipGroupNames })` + tests
+- [x] `ATOM_TYPES.cadreChanfrein` / `losange` ; `AtomCadreChanfrein.vue` / `AtomLosange.vue` ; dispatcher `AtomRenderer.vue`
+- [x] `paramHelp.js` + ENUM si besoin (aucun enum nouveau)
+- [x] `ComponentRenderer` + `CardPreview` InlineComponentRenderer : `data`, `nameInLayout` (prefix), `hideEmptySlots`
+- [x] `resolveElementParams(el, data, prefix + '.' + el.nameInLayout)` pour chaque atome interne
+- [x] `EditorCanvas` : passe `previewData` + `el.nameInLayout` au renderer ; **`hideEmptySlots=false`**
+- [x] CardPreview / print : **`hideEmptySlots=true`**
+- [x] Seed JSON + insert idempotent au boot
+- [x] Vérif `extractBindingPaths` : chemins `craft.ingredient1.ref` etc. (déjà récursif sur composants)
 
 ---
 
@@ -261,14 +261,14 @@ Comportement seed :
 
 ## 8. Acceptance criteria
 
-- [ ] Les atomes `cadreChanfrein` et `losange` apparaissent dans la palette, le canvas, PropertiesPanel, Config atomes
-- [ ] Longueurs en mm via `mmCss` / viewBox mm ; pas de `px` dérivés de zoom
-- [ ] Composant **Ingrédients de fabrication** présent après boot (id stable) si absent
-- [ ] Posé sur un layout avec `nameInLayout=craft`, les chemins `craft.ingredient1.ref` et `craft.ingredient1q.text` (×6) + en-tête sont extraits
-- [ ] Aperçu instance : 2 refs remplies → 2 cases + 1 losange ; les 4 autres cases et losanges associés absents
-- [ ] Éditeur composant et éditeur layout : 6 cases visibles
-- [ ] Tests unitaires géométrie + masquage + flatten skip groupes : verts
-- [ ] `npm test` (périmètre touché) vert
+- [x] Les atomes `cadreChanfrein` et `losange` apparaissent dans la palette, le canvas, PropertiesPanel, Config atomes
+- [x] Longueurs en mm via `mmCss` / viewBox mm ; pas de `px` dérivés de zoom
+- [x] Composant **Ingrédients de fabrication** présent après boot (id stable) si absent
+- [x] Posé sur un layout avec `nameInLayout=craft`, les chemins `craft.ingredient1.ref` et `craft.ingredient1q.text` (×6) + en-tête sont extraits
+- [x] Aperçu instance : 2 refs remplies → 2 cases + 1 losange ; les 4 autres cases et losanges associés absents
+- [x] Éditeur composant et éditeur layout : 6 cases visibles
+- [x] Tests unitaires géométrie + masquage + flatten skip groupes : verts
+- [x] `npm test` (périmètre touché) vert
 
 ---
 
@@ -276,7 +276,7 @@ Comportement seed :
 
 | # | Description | Status | Found on |
 |---|-------------|--------|----------|
-| 1 | `ComponentRenderer` / `InlineComponentRenderer` passent `el.params` bruts — le binding interne des composants ne s’applique pas (préexistant, corrigé par ce TSD) | open | 2026-08-21 |
+| 1 | `ComponentRenderer` / `InlineComponentRenderer` passent `el.params` bruts — le binding interne des composants ne s’applique pas (préexistant, corrigé par ce TSD) | fixed | 2026-08-21 |
 
 ---
 

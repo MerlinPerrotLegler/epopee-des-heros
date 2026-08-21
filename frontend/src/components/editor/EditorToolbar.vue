@@ -7,7 +7,7 @@
     </div>
     <div class="toolbar">
     <div class="toolbar-left">
-      <router-link :to="store.mode === 'component' ? '/components' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
+      <router-link :to="store.mode === 'component' ? '/components' : store.mode === 'molecule' ? '/molecules' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
       <span class="toolbar-divider"></span>
       <button
         v-if="store.mode === 'layout' && store.layout"
@@ -19,6 +19,7 @@
       >{{ store.layout?.name || '…' }}</button>
       <span v-else class="toolbar-title">{{ store.layout?.name || '…' }}</span>
       <span class="badge" v-if="store.mode === 'component'">Composant</span>
+      <span class="badge" v-else-if="store.mode === 'molecule'">Molécule</span>
       <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }} × {{ store.layout.height_mm }} mm</span>
       <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>

@@ -189,6 +189,8 @@ const ENUM_MAPS = {
   stat: ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEF', 'VIE'],
   svgPosition: ['front', 'behind'],
   tier: ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
+  view: ['icon', 'horizontal', 'vertical', 'horizontal-inverse', 'vertical-inverse', 'text'],
+  fontStyle: ['normal', 'italic'],
 }
 
 function normalizeSearch(s) {

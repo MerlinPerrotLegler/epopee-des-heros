@@ -95,7 +95,12 @@ const store = useEditorStore()
 const configStore = useConfigStore()
 
 const bindingPaths = computed(() =>
-  getBindablePaths(store.definition, configStore.config?.[ATOM_PARAM_RULES_KEY] || null)
+  getBindablePaths(
+    store.definition,
+    configStore.config?.[ATOM_PARAM_RULES_KEY] || null,
+    store.componentsCache,
+    store.moleculesCache,
+  )
 )
 
 const csvPreview = ref(null)

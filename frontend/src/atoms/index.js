@@ -108,6 +108,7 @@ export const ATOM_TYPES = {
       overflow: 'hidden', // hidden | visible | ellipsis
       autoSize: true,     // agrandit le texte pour remplir la zone
       maxFontSize: 12,    // mm (autoSize)
+      fontStyle: 'normal', // normal | italic
     },
     defaultSize: { width_mm: 40, height_mm: 10 }
   },
@@ -355,6 +356,31 @@ export const ATOM_TYPES = {
       ai_prompt_template: '',         // template avec variables {{binding_path}}
     },
     defaultSize: { width_mm: 30, height_mm: 30 }
+  },
+
+  cadreChanfrein: {
+    label: 'Cadre chanfrein',
+    icon: '▣',
+    defaultParams: {
+      strokeColor: '#1a1a1a',
+      strokeWidth: 0.2,   // mm
+      cornerCut: 1.2,     // mm — longueur coupée sur chaque arête
+      fill: 'transparent',
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 7.2, height_mm: 16 },
+  },
+
+  losange: {
+    label: 'Losange',
+    icon: '◇',
+    defaultParams: {
+      color: '#1a1a1a',
+      strokeWidth: 0.2,   // mm
+      fill: 'transparent',
+      opacity: 1,
+    },
+    defaultSize: { width_mm: 1.6, height_mm: 1.6 },
   },
 
   rectangle: {

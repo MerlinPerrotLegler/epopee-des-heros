@@ -35,6 +35,17 @@ const routes = [
     props: true
   },
   {
+    path: '/molecules',
+    name: 'Molecules',
+    component: () => import('@/views/MoleculesView.vue')
+  },
+  {
+    path: '/molecules/:id/editor',
+    name: 'MoleculeEditor',
+    component: () => import('@/views/ComponentEditorView.vue'),
+    props: (route) => ({ id: route.params.id, entity: 'molecule' })
+  },
+  {
     path: '/media',
     name: 'Media',
     component: () => import('@/views/MediaView.vue')

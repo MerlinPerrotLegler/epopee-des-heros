@@ -196,6 +196,7 @@ function getIcon(row) {
   if (row.kind === 'group') return '▤'
   if (row.type === 'atom' && ATOM_TYPES[row.atomType]) return ATOM_TYPES[row.atomType].icon
   if (row.type === 'component') return '◧'
+  if (row.type === 'molecule') return '◬'
   return '?'
 }
 

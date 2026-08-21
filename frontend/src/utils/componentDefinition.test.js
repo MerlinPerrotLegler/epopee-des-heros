@@ -40,4 +40,17 @@ describe('flattenComponentElements', () => {
     assert.equal(els.length, 1)
     assert.equal(els[0].id, 'v')
   })
+
+  it('omits children of groups listed in skipGroupNames', () => {
+    const def = {
+      layers: [
+        { kind: 'group', name: 'header', children: [{ id: 'h', kind: 'element', visible: true }] },
+        { kind: 'group', name: 'ingredient3', children: [{ id: 'i3', kind: 'element', visible: true }] },
+        { kind: 'group', name: 'diamond3', children: [{ id: 'd3', kind: 'element', visible: true }] },
+      ],
+    }
+    const els = flattenComponentElements(def, { skipGroupNames: new Set(['ingredient3', 'diamond3']) })
+    assert.equal(els.length, 1)
+    assert.equal(els[0].id, 'h')
+  })
 })

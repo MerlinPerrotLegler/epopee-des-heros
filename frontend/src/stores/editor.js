@@ -152,6 +152,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   // Components cache
   const componentsCache = ref({})
+  const moleculesCache = ref({})
 
   // ── Tree helpers ──────────────────────────────────────────────────────────
 
@@ -480,20 +481,34 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   async function _preloadComponents({ force = false } = {}) {
-    const ids = new Set()
+    const componentIds = new Set()
+    const moleculeIds = new Set()
     for (const el of allElements.value) {
-      if (el.type === 'component' && el.componentId) ids.add(el.componentId)
+      if (el.type === 'component' && el.componentId) componentIds.add(el.componentId)
+      if (el.type === 'molecule' && el.moleculeId) moleculeIds.add(el.moleculeId)
     }
-    const toLoad = force
-      ? [...ids]
-      : [...ids].filter(id => !componentsCache.value[id])
-    if (!toLoad.length) return
-    const results = await Promise.allSettled(toLoad.map(id => api.getComponent(id)))
-    const next = { ...componentsCache.value }
-    for (let i = 0; i < toLoad.length; i++) {
-      if (results[i].status === 'fulfilled') next[toLoad[i]] = results[i].value
+    const toLoadComp = force
+      ? [...componentIds]
+      : [...componentIds].filter(id => !componentsCache.value[id])
+    const toLoadMol = force
+      ? [...moleculeIds]
+      : [...moleculeIds].filter(id => !moleculesCache.value[id])
+    if (toLoadComp.length) {
+      const results = await Promise.allSettled(toLoadComp.map(id => api.getComponent(id)))
+      const next = { ...componentsCache.value }
+      for (let i = 0; i < toLoadComp.length; i++) {
+        if (results[i].status === 'fulfilled') next[toLoadComp[i]] = results[i].value
+      }
+      componentsCache.value = next
     }
-    componentsCache.value = next
+    if (toLoadMol.length) {
+      const results = await Promise.allSettled(toLoadMol.map(id => api.getMolecule(id)))
+      const next = { ...moleculesCache.value }
+      for (let i = 0; i < toLoadMol.length; i++) {
+        if (results[i].status === 'fulfilled') next[toLoadMol[i]] = results[i].value
+      }
+      moleculesCache.value = next
+    }
   }
 
   function invalidateComponentCache(id) {
@@ -507,6 +522,45 @@ export const useEditorStore = defineStore('editor', () => {
     componentsCache.value = next
   }
 
+  function normalizeNestedDefinition(raw, fallbackHeight) {
+    let def
+    if (raw?.layers) {
+      def = _migrateDefinition(raw)
+    } else if (raw?.elements) {
+      def = {
+        layers: raw.elements.map(el => ({
+          ...el,
+          kind: 'element',
+          name: el.nameInLayout || '',
+          locked: false,
+          visible: true,
+          opacity: 1,
+        })),
+        dataSchema: {}
+      }
+    } else if (Array.isArray(raw?.atoms)) {
+      def = {
+        layers: raw.atoms.map(el => ({
+          ...el,
+          kind: 'element',
+          type: 'atom',
+          name: el.nameInLayout || '',
+          locked: false,
+          visible: true,
+          opacity: 1,
+        })),
+        dataSchema: {}
+      }
+    } else {
+      def = { layers: [], dataSchema: {} }
+    }
+    const { definition, sizingChanged } = _applyDefinitionMigrations(
+      def,
+      fallbackHeight || REF_HEIGHT_MM,
+    )
+    return { definition, sizingChanged }
+  }
+
   async function loadComponent(id) {
     stopLockTimers()
     readOnly.value = false
@@ -516,37 +570,48 @@ export const useEditorStore = defineStore('editor', () => {
     mode.value = 'component'
     try {
       const comp = await api.getComponent(id)
-      let def
-      if (comp.definition?.layers) {
-        def = _migrateDefinition(comp.definition)
-      } else if (comp.definition?.elements) {
-        // Old flat format
-        def = {
-          layers: comp.definition.elements.map(el => ({
-            ...el,
-            kind: 'element',
-            name: el.nameInLayout || '',
-            locked: false,
-            visible: true,
-            opacity: 1,
-          })),
-          dataSchema: {}
-        }
-      } else {
-        def = { layers: [], dataSchema: {} }
-      }
-      const { definition, sizingChanged } = _applyDefinitionMigrations(
-        def,
+      const { definition, sizingChanged } = normalizeNestedDefinition(
+        comp.definition,
         comp.height_mm || REF_HEIGHT_MM,
       )
-      def = definition
       layout.value = {
         id: comp.id,
         name: comp.name,
         width_mm: comp.width_mm || 60,
         height_mm: comp.height_mm || 40,
         card_type: null,
-        definition: def
+        definition,
+      }
+      dirty.value = sizingChanged
+      editVersion = 0
+      history.value = []
+      selectedElementId.value = null
+      selectedItemId.value = null
+      requestFit.value = 'fit'
+    } finally {
+      loading.value = false
+    }
+  }
+
+  async function loadMolecule(id) {
+    stopLockTimers()
+    readOnly.value = false
+    layoutLockHolder.value = null
+    layoutLockHeld.value = false
+    loading.value = true
+    mode.value = 'molecule'
+    try {
+      const mol = await api.getMolecule(id)
+      const w = mol.width_mm || mol.definition?.width_mm || 60
+      const h = mol.height_mm || mol.definition?.height_mm || 40
+      const { definition, sizingChanged } = normalizeNestedDefinition(mol.definition, h)
+      layout.value = {
+        id: mol.id,
+        name: mol.name,
+        width_mm: w,
+        height_mm: h,
+        card_type: null,
+        definition,
       }
       dirty.value = sizingChanged
       editVersion = 0
@@ -579,6 +644,26 @@ export const useEditorStore = defineStore('editor', () => {
         invalidateComponentCache(layout.value.id)
         componentsCache.value = {
           ...componentsCache.value,
+          [layout.value.id]: {
+            id: layout.value.id,
+            name: layout.value.name,
+            width_mm: layout.value.width_mm,
+            height_mm: layout.value.height_mm,
+            definition: JSON.parse(JSON.stringify(layout.value.definition)),
+          },
+        }
+      } else if (mode.value === 'molecule') {
+        await api.updateMolecule(layout.value.id, {
+          width_mm: layout.value.width_mm,
+          height_mm: layout.value.height_mm,
+          definition: {
+            ...layout.value.definition,
+            width_mm: layout.value.width_mm,
+            height_mm: layout.value.height_mm,
+          },
+        })
+        moleculesCache.value = {
+          ...moleculesCache.value,
           [layout.value.id]: {
             id: layout.value.id,
             name: layout.value.name,
@@ -856,6 +941,11 @@ export const useEditorStore = defineStore('editor', () => {
         componentsCache.value = { ...componentsCache.value, [el.componentId]: comp }
       }).catch(() => {})
     }
+    if (el.type === 'molecule' && el.moleculeId && !moleculesCache.value[el.moleculeId]) {
+      api.getMolecule(el.moleculeId).then(mol => {
+        moleculesCache.value = { ...moleculesCache.value, [el.moleculeId]: mol }
+      }).catch(() => {})
+    }
     return el
   }
 
@@ -945,13 +1035,14 @@ export const useEditorStore = defineStore('editor', () => {
     guideOptions, guidesActive, activeGuides, setGuideOption, refreshGuides, clearGuides, scheduleGuidesClear,
     previewData,
     componentsCache,
+    moleculesCache,
     definition, layers, selectedItem, activeLayer,
     selectedElement, allElements, dataSchema, bindingNames,
     mode,
     readOnly, layoutLockHolder, layoutLockHeld,
     enterLayoutEditor, leaveLayoutEditor,
     history, canUndo, undo, _snapshot,
-    loadLayout, loadComponent, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
+    loadLayout, loadComponent, loadMolecule, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
     // Group/item ops
     addGroup, addLayer, addPlan, updateItem, updateLayer, removeItem, removeLayer,
     moveItemToGroup, moveGroupBy, reorderItemAroundTarget, nudgeItemInStack,

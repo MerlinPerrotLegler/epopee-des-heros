@@ -69,7 +69,8 @@ Le projet est divisé en 5 grandes phases :
 - [x] Atome `plan` — panneau droit contextuel : filtres Track, hauteur mm, largeur automatique et payload DnD
 - [x] Atome `plan` — drop canvas : coordonnées carte et snap, création d’une tuile `image` dans le groupe lié
 - [x] TSD-027 rédigé — Ingrédients de fabrication (atomes `cadreChanfrein` / `losange` + composant seed 6 cases)
-- [ ] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
+- [x] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
+- [x] Molécule **Ingrédients de fabrication** (page Molécules + palette Ajouter, seed `mol-ingredients-fabrication`)
 
 ### Phase 2 — Médias & assets
 
@@ -165,11 +166,10 @@ GLOBAL                     ████████████████░�
 
 > Classées par priorité décroissante. À réviser à chaque session.
 
-1. **[Phase 1]** TSD-027 — implémenter Ingrédients de fabrication (atomes + composant + binding interne)
-2. **[Phase 4]** Export PDF batch (jsPDF client, TSD-009 / QUESTIONS Q5)
-3. **[Phase 4]** Gabarit de coupe (marge, fond perdu)
-4. **[Phase 3]** Persister les mappings hors ImportJob (table `import_mappings`, QUESTIONS Q4)
-5. **[Phase 1]** Auth : `/uploads` public volontaire (images canvas) — documenté Q6
+1. **[Phase 4]** Export PDF batch (jsPDF client, TSD-009 / QUESTIONS Q5)
+2. **[Phase 4]** Gabarit de coupe (marge, fond perdu)
+3. **[Phase 3]** Persister les mappings hors ImportJob (table `import_mappings`, QUESTIONS Q4)
+4. **[Phase 1]** Auth : `/uploads` public volontaire (images canvas) — documenté Q6
 
 ---
 
@@ -179,6 +179,8 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (5) | Molécule **Ingrédients de fabrication** (`mol-ingredients-fabrication`) : restauration API/UI Molécules + seed idempotent (même définition 56×28 que le composant). Posable depuis Ajouter / page Molécules. |
+| 2026-08-21 (4) | **TSD-027 implémenté** : atomes `cadreChanfrein` / `losange` (viewBox mm), masquage cases vides instance/print, binding interne `craft.ingredientN.ref` / `ingredientNq.text`, seed idempotent `cmp-ingredients-fabrication`. Tests géométrie + slots + flatten + extractBindingPaths verts ; suite **181/181**. |
 | 2026-08-21 (3) | TSD-027 (Review) : atomes `cadreChanfrein` + `losange` ; composant seed **Ingrédients de fabrication** (56×28 mm, 6 cases, masquage instance/print, binding `craft.ingredientN.ref` / `ingredientNq.text`). Implémentation en attente de relecture spec. |
 | 2026-08-21 (2) | Config atomes (`/atoms-config`) : liste triée par nom (locale fr) + barre de recherche (accents ignorés, filtre label/type) pour retrouver Caractéristique / `textAlign`. |
 | 2026-08-21 | Atome `caracteristique` : paramètre `textAlign` (left / center / right) — rendu flex + select dans le panneau propriétés / config atomes. |

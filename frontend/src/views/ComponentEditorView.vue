@@ -21,7 +21,10 @@ import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import EditorPanel from '@/components/editor/EditorPanel.vue'
 import EditorCanvas from '@/components/editor/EditorCanvas.vue'
 
-const props = defineProps({ id: String })
+const props = defineProps({
+  id: String,
+  entity: { type: String, default: 'component' },
+})
 const store = useEditorStore()
 const panelWidth = ref(320)
 
@@ -62,7 +65,8 @@ function onKeyDown(e) {
 }
 
 onMounted(() => {
-  store.loadComponent(props.id)
+  if (props.entity === 'molecule') store.loadMolecule(props.id)
+  else store.loadComponent(props.id)
   document.addEventListener('keydown', onKeyDown)
 })
 onBeforeUnmount(async () => {

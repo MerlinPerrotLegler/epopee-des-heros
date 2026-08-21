@@ -41,6 +41,8 @@ import AtomCounter             from '@/atoms/components/AtomCounter.vue'
 import AtomHexTile             from '@/atoms/components/AtomHexTile.vue'
 import AtomImage               from '@/atoms/components/AtomImage.vue'
 import AtomRectangle           from '@/atoms/components/AtomRectangle.vue'
+import AtomCadreChanfrein      from '@/atoms/components/AtomCadreChanfrein.vue'
+import AtomLosange             from '@/atoms/components/AtomLosange.vue'
 import AtomLine                from '@/atoms/components/AtomLine.vue'
 import AtomTrak                from '@/atoms/components/AtomTrak.vue'
 import AtomTrakCorner          from '@/atoms/components/AtomTrakCorner.vue'
@@ -76,6 +78,8 @@ const ATOM_COMPONENTS = {
   hexTile:             AtomHexTile,
   image:               AtomImage,
   rectangle:           AtomRectangle,
+  cadreChanfrein:      AtomCadreChanfrein,
+  losange:             AtomLosange,
   line:                AtomLine,
   trak:                AtomTrak,
   trakCorner:          AtomTrakCorner,

@@ -146,6 +146,12 @@ export const PARAM_HELP = {
   // ── AtomRectangle ─────────────────────────────────────────────────────────
   // (bgColor, borderColor, borderWidth, borderRadius, opacity)
 
+  // ── AtomCadreChanfrein / AtomLosange ──────────────────────────────────────
+  strokeColor:   'Couleur du trait du cadre chanfrein',
+  cornerCut:     'Longueur coupée à 45° sur chaque coin, en millimètres',
+  fill:          'Couleur de remplissage (transparent = vide)',
+  fontStyle:     'Style de police : normal ou italique',
+
   // ── AtomLine ──────────────────────────────────────────────────────────────
   thickness:     'Épaisseur de la ligne en millimètres',
   style:         'Style du tracé : plein, tirets, pointillés',

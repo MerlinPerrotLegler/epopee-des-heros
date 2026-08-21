@@ -109,20 +109,53 @@ export function getMapValueOptionsForElement(el, atomParamRules = null) {
   return getMapValueOptionsFromRows(resolveMapRows(el.atomType, el.params, atomParamRules))
 }
 
+/** Top-level items: new editor tree (`kind`) or legacy `layers[].elements`. */
+function layoutTopItems(definition) {
+  const layers = definition?.layers || []
+  if (!layers.length) return []
+  if (layers.some((l) => l.kind === 'group' || l.kind === 'element')) return layers
+  return layers.flatMap((l) => l.children || l.elements || [])
+}
+
+function nestedDefinition(el, componentRegistry = {}, moleculeRegistry = {}) {
+  if (el.type === 'component' && el.componentId) {
+    return componentRegistry[el.componentId]?.definition
+  }
+  if (el.type === 'molecule' && el.moleculeId) {
+    return (moleculeRegistry[el.moleculeId] || componentRegistry[el.moleculeId])?.definition
+  }
+  return null
+}
+
 /**
- * Get all bindable paths from a layout definition (direct atoms only, no component traversal).
+ * Get all bindable paths from a layout definition, including atoms nested in components
+ * when `componentRegistry` is provided.
  * Returns array of { path, label, type, elementId, nameInLayout, options? }
  * @param {object} definition
  * @param {object|null} atomParamRules - config.atomParamRules (pour options badge/iconMap)
+ * @param {object} componentRegistry - { componentId: component }
+ * @param {object} moleculeRegistry - { moleculeId: molecule }
  */
-export function getBindablePaths(definition, atomParamRules = null) {
+export function getBindablePaths(definition, atomParamRules = null, componentRegistry = {}, moleculeRegistry = {}) {
   const paths = []
 
-  function walkItems(items) {
-    for (const item of items) {
-      if (item.kind === 'group') { walkItems(item.children || []); continue }
+  function walkItems(items, prefixParts = []) {
+    for (const item of items || []) {
+      if (item.kind === 'group') {
+        walkItems(item.children || [], prefixParts)
+        continue
+      }
       const el = item
       if (!el.nameInLayout) continue
+      const currentParts = [...prefixParts, el.nameInLayout]
+
+      const nestedDef = nestedDefinition(el, componentRegistry, moleculeRegistry)
+      if (nestedDef) {
+        const nestedItems = flattenComponentElements(nestedDef)
+        walkItems(nestedItems.map((c) => ({ ...c, kind: c.kind || 'element' })), currentParts)
+        continue
+      }
+
       for (const [paramKey, paramValue] of Object.entries(el.params || {})) {
         const isMapValue = paramKey === 'value'
           && (el.atomType === 'badge' || el.atomType === 'iconMap')
@@ -130,17 +163,17 @@ export function getBindablePaths(definition, atomParamRules = null) {
           ? resolveMapRows(el.atomType, el.params, atomParamRules)
           : null
         paths.push({
-          path: `${el.nameInLayout}.${paramKey}`,
-          label: `${el.nameInLayout} → ${paramKey}`,
+          path: [...currentParts, paramKey].join('.'),
+          label: `${currentParts.join('.')} → ${paramKey}`,
           type: typeof paramValue,
           elementId: el.id,
-          nameInLayout: el.nameInLayout,
+          nameInLayout: currentParts.join('.'),
           options: isMapValue ? getMapValueOptionsFromRows(rows) : null,
         })
       }
     }
   }
-  walkItems(definition.layers || [])
+  walkItems(layoutTopItems(definition))
 
   return paths
 }
@@ -150,7 +183,7 @@ export function getBindablePaths(definition, atomParamRules = null) {
  * componentRegistry: { componentId: componentDefinition }
  * Returns array of { path, nameInLayout, paramName, atomType, elementId }
  */
-export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
+export function extractBindingPaths(layoutDefinition, componentRegistry = {}, moleculeRegistry = {}) {
   const paths = []
 
   function walkItems(items, prefixParts = []) {
@@ -164,13 +197,10 @@ export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
 
       const currentParts = [...prefixParts, el.nameInLayout]
 
-      if (el.type === 'component' && el.componentId) {
-        const comp = componentRegistry[el.componentId]
-        if (comp?.definition) {
-          const compItems = flattenComponentElements(comp.definition)
-          // Re-wrap as walkable items (elements already flat)
-          walkItems(compItems.map((el) => ({ ...el, kind: el.kind || 'element' })), currentParts)
-        }
+      const nestedDef = nestedDefinition(el, componentRegistry, moleculeRegistry)
+      if (nestedDef) {
+        const nestedItems = flattenComponentElements(nestedDef)
+        walkItems(nestedItems.map((inner) => ({ ...inner, kind: inner.kind || 'element' })), currentParts)
       } else {
         for (const paramKey of Object.keys(el.params || {})) {
           paths.push({
@@ -185,9 +215,7 @@ export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
     }
   }
 
-  for (const layer of layoutDefinition.layers || []) {
-    walkItems(layer.children || layer.elements || [])
-  }
+  walkItems(layoutTopItems(layoutDefinition))
 
   return paths
 }

@@ -50,6 +50,23 @@
         </div>
       </div>
 
+      <div class="panel-section" v-if="molecules.length">
+        <div class="panel-section-title">Molécules</div>
+        <div class="component-list">
+          <button
+            v-for="mol in molecules" :key="mol.id"
+            class="component-btn"
+            @click="addMolecule(mol)"
+            draggable="true"
+            @dragstart="onMoleculeDragStart($event, mol)"
+          >
+            <span>◬</span>
+            <span>{{ mol.name }}</span>
+            <span class="comp-size">{{ mol.width_mm || 30 }} × {{ mol.height_mm || 20 }} mm</span>
+          </button>
+        </div>
+      </div>
+
     </div>
 
     <!-- Properties Tab -->
@@ -91,9 +108,15 @@ const tabs = [
 
 const activeTab = ref('layers')
 const components = ref([])
+const molecules = ref([])
 
 onMounted(async () => {
-  components.value = await api.getComponents()
+  const [comps, mols] = await Promise.all([
+    api.getComponents(),
+    api.getMolecules(),
+  ])
+  components.value = comps
+  molecules.value = mols
 })
 
 // Auto-switch to props when element selected
@@ -120,6 +143,16 @@ function addComponent(comp) {
   })
 }
 
+function addMolecule(mol) {
+  store.addElement({
+    type: 'molecule',
+    moleculeId: mol.id,
+    width_mm: mol.width_mm || mol.definition?.width_mm || 30,
+    height_mm: mol.height_mm || mol.definition?.height_mm || 20,
+    params: {}
+  })
+}
+
 function onAtomDragStart(e, type) {
   e.dataTransfer.effectAllowed = 'copy'
   e.dataTransfer.setData('application/x-card-designer-add', JSON.stringify({
@@ -135,6 +168,16 @@ function onComponentDragStart(e, comp) {
     componentId: comp.id,
     width_mm: comp.width_mm || 30,
     height_mm: comp.height_mm || 20,
+  }))
+}
+
+function onMoleculeDragStart(e, mol) {
+  e.dataTransfer.effectAllowed = 'copy'
+  e.dataTransfer.setData('application/x-card-designer-add', JSON.stringify({
+    kind: 'molecule',
+    moleculeId: mol.id,
+    width_mm: mol.width_mm || mol.definition?.width_mm || 30,
+    height_mm: mol.height_mm || mol.definition?.height_mm || 20,
   }))
 }
 

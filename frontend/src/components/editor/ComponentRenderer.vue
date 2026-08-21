@@ -1,7 +1,7 @@
 <template>
   <div class="comp-renderer" :style="outerStyle">
     <div v-if="!comp" class="comp-loading">
-      <span>◧ {{ componentId }}</span>
+      <span>◧ {{ componentId || moleculeId }}</span>
     </div>
     <div v-else class="comp-inner" :style="innerStyle">
       <div
@@ -11,7 +11,7 @@
       >
         <AtomRenderer
           :atomType="el.atomType"
-          :params="el.params || {}"
+          :params="innerParams(el)"
           :width_mm="el.width_mm"
           :height_mm="el.height_mm"
         />
@@ -25,22 +25,47 @@ import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { mmCss } from '@/utils/cssMm.js'
 import { flattenComponentElements } from '@/utils/componentDefinition.js'
+import { hiddenIngredientGroupNames } from '@/utils/ingredientSlots.js'
+import { resolveElementParams } from '@/utils/binding.js'
 import AtomRenderer from './AtomRenderer.vue'
 
 const props = defineProps({
-  componentId: { type: String, required: true },
+  componentId: { type: String, default: '' },
+  moleculeId:  { type: String, default: '' },
   width_mm:    { type: Number, required: true },
   height_mm:   { type: Number, required: true },
+  data:        { type: Object, default: null },
+  nameInLayout:{ type: String, default: '' },
+  hideEmptySlots: { type: Boolean, default: false },
 })
 
 const store = useEditorStore()
 
-const comp = computed(() => store.componentsCache[props.componentId] ?? null)
+const comp = computed(() => {
+  if (props.moleculeId) return store.moleculesCache[props.moleculeId] ?? null
+  return store.componentsCache[props.componentId] ?? null
+})
 
-const compW = computed(() => comp.value?.width_mm || 60)
-const compH = computed(() => comp.value?.height_mm || 40)
+const compW = computed(() => comp.value?.width_mm || comp.value?.definition?.width_mm || 60)
+const compH = computed(() => comp.value?.height_mm || comp.value?.definition?.height_mm || 40)
 
-const elements = computed(() => flattenComponentElements(comp.value?.definition))
+const elements = computed(() => {
+  const skipGroupNames = props.hideEmptySlots
+    ? hiddenIngredientGroupNames(props.data, props.nameInLayout || '')
+    : undefined
+  return flattenComponentElements(
+    comp.value?.definition,
+    skipGroupNames ? { skipGroupNames } : {},
+  )
+})
+
+function innerParams(el) {
+  if (!el.nameInLayout) return el.params || {}
+  const prefix = props.nameInLayout
+    ? `${props.nameInLayout}.${el.nameInLayout}`
+    : el.nameInLayout
+  return resolveElementParams(el, props.data, prefix)
+}
 
 const scaleX = computed(() => props.width_mm / compW.value)
 const scaleY = computed(() => props.height_mm / compH.value)

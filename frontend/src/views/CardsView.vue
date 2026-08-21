@@ -424,7 +424,23 @@ async function editCard(card) {
     }
     const layout = await api.getLayout(card.layout_id)
     const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
-    editingCardPaths.value = getBindablePaths(def, configStore.config?.[ATOM_PARAM_RULES_KEY] || null)
+    let registry = {}
+    let molRegistry = {}
+    try {
+      const list = await api.getComponents()
+      for (const c of list || []) {
+        const cdef = typeof c.definition === 'string' ? JSON.parse(c.definition) : c.definition
+        registry[c.id] = { ...c, definition: cdef }
+      }
+    } catch { registry = {} }
+    try {
+      const list = await api.getMolecules()
+      for (const m of list || []) {
+        const mdef = typeof m.definition === 'string' ? JSON.parse(m.definition) : m.definition
+        molRegistry[m.id] = { ...m, definition: mdef }
+      }
+    } catch { molRegistry = {} }
+    editingCardPaths.value = getBindablePaths(def, configStore.config?.[ATOM_PARAM_RULES_KEY] || null, registry, molRegistry)
   } catch { editingCardPaths.value = [] }
 }
 

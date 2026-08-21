@@ -16,9 +16,11 @@
             final-render
           />
           <InlineComponentRenderer
-            v-else-if="el.type === 'component'"
+            v-else-if="el.type === 'component' || el.type === 'molecule'"
             :element="el"
-            :cache="componentsCache"
+            :cache="el.type === 'molecule' ? moleculesCache : componentsCache"
+            :data="data"
+            :hide-empty-slots="true"
           />
         </div>
       </div>
@@ -31,6 +33,7 @@ import { ref, computed, watch, defineComponent, h } from 'vue'
 import { mmCss, CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { flattenComponentElements } from '@/utils/componentDefinition.js'
+import { hiddenIngredientGroupNames } from '@/utils/ingredientSlots.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
 
@@ -69,16 +72,28 @@ const elements = computed(() => {
 
 // ── Load components used in this layout ────────────────────────────────────
 const componentsCache = ref({})
+const moleculesCache = ref({})
 
 watch(elements, async (els) => {
-  const ids = [...new Set(
+  const componentIds = [...new Set(
     els.filter(el => el.type === 'component' && el.componentId).map(el => el.componentId)
   )]
-  for (const id of ids) {
+  const moleculeIds = [...new Set(
+    els.filter(el => el.type === 'molecule' && el.moleculeId).map(el => el.moleculeId)
+  )]
+  for (const id of componentIds) {
     if (!componentsCache.value[id]) {
       try {
         const comp = await api.getComponent(id)
         componentsCache.value[id] = comp
+      } catch {}
+    }
+  }
+  for (const id of moleculeIds) {
+    if (!moleculesCache.value[id]) {
+      try {
+        const mol = await api.getMolecule(id)
+        moleculesCache.value[id] = mol
       } catch {}
     }
   }
@@ -130,13 +145,35 @@ const InlineComponentRenderer = defineComponent({
   props: {
     element: { type: Object, required: true },
     cache:   { type: Object, required: true },
+    data:    { type: Object, default: () => ({}) },
+    hideEmptySlots: { type: Boolean, default: true },
   },
   setup(p) {
-    const comp = computed(() => p.cache[p.element.componentId] ?? null)
-    const compW = computed(() => comp.value?.width_mm || 60)
-    const compH = computed(() => comp.value?.height_mm || 40)
+    const blockId = computed(() => (
+      p.element.type === 'molecule' ? p.element.moleculeId : p.element.componentId
+    ))
+    const comp = computed(() => p.cache[blockId.value] ?? null)
+    const compW = computed(() => comp.value?.width_mm || comp.value?.definition?.width_mm || 60)
+    const compH = computed(() => comp.value?.height_mm || comp.value?.definition?.height_mm || 40)
 
-    const compEls = computed(() => flattenComponentElements(comp.value?.definition))
+    const prefix = computed(() => p.element.nameInLayout || '')
+    const compEls = computed(() => {
+      const skipGroupNames = p.hideEmptySlots
+        ? hiddenIngredientGroupNames(p.data, prefix.value)
+        : undefined
+      return flattenComponentElements(
+        comp.value?.definition,
+        skipGroupNames ? { skipGroupNames } : {},
+      )
+    })
+
+    function innerParams(el) {
+      if (!el.nameInLayout) return el.params || {}
+      const inner = prefix.value
+        ? `${prefix.value}.${el.nameInLayout}`
+        : el.nameInLayout
+      return resolveElementParams(el, p.data, inner)
+    }
 
     const scaleX = computed(() => p.element.width_mm / compW.value)
     const scaleY = computed(() => p.element.height_mm / compH.value)
@@ -169,7 +206,7 @@ const InlineComponentRenderer = defineComponent({
         }, [
           h(AtomRenderer, {
             atomType: el.atomType,
-            params: el.params || {},
+            params: innerParams(el),
             width_mm: el.width_mm,
             height_mm: el.height_mm,
             finalRender: true,

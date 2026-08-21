@@ -433,6 +433,20 @@ async function loadComponentRegistry() {
   }
 }
 
+async function loadMoleculeRegistry() {
+  try {
+    const list = await api.getMolecules()
+    const registry = {}
+    for (const m of list || []) {
+      const def = typeof m.definition === 'string' ? JSON.parse(m.definition) : m.definition
+      registry[m.id] = { ...m, definition: def }
+    }
+    return registry
+  } catch {
+    return {}
+  }
+}
+
 async function loadBindingPaths(id) {
   loadingPaths.value = true
   try {
@@ -441,7 +455,8 @@ async function loadBindingPaths(id) {
       ? JSON.parse(layout.definition)
       : layout.definition
     const registry = await loadComponentRegistry()
-    currentBindingPaths.value = extractBindingPaths(def, registry)
+    const molRegistry = await loadMoleculeRegistry()
+    currentBindingPaths.value = extractBindingPaths(def, registry, molRegistry)
   } catch { currentBindingPaths.value = [] }
   finally { loadingPaths.value = false }
 }
@@ -450,6 +465,7 @@ async function loadMultiBindingPaths() {
   loadingPaths.value = true
   try {
     const registry = await loadComponentRegistry()
+    const molRegistry = await loadMoleculeRegistry()
     const names = [...new Set(
       preview.value.map((r) => r[layoutColumn.value]).filter(Boolean),
     )]
@@ -459,7 +475,7 @@ async function loadMultiBindingPaths() {
       if (!meta) continue
       const layout = await api.getLayout(meta.id)
       const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
-      for (const p of extractBindingPaths(def, registry)) {
+      for (const p of extractBindingPaths(def, registry, molRegistry)) {
         if (!byPath.has(p.path)) byPath.set(p.path, p)
       }
     }

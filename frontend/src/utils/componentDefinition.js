@@ -3,8 +3,9 @@
  * Prefer modern `layers` tree when present; fall back to legacy `elements`.
  * Note: `elements: []` is truthy — never use `def.elements || def.layers`.
  */
-export function flattenComponentElements(definition) {
+export function flattenComponentElements(definition, options = {}) {
   if (!definition || typeof definition !== 'object') return []
+  const skipGroupNames = options.skipGroupNames
 
   const hasLayers = Object.prototype.hasOwnProperty.call(definition, 'layers')
   if (hasLayers) {
@@ -12,8 +13,10 @@ export function flattenComponentElements(definition) {
     function walk(items) {
       for (const item of items || []) {
         if (!item) continue
-        if (item.kind === 'group') walk(item.children || [])
-        else if (item.visible !== false) result.push(item)
+        if (item.kind === 'group') {
+          if (skipGroupNames && skipGroupNames.has(item.name)) continue
+          walk(item.children || [])
+        } else if (item.visible !== false) result.push(item)
       }
     }
     walk(definition.layers)

@@ -14,9 +14,13 @@
           <span class="nav-icon">◫</span>
           <span class="nav-label">Layouts</span>
         </router-link>
-        <router-link to="/components" class="nav-item" :class="{ active: route.path === '/components' }">
+        <router-link to="/components" class="nav-item" :class="{ active: route.path.startsWith('/components') }">
           <span class="nav-icon">◧</span>
           <span class="nav-label">Composants</span>
+        </router-link>
+        <router-link to="/molecules" class="nav-item" :class="{ active: route.path.startsWith('/molecules') }">
+          <span class="nav-icon">◬</span>
+          <span class="nav-label">Molécules</span>
         </router-link>
         <router-link to="/media" class="nav-item" :class="{ active: route.path === '/media' }">
           <span class="nav-icon">▣</span>

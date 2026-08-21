@@ -117,6 +117,18 @@
             :component-id="el.componentId"
             :width_mm="el.width_mm"
             :height_mm="el.height_mm"
+            :data="store.previewData"
+            :name-in-layout="el.nameInLayout"
+            :hide-empty-slots="false"
+          />
+          <ComponentRenderer
+            v-else-if="el.type === 'molecule'"
+            :molecule-id="el.moleculeId"
+            :width_mm="el.width_mm"
+            :height_mm="el.height_mm"
+            :data="store.previewData"
+            :name-in-layout="el.nameInLayout"
+            :hide-empty-slots="false"
           />
 
           <!-- Icône verrou déplacement — atome drawing sélectionné, hors mode dessin -->
@@ -523,6 +535,14 @@ function onDropAdd(e) {
     element = {
       type: 'component',
       componentId: payload.componentId,
+      width_mm: payload.width_mm || 30,
+      height_mm: payload.height_mm || 20,
+      params: {},
+    }
+  } else if (payload.kind === 'molecule' && payload.moleculeId) {
+    element = {
+      type: 'molecule',
+      moleculeId: payload.moleculeId,
       width_mm: payload.width_mm || 30,
       height_mm: payload.height_mm || 20,
       params: {},
