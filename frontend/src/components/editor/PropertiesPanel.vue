@@ -40,8 +40,69 @@
         <input
           :value="el.nameInLayout"
           @input="update('nameInLayout', $event.target.value)"
-          placeholder="ex: card_name"
+          :placeholder="isIngredientsMolecule ? 'craft' : 'ex: card_name'"
           style="flex:1; font-family: var(--font-mono); font-size: 11px"
+        />
+      </div>
+      <p v-if="isIngredientsMolecule && !el.nameInLayout" class="ing-hint">
+        Renseignez un identifiant (ex. craft) pour activer les bindings.
+      </p>
+    </div>
+
+    <!-- Contenu Ingrédients de fabrication (previewData) -->
+    <div class="panel-section" v-if="isIngredientsMolecule">
+      <div class="panel-section-title">Contenu (aperçu data)</div>
+      <p class="ing-hint">Écrit dans Preview data — utile pour tester sans onglet Data.</p>
+
+      <div class="param-block">
+        <div class="param-header"><label class="param-label">Titre</label></div>
+        <input
+          :value="ingPreviewValue('title.text')"
+          @input="setIngPreview('title.text', $event.target.value)"
+          :disabled="!ingPrefix"
+        />
+      </div>
+      <div class="param-block">
+        <div class="param-header"><label class="param-label">Sous-titre</label></div>
+        <input
+          :value="ingPreviewValue('subtitle.text')"
+          @input="setIngPreview('subtitle.text', $event.target.value)"
+          :disabled="!ingPrefix"
+        />
+      </div>
+      <div class="param-block">
+        <div class="param-header"><label class="param-label">Picto en-tête (ref)</label></div>
+        <select
+          :value="ingPreviewValue('headerIcon.ref')"
+          @change="setIngPreview('headerIcon.ref', $event.target.value)"
+          :disabled="!ingPrefix"
+        >
+          <option value="">— choisir —</option>
+          <option v-for="opt in allPictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+      </div>
+
+      <div
+        v-for="n in 6"
+        :key="'ing-slot-' + n"
+        class="ing-slot-row"
+      >
+        <span class="ing-slot-label">{{ n }}</span>
+        <select
+          :value="ingPreviewValue(`ingredient${n}.ref`)"
+          @change="setIngPreview(`ingredient${n}.ref`, $event.target.value)"
+          :disabled="!ingPrefix"
+          title="Picto"
+        >
+          <option value="">— picto —</option>
+          <option v-for="opt in allPictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        </select>
+        <input
+          :value="ingPreviewValue(`ingredient${n}q.text`)"
+          @input="setIngPreview(`ingredient${n}q.text`, $event.target.value)"
+          :disabled="!ingPrefix"
+          placeholder="qté"
+          class="ing-qty"
         />
       </div>
     </div>
@@ -652,6 +713,9 @@ import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
 import { normalizeDeg } from '@/utils/elementRotation.js'
 import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
+import {
+  INGREDIENTS_FABRICATION_MOLECULE_ID,
+} from '@/utils/ingredientSlots.js'
 import { parseSlashContext } from '@/utils/richTextRegistry.js'
 import GradientStopEditor from './GradientStopEditor.vue'
 import MediaPicker from './MediaPicker.vue'
@@ -839,6 +903,46 @@ const pictoRefOptions = computed(() =>
     label: `${p.picto_ref} - ${p.picto_label || '—'}`,
   })),
 )
+
+const allPictoRefOptions = computed(() =>
+  pictosStore.pictosForTag('').map((p) => ({
+    value: p.picto_ref,
+    label: `${p.picto_ref} - ${p.picto_label || '—'}`,
+  })),
+)
+
+const isIngredientsMolecule = computed(() =>
+  el.value?.type === 'molecule'
+  && el.value?.moleculeId === INGREDIENTS_FABRICATION_MOLECULE_ID,
+)
+
+const ingPrefix = computed(() => {
+  if (!isIngredientsMolecule.value) return ''
+  return String(el.value?.nameInLayout || '').trim()
+})
+
+watch(isIngredientsMolecule, (yes) => {
+  if (yes) pictosStore.load()
+}, { immediate: true })
+
+function ensureIngPreviewData() {
+  if (store.previewData === null) {
+    store.previewData = {}
+  }
+}
+
+function ingPreviewValue(suffix) {
+  const prefix = ingPrefix.value
+  if (!prefix || !store.previewData) return ''
+  return store.previewData[`${prefix}.${suffix}`] ?? ''
+}
+
+function setIngPreview(suffix, value) {
+  const prefix = ingPrefix.value
+  if (!prefix) return
+  ensureIngPreviewData()
+  store.previewData[`${prefix}.${suffix}`] = value
+}
 
 function isPictoParamBinding(value) {
   return typeof value === 'string' && value.includes('{{')
@@ -1566,4 +1670,37 @@ function isParamFixed(paramKey) {
   line-height: 1.4;
 }
 .ai-warning-link { color: inherit; font-weight: 600; text-decoration: underline; }
+
+.ing-hint {
+  font-size: 10px;
+  color: var(--text-muted);
+  margin: 4px 0 0;
+  line-height: 1.35;
+}
+
+.ing-slot-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) 48px;
+  gap: 4px;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.ing-slot-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.ing-slot-row select,
+.ing-slot-row input {
+  min-width: 0;
+  font-size: 11px;
+}
+
+.ing-qty {
+  text-align: center;
+  font-family: var(--font-mono);
+}
 </style>

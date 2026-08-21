@@ -222,3 +222,47 @@ describe('editor snap', () => {
     assert.equal(store.snap(3.6), 3.6)
   })
 })
+
+describe('editor applyLayoutMeta', () => {
+  it('updates name and size without touching definition', () => {
+    setActivePinia(createPinia())
+    const store = useEditorStore()
+    store.setAutoSave(false)
+    const definition = { layers: [{ id: 'el-1', kind: 'element' }], dataSchema: {} }
+    store.layout = {
+      id: 'cmp-1',
+      name: 'Old',
+      width_mm: 30,
+      height_mm: 20,
+      card_type: null,
+      definition,
+    }
+
+    store.applyLayoutMeta({ name: 'New', width_mm: 40, height_mm: 25 })
+
+    assert.equal(store.layout.name, 'New')
+    assert.equal(store.layout.width_mm, 40)
+    assert.equal(store.layout.height_mm, 25)
+    assert.deepEqual(store.layout.definition, definition)
+    assert.equal(store.layout.definition.layers[0].id, 'el-1')
+  })
+
+  it('ignores omitted keys (name-only patch)', () => {
+    setActivePinia(createPinia())
+    const store = useEditorStore()
+    store.setAutoSave(false)
+    store.layout = {
+      id: 'cmp-1',
+      name: 'Old',
+      width_mm: 30,
+      height_mm: 20,
+      definition: { layers: [], dataSchema: {} },
+    }
+
+    store.applyLayoutMeta({ name: 'Renamed' })
+
+    assert.equal(store.layout.name, 'Renamed')
+    assert.equal(store.layout.width_mm, 30)
+    assert.equal(store.layout.height_mm, 20)
+  })
+})

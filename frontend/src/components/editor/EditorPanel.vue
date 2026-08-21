@@ -91,6 +91,7 @@ import { ref, onMounted, watch } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { ATOM_TYPES, getAtomDefaults } from '@/atoms/index.js'
 import { api } from '@/utils/api.js'
+import { defaultMoleculeNameInLayout } from '@/utils/ingredientSlots.js'
 import LayerPanel from './LayerPanel.vue'
 import PropertiesPanel from './PropertiesPanel.vue'
 import DataPanel from './DataPanel.vue'
@@ -144,12 +145,14 @@ function addComponent(comp) {
 }
 
 function addMolecule(mol) {
+  const nameInLayout = defaultMoleculeNameInLayout(mol.id)
   store.addElement({
     type: 'molecule',
     moleculeId: mol.id,
     width_mm: mol.width_mm || mol.definition?.width_mm || 30,
     height_mm: mol.height_mm || mol.definition?.height_mm || 20,
-    params: {}
+    params: {},
+    ...(nameInLayout ? { nameInLayout } : {}),
   })
 }
 
@@ -173,11 +176,13 @@ function onComponentDragStart(e, comp) {
 
 function onMoleculeDragStart(e, mol) {
   e.dataTransfer.effectAllowed = 'copy'
+  const nameInLayout = defaultMoleculeNameInLayout(mol.id)
   e.dataTransfer.setData('application/x-card-designer-add', JSON.stringify({
     kind: 'molecule',
     moleculeId: mol.id,
     width_mm: mol.width_mm || mol.definition?.width_mm || 30,
     height_mm: mol.height_mm || mol.definition?.height_mm || 20,
+    ...(nameInLayout ? { nameInLayout } : {}),
   }))
 }
 

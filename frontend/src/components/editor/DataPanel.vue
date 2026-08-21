@@ -2,13 +2,22 @@
   <div class="data-panel">
     <div class="panel-section">
       <div class="panel-section-title">Bindings disponibles</div>
-      <div class="binding-list" v-if="bindingPaths.length">
-        <div v-for="bp in bindingPaths" :key="bp.path" class="binding-item">
+      <div class="binding-list" v-if="contentPaths.length">
+        <div v-for="bp in contentPaths" :key="bp.path" class="binding-item">
           <code class="binding-path">{{ bp.path }}</code>
           <span class="binding-type">{{ bp.type }}</span>
         </div>
       </div>
-      <div v-else class="empty-hint">
+      <details v-if="advancedPaths.length" class="binding-advanced">
+        <summary>Avancé ({{ advancedPaths.length }})</summary>
+        <div class="binding-list">
+          <div v-for="bp in advancedPaths" :key="bp.path" class="binding-item">
+            <code class="binding-path">{{ bp.path }}</code>
+            <span class="binding-type">{{ bp.type }}</span>
+          </div>
+        </div>
+      </details>
+      <div v-if="!bindingPaths.length" class="empty-hint">
         Ajoutez un "Nom" (identifiant) aux éléments pour créer des bindings.
       </div>
     </div>
@@ -21,8 +30,9 @@
         </button>
       </div>
       <div v-if="store.previewData !== null" class="preview-fields">
-        <div v-for="bp in bindingPaths" :key="bp.path" class="field-row">
-          <label :title="bp.path">{{ bp.nameInLayout }}.{{ bp.path.split('.').pop() }}</label>
+        <div v-if="contentPaths.length" class="preview-section-title">Contenu</div>
+        <div v-for="bp in contentPaths" :key="bp.path" class="field-row">
+          <label :title="bp.path">{{ shortLabel(bp) }}</label>
           <select
             v-if="bp.options?.length"
             :value="store.previewData[bp.path] || ''"
@@ -41,6 +51,16 @@
             @input="store.previewData[bp.path] = $event.target.value"
           />
         </div>
+        <details v-if="advancedPaths.length" class="preview-advanced">
+          <summary>Avancé ({{ advancedPaths.length }})</summary>
+          <div v-for="bp in advancedPaths" :key="bp.path" class="field-row">
+            <label :title="bp.path">{{ shortLabel(bp) }}</label>
+            <input
+              :value="store.previewData[bp.path] || ''"
+              @input="store.previewData[bp.path] = $event.target.value"
+            />
+          </div>
+        </details>
       </div>
     </div>
 
@@ -84,9 +104,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
-import { getBindablePaths } from '@/utils/binding.js'
+import { getBindablePaths, partitionBindablePaths, mergeDataWithBindablePaths } from '@/utils/binding.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import { api } from '@/utils/api.js'
 import Papa from 'papaparse'
@@ -94,14 +114,36 @@ import Papa from 'papaparse'
 const store = useEditorStore()
 const configStore = useConfigStore()
 
-const bindingPaths = computed(() =>
-  getBindablePaths(
+const cachesTick = ref(0)
+
+async function ensureCaches() {
+  if (typeof store._preloadComponents === 'function') {
+    await store._preloadComponents()
+  }
+  cachesTick.value += 1
+}
+
+onMounted(() => { ensureCaches() })
+watch(() => store.allElements?.length, () => { ensureCaches() })
+
+const bindingPaths = computed(() => {
+  void cachesTick.value
+  return getBindablePaths(
     store.definition,
     configStore.config?.[ATOM_PARAM_RULES_KEY] || null,
     store.componentsCache,
     store.moleculesCache,
   )
-)
+})
+
+const contentPaths = computed(() => partitionBindablePaths(bindingPaths.value).content)
+const advancedPaths = computed(() => partitionBindablePaths(bindingPaths.value).advanced)
+
+function shortLabel(bp) {
+  const parts = String(bp.path || '').split('.')
+  if (parts.length <= 2) return bp.path
+  return parts.slice(-2).join('.')
+}
 
 const csvPreview = ref(null)
 const csvColumns = ref([])
@@ -115,11 +157,7 @@ function togglePreview() {
   if (store.previewData !== null) {
     store.previewData = null
   } else {
-    const data = {}
-    for (const bp of bindingPaths.value) {
-      data[bp.path] = ''
-    }
-    store.previewData = data
+    store.previewData = mergeDataWithBindablePaths({}, bindingPaths.value)
   }
 }
 
@@ -136,7 +174,6 @@ function onCsvUpload(e) {
       mapping.value = {}
       idColumn.value = csvColumns.value.find((h) => /^(id|name|nom)$/i.test(h)) || csvColumns.value[0] || ''
       importError.value = ''
-      // Auto-map matching column names
       for (const col of csvColumns.value) {
         const match = bindingPaths.value.find(bp =>
           bp.path.toLowerCase().includes(col.toLowerCase()) ||
@@ -207,10 +244,31 @@ async function doImport() {
   color: var(--text-muted);
 }
 
+.binding-advanced,
+.preview-advanced {
+  margin-top: 6px;
+}
+.binding-advanced summary,
+.preview-advanced summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+
 .preview-fields {
   display: flex;
   flex-direction: column;
   gap: 4px;
+}
+
+.preview-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin-top: 2px;
 }
 
 .preview-fields label {

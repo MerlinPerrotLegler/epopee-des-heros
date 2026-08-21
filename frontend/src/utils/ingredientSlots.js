@@ -1,5 +1,15 @@
 export const INGREDIENT_SLOT_COUNT = 6
 export const INGREDIENTS_FABRICATION_MOLECULE_ID = 'mol-ingredients-fabrication'
+/** Identifiant data-binding posé par défaut sur le layout */
+export const INGREDIENTS_DEFAULT_NAME_IN_LAYOUT = 'craft'
+
+/** nameInLayout par défaut à la pose d'une molécule connue */
+export function defaultMoleculeNameInLayout(moleculeId) {
+  if (moleculeId === INGREDIENTS_FABRICATION_MOLECULE_ID) {
+    return INGREDIENTS_DEFAULT_NAME_IN_LAYOUT
+  }
+  return ''
+}
 
 export function isBlankBindingValue(v) {
   if (v == null) return true

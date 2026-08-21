@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb } from '../db/database.js';
 import { randomUUID } from 'crypto';
 import { parseJsonColumn } from '../db/sqlDialect.js';
+import { normalizeComponentMeta } from '../utils/componentMeta.js';
 
 const router = Router();
 
@@ -68,11 +69,22 @@ router.put('/:id', async (req, res) => {
   res.json(row);
 });
 
-// Rename component (PATCH — metadata only)
+// Metadata only (no definition)
 router.patch('/:id', async (req, res) => {
+  const parsed = normalizeComponentMeta(req.body);
+  if (!parsed.ok) return res.status(parsed.status).json({ error: parsed.error });
+
   const db = getDb();
-  const { name } = req.body;
-  await db.prepare('UPDATE components SET name = COALESCE(?, name), updated_at = CURRENT_TIMESTAMP WHERE id = ?').run(name ?? null, req.params.id);
+  const { name, width_mm, height_mm } = parsed.patch;
+  await db.prepare(
+    `UPDATE components SET
+      name = COALESCE(?, name),
+      width_mm = COALESCE(?, width_mm),
+      height_mm = COALESCE(?, height_mm),
+      updated_at = CURRENT_TIMESTAMP
+    WHERE id = ?`,
+  ).run(name ?? null, width_mm ?? null, height_mm ?? null, req.params.id);
+
   const row = await db.prepare('SELECT * FROM components WHERE id = ?').get(req.params.id);
   if (!row) return res.status(404).json({ error: 'Not found' });
   row.definition = parseJsonColumn(row.definition);

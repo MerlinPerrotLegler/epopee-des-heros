@@ -243,6 +243,7 @@ import { useEditorStore } from '@/stores/editor.js'
 import { useConfigStore } from '@/stores/config.js'
 import { useDragAndDrop } from '@/composables/useDragAndDrop.js'
 import { resolveElementParams } from '@/utils/binding.js'
+import { defaultMoleculeNameInLayout } from '@/utils/ingredientSlots.js'
 import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
 import {
   buildCardTrackFootprints,
@@ -585,12 +586,14 @@ function onDropAdd(e) {
       params: {},
     }
   } else if (payload.kind === 'molecule' && payload.moleculeId) {
+    const nameInLayout = payload.nameInLayout || defaultMoleculeNameInLayout(payload.moleculeId)
     element = {
       type: 'molecule',
       moleculeId: payload.moleculeId,
       width_mm: payload.width_mm || 30,
       height_mm: payload.height_mm || 20,
       params: {},
+      ...(nameInLayout ? { nameInLayout } : {}),
     }
   }
   if (!element) return

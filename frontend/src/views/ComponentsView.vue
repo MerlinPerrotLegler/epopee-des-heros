@@ -58,6 +58,7 @@
 
         <!-- Actions toujours visibles en bas à droite -->
         <div class="tile-actions" @click.stop>
+          <button type="button" class="act-btn" title="Configurer" @mousedown.prevent @click="openEdit(item)">⚙</button>
           <button type="button" class="act-btn" title="Renommer" @mousedown.prevent @click="startRename(item)">✎</button>
           <button type="button" class="act-btn" title="Dupliquer" @mousedown.prevent @click="duplicate(item)">⧉</button>
           <button type="button" class="act-btn act-del" title="Supprimer" @mousedown.prevent @click="remove(item)">✕</button>
@@ -83,6 +84,13 @@
         </div>
       </div>
     </div>
+
+    <ComponentSettingsModal
+      :open="!!editingItem"
+      :component="editingItem"
+      :save-fn="saveEditFromPayload"
+      @close="editingItem = null"
+    />
   </div>
 </template>
 
@@ -91,13 +99,15 @@ import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { api } from '@/utils/api.js'
 import { useInlineRename } from '@/composables/useInlineRename.js'
+import ComponentSettingsModal from '@/components/editor/ComponentSettingsModal.vue'
 
 const router = useRouter()
 const items      = ref([])
 const showCreate = ref(false)
 const search     = ref('')
 const sortKey    = ref('name')
-const form       = ref({ name: '', description: '', width_mm: 30, height_mm: 20 })
+const form        = ref({ name: '', description: '', width_mm: 30, height_mm: 20 })
+const editingItem = ref(null)
 
 const {
   renamingId,
@@ -118,6 +128,21 @@ const {
 function openEditor(item) {
   if (renamingId.value) return
   router.push(`/components/${item.id}/editor`)
+}
+
+function openEdit(item) {
+  editingItem.value = item
+}
+
+async function saveEditFromPayload(payload) {
+  const id = editingItem.value?.id
+  if (!id) throw new Error('Composant introuvable')
+  const updated = await api.patchComponent(id, payload)
+  const idx = items.value.findIndex(x => x.id === id)
+  if (idx !== -1) {
+    items.value[idx] = { ...items.value[idx], ...updated }
+  }
+  return updated
 }
 
 const filtered = computed(() => {

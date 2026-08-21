@@ -267,3 +267,36 @@ export function normalizeGoogleSheetsUrl(url) {
 export function isSyncableImportSource(sourceUrl) {
   return /^https?:\/\//i.test(String(sourceUrl || '').trim())
 }
+
+/** Params considérés comme « contenu » (vs style) pour formulaires Data / instance. */
+export const CONTENT_BINDING_PARAM_KEYS = new Set(['text', 'ref', 'tag', 'value'])
+
+export function isContentBindingPath(path) {
+  const param = String(path || '').split('.').pop()
+  return CONTENT_BINDING_PARAM_KEYS.has(param)
+}
+
+/**
+ * Partitionne les chemins bindables : contenu d'abord, reste en « avancé ».
+ * @returns {{ content: object[], advanced: object[] }}
+ */
+export function partitionBindablePaths(paths) {
+  const content = []
+  const advanced = []
+  for (const bp of paths || []) {
+    if (isContentBindingPath(bp.path)) content.push(bp)
+    else advanced.push(bp)
+  }
+  return { content, advanced }
+}
+
+/**
+ * Fusionne data existante avec tous les chemins bindables (clés manquantes → '').
+ */
+export function mergeDataWithBindablePaths(data, paths) {
+  const out = { ...(data && typeof data === 'object' ? data : {}) }
+  for (const bp of paths || []) {
+    if (bp?.path && !(bp.path in out)) out[bp.path] = ''
+  }
+  return out
+}

@@ -72,11 +72,13 @@ Le projet est divisé en 5 grandes phases :
 - [x] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
 - [x] Molécule **Ingrédients de fabrication** (page Molécules + palette Ajouter, seed `mol-ingredients-fabrication`)
 - [x] Molécule Ingrédients : reflow space-evenly (max 6, masquage vides, diamants entre cases visibles) ; seed composant arrêté
+- [x] Molécule Ingrédients : champs éditables UI + data (défaut `craft`, formulaire instance, Properties Contenu, DataPanel)
 - [x] **TSD-028** Multi-sélection calques (Cmd/Ctrl+clic) : déplacer le set, grouper (⊞ / ⌘G), layout + composant
 - [x] Pistes : texte libre par case (`cellOverrides.text`) — `trak`, `trakCorner`, `trakPath`, `cardTrack`
 - [x] **TSD-029** Types de layout : UI Config + raccourci modale, PATCH libellé, slug auto, garde `dos`
 - [x] TSD-030 rédigé — Rotation éléments (poignée canvas Figma, Shift 15°, multi autour du centre)
 - [x] TSD-030 implémenté : poignée canvas, snap Shift 15°, multi-sélection autour du pivot, helper + tests
+- [x] **TSD-031** Taille native composant après création (⚙ éditeur + liste, PATCH dims)
 
 ### Phase 2 — Médias & assets
 
@@ -185,6 +187,8 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (16) | **Ingrédients éditables UI+data** : défaut `nameInLayout=craft` à la pose ; formulaire instance / DataPanel contenu vs avancé ; Properties section Contenu → previewData ; helpers `partitionBindablePaths` / `mergeDataWithBindablePaths`. |
+| 2026-08-21 (15) | **TSD-031** Taille canvas composant éditable après création (⚙ éditeur + liste, PATCH `width_mm`/`height_mm`). Helper `normalizeComponentMeta` + tests store `applyLayoutMeta`. Instances posées non mises à jour. QA visuelle restante. |
 | 2026-08-21 (14) | **TSD-030 implémenté** : poignée canvas Figma, Shift 15°, multi-sélection autour du pivot, double-clic → 0°, champ panneau normalisé `(-180, 180]`. Helper `elementRotation.js` + 12 tests. `npm test` **235/235**. QA visuelle éditeur restante. |
 | 2026-08-21 (13) | **TSD-030 plan d’implémentation** : `docs/superpowers/plans/2026-08-21-rotation-elements.md` (helper TDD, snapshot drag, geste `startRotate`, poignée canvas, normalisation panneau). |
 | 2026-08-21 (12) | **TSD-030 Rotation éléments** (Review) : poignée canvas façon Figma sur le primaire, Shift 15°, multi-sélection autour du centre (orbit `x/y` + Δ rotation). Champ panneau existant normalisé `(-180, 180]`. Hors scope : boîte englobante, resize axes locaux. Implémentation en attente de relecture spec. |

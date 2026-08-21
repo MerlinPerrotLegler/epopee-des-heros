@@ -10,11 +10,11 @@
       <router-link :to="store.mode === 'component' ? '/components' : store.mode === 'molecule' ? '/molecules' : '/layouts'" class="btn-icon" title="Retour">←</router-link>
       <span class="toolbar-divider"></span>
       <button
-        v-if="store.mode === 'layout' && store.layout"
+        v-if="(store.mode === 'layout' || store.mode === 'component') && store.layout"
         type="button"
         class="toolbar-title toolbar-title-btn"
-        title="Modifier la configuration"
-        :disabled="store.readOnly || !store.layoutLockHeld"
+        :title="store.mode === 'component' ? 'Modifier le composant' : 'Modifier la configuration'"
+        :disabled="store.mode === 'layout' && (store.readOnly || !store.layoutLockHeld)"
         @click="showSettings = true"
       >{{ store.layout?.name || '…' }}</button>
       <span v-else class="toolbar-title">{{ store.layout?.name || '…' }}</span>
@@ -39,11 +39,11 @@
         >Verso</button>
       </div>
       <button
-        v-if="store.mode === 'layout' && store.layout"
+        v-if="(store.mode === 'layout' || store.mode === 'component') && store.layout"
         type="button"
         class="btn-icon btn-sm"
-        title="Configurer le layout"
-        :disabled="store.readOnly || !store.layoutLockHeld"
+        :title="store.mode === 'component' ? 'Configurer le composant' : 'Configurer le layout'"
+        :disabled="store.mode === 'layout' && (store.readOnly || !store.layoutLockHeld)"
         @click="showSettings = true"
       >⚙</button>
       <span class="save-indicator" v-if="store.saving">● sauvegarde…</span>
@@ -94,13 +94,19 @@
     </div>
 
     <LayoutSettingsModal
-      :open="showSettings"
+      :open="showSettings && store.mode === 'layout'"
       :layout="store.layout"
       :card-types="cardTypes"
       :verso-layouts="versoLayouts"
       :save-fn="saveLayoutMeta"
       @close="showSettings = false"
       @types-changed="mergeCardType"
+    />
+    <ComponentSettingsModal
+      :open="showSettings && store.mode === 'component'"
+      :component="store.layout"
+      :save-fn="saveComponentMeta"
+      @close="showSettings = false"
     />
     <ScreenCalibrateModal
       :open="showCalibrate"
@@ -117,6 +123,7 @@ import { useEditorStore } from '@/stores/editor.js'
 import { api } from '@/utils/api.js'
 import { getFacePartnerId } from '@/utils/layoutFaces.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
+import ComponentSettingsModal from '@/components/editor/ComponentSettingsModal.vue'
 import GuidesMenu from '@/components/editor/GuidesMenu.vue'
 import ScreenCalibrateModal from '@/components/editor/ScreenCalibrateModal.vue'
 import { typeLabel } from '@/utils/typeCode.js'
@@ -182,6 +189,14 @@ async function saveLayoutMeta(payload) {
   const idx = allLayouts.value.findIndex(l => l.id === updated.id)
   if (idx !== -1) allLayouts.value[idx] = { ...allLayouts.value[idx], ...updated }
   else allLayouts.value.push(updated)
+  return updated
+}
+
+async function saveComponentMeta(payload) {
+  if (!store.layout?.id) throw new Error('Composant introuvable')
+  const updated = await api.patchComponent(store.layout.id, payload)
+  store.applyLayoutMeta(updated)
+  store.requestFit = 'fit'
   return updated
 }
 </script>

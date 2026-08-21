@@ -107,30 +107,58 @@
         </div>
 
         <div class="data-fields">
-          <div v-for="(val, key) in editingCard.data" :key="key" class="data-field">
-            <label class="field-key">{{ key }}</label>
-            <select
-              v-if="optionsForBinding(key)?.length"
-              :value="val"
-              @change="editingCard.data[key] = $event.target.value"
-              class="field-val"
-            >
-              <option value="">— choisir —</option>
-              <option
-                v-for="opt in optionsForBinding(key)"
-                :key="opt.value"
-                :value="opt.value"
-              >{{ opt.label }}</option>
-            </select>
-            <input
-              v-else
-              :value="val"
-              @input="editingCard.data[key] = $event.target.value"
-              class="field-val"
-            />
-            <button class="btn-icon btn-danger btn-xs" @click="removeBinding(key)">×</button>
-          </div>
-          <div v-if="!Object.keys(editingCard.data).length" class="empty-data">Aucune donnée.</div>
+          <template v-if="editingContentPaths.length">
+            <div class="data-section-title">Contenu</div>
+            <div v-for="bp in editingContentPaths" :key="bp.path" class="data-field">
+              <label class="field-key" :title="bp.path">{{ bp.path }}</label>
+              <select
+                v-if="optionsForBinding(bp.path)?.length"
+                :value="editingCard.data[bp.path] ?? ''"
+                @change="editingCard.data[bp.path] = $event.target.value"
+                class="field-val"
+              >
+                <option value="">— choisir —</option>
+                <option
+                  v-for="opt in optionsForBinding(bp.path)"
+                  :key="opt.value"
+                  :value="opt.value"
+                >{{ opt.label }}</option>
+              </select>
+              <input
+                v-else
+                :value="editingCard.data[bp.path] ?? ''"
+                @input="editingCard.data[bp.path] = $event.target.value"
+                class="field-val"
+              />
+            </div>
+          </template>
+          <details v-if="editingAdvancedPaths.length" class="data-advanced">
+            <summary>Avancé ({{ editingAdvancedPaths.length }})</summary>
+            <div v-for="bp in editingAdvancedPaths" :key="bp.path" class="data-field">
+              <label class="field-key" :title="bp.path">{{ bp.path }}</label>
+              <input
+                :value="editingCard.data[bp.path] ?? ''"
+                @input="editingCard.data[bp.path] = $event.target.value"
+                class="field-val"
+              />
+            </div>
+          </details>
+          <template v-if="editingOrphanKeys.length">
+            <div class="data-section-title">Autres</div>
+            <div v-for="key in editingOrphanKeys" :key="key" class="data-field">
+              <label class="field-key" :title="key">{{ key }}</label>
+              <input
+                :value="editingCard.data[key] ?? ''"
+                @input="editingCard.data[key] = $event.target.value"
+                class="field-val"
+              />
+              <button class="btn-icon btn-danger btn-xs" @click="removeBinding(key)">×</button>
+            </div>
+          </template>
+          <div
+            v-if="!editingContentPaths.length && !editingAdvancedPaths.length && !editingOrphanKeys.length"
+            class="empty-data"
+          >Aucune donnée. Posez des éléments avec un identifiant sur le layout.</div>
         </div>
 
         <div class="add-binding">
@@ -232,7 +260,7 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
-import { getBindablePaths, isSyncableImportSource } from '@/utils/binding.js'
+import { getBindablePaths, isSyncableImportSource, partitionBindablePaths, mergeDataWithBindablePaths } from '@/utils/binding.js'
 import { CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import ImportWizard from '@/components/cards/ImportWizard.vue'
@@ -248,6 +276,13 @@ const importJobs = ref([])
 const selectedLayout = ref(null)
 const editingCard = ref(null)
 const editingCardPaths = ref([])
+const editingContentPaths = computed(() => partitionBindablePaths(editingCardPaths.value).content)
+const editingAdvancedPaths = computed(() => partitionBindablePaths(editingCardPaths.value).advanced)
+const editingOrphanKeys = computed(() => {
+  if (!editingCard.value?.data) return []
+  const known = new Set(editingCardPaths.value.map((p) => p.path))
+  return Object.keys(editingCard.value.data).filter((k) => !known.has(k))
+})
 const newKey = ref('')
 const deleteTarget = ref(null)
 const deleteJobTarget = ref(null)
@@ -416,7 +451,7 @@ async function saveCard(card) {
 }
 
 async function editCard(card) {
-  editingCard.value = { ...card, data: { ...card.data } }
+  editingCard.value = { ...card, data: { ...(card.data || {}) } }
   // Load binding paths for this card's layout (+ catalogue atome pour badge/iconMap)
   try {
     if (!configStore.config || !Object.keys(configStore.config).length) {
@@ -441,12 +476,24 @@ async function editCard(card) {
       }
     } catch { molRegistry = {} }
     editingCardPaths.value = getBindablePaths(def, configStore.config?.[ATOM_PARAM_RULES_KEY] || null, registry, molRegistry)
+    editingCard.value = {
+      ...editingCard.value,
+      data: mergeDataWithBindablePaths(editingCard.value.data, editingCardPaths.value),
+    }
   } catch { editingCardPaths.value = [] }
 }
 
 function optionsForBinding(key) {
   const bp = editingCardPaths.value.find(p => p.path === key)
   return bp?.options?.length ? bp.options : null
+}
+
+function addBinding() {
+  if (!newKey.value || !editingCard.value) return
+  if (!(newKey.value in editingCard.value.data)) {
+    editingCard.value.data[newKey.value] = ''
+  }
+  newKey.value = ''
 }
 
 function removeBinding(key) {
@@ -456,16 +503,12 @@ function removeBinding(key) {
   editingCard.value = { ...editingCard.value, data: d }
 }
 
-function addBinding() {
-  if (!newKey.value || !editingCard.value) return
-  editingCard.value.data[newKey.value] = ''
-  newKey.value = ''
-}
-
 async function saveEditingCard() {
-  await api.updateCard(editingCard.value.id, { name: editingCard.value.name, data: editingCard.value.data })
+  // Persister tout le formulaire visible (y compris "") pour le masquage des slots
+  const data = { ...(editingCard.value.data || {}) }
+  await api.updateCard(editingCard.value.id, { name: editingCard.value.name, data })
   const idx = cards.value.findIndex(c => c.id === editingCard.value.id)
-  if (idx > -1) cards.value[idx] = { ...editingCard.value }
+  if (idx > -1) cards.value[idx] = { ...editingCard.value, data }
   editingCard.value = null
 }
 
@@ -737,6 +780,26 @@ function exportCsv() {
   border-radius: var(--radius-sm);
 }
 .empty-data { color: var(--text-muted); font-size: 12px; padding: 8px 0; }
+.data-section-title {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+  margin: 4px 0 2px;
+}
+.data-advanced {
+  margin-top: 8px;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 6px;
+}
+.data-advanced summary {
+  cursor: pointer;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.data-advanced .data-field { margin-bottom: 4px; }
 
 .add-binding {
   display: flex;
