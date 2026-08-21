@@ -110,3 +110,94 @@ describe('editor Plan operations', () => {
     ])
   })
 })
+
+describe('editor multi-selection', () => {
+  let store
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useEditorStore()
+    store.setAutoSave(false)
+    store.layout = {
+      id: 'layout-1',
+      width_mm: 63,
+      height_mm: 88,
+      definition: { layers: [], dataSchema: {} },
+    }
+  })
+
+  function addAtom(id, x = 0, y = 0) {
+    store.layout.definition.layers.push({
+      id,
+      kind: 'element',
+      type: 'atom',
+      atomType: 'title',
+      name: id,
+      locked: false,
+      visible: true,
+      opacity: 1,
+      x_mm: x,
+      y_mm: y,
+      width_mm: 10,
+      height_mm: 5,
+      params: {},
+    })
+    return id
+  }
+
+  it('toggles items with additive selectItem', () => {
+    addAtom('a')
+    addAtom('b')
+    addAtom('c')
+    store.selectItem('a')
+    store.selectItem('b', { additive: true })
+    assert.deepEqual(store.selectedItemIds, ['a', 'b'])
+    assert.equal(store.selectedItemId, 'b')
+    assert.equal(store.selectedElementId, 'b')
+
+    store.selectItem('a', { additive: true })
+    assert.deepEqual(store.selectedItemIds, ['b'])
+    assert.equal(store.selectedItemId, 'b')
+  })
+
+  it('groups selected items and moves them together', () => {
+    addAtom('a', 1, 2)
+    addAtom('b', 4, 6)
+    addAtom('c', 10, 10)
+    store.selectItem('a')
+    store.selectItem('b', { additive: true })
+
+    const group = store.groupSelectedItems()
+    assert.ok(group)
+    assert.equal(group.kind, 'group')
+    assert.deepEqual(group.children.map(i => i.id), ['a', 'b'])
+    assert.equal(store.layers.length, 2)
+    assert.equal(store.layers[0].id, group.id)
+    assert.equal(store.layers[1].id, 'c')
+    assert.deepEqual(store.selectedItemIds, [group.id])
+
+    store.moveSelected(3, 5)
+    assert.equal(group.children[0].x_mm, 4)
+    assert.equal(group.children[0].y_mm, 7)
+    assert.equal(group.children[1].x_mm, 7)
+    assert.equal(group.children[1].y_mm, 11)
+    assert.equal(store.layers[1].x_mm, 10)
+  })
+
+  it('moveSelected shifts every selected root without double-moving grouped children', () => {
+    addAtom('a', 0, 0)
+    addAtom('b', 2, 0)
+    store.selectItem('a')
+    store.selectItem('b', { additive: true })
+    store.moveSelected(1, 0)
+    assert.equal(store.layers[0].x_mm, 1)
+    assert.equal(store.layers[1].x_mm, 3)
+  })
+
+  it('does not group a single item', () => {
+    addAtom('a')
+    store.selectItem('a')
+    assert.equal(store.groupSelectedItems(), null)
+    assert.equal(store.layers[0].kind, 'element')
+  })
+})

@@ -3,8 +3,12 @@
     <!-- Header -->
     <div class="panel-section-title lp-header">
       <span>Calques</span>
-      <span class="lp-hint" title="⌘/Ctrl+[ descendre · ⌘/Ctrl+] monter">⌘[ ⌘]</span>
-      <button class="btn-icon btn-sm" @click="store.addGroup()" title="Nouveau groupe">⊞</button>
+      <span class="lp-hint" title="⌘/Ctrl+clic multi-sélection · ⌘/Ctrl+G grouper · ⌘/Ctrl+[ ] pile">⌘clic · ⌘G</span>
+      <button
+        class="btn-icon btn-sm"
+        @click="onAddGroupClick"
+        :title="store.selectedItemIds.length >= 2 ? 'Grouper la sélection (⌘G)' : 'Nouveau groupe'"
+      >⊞</button>
     </div>
 
     <!-- Tree -->
@@ -18,7 +22,8 @@
         :key="row.id"
         class="layer-item"
         :class="{
-          selected: store.selectedItemId === row.id,
+          selected: store.isItemSelected(row.id),
+          primary: store.selectedItemId === row.id && store.selectedItemIds.length > 1,
           'drop-above': dropTarget === row.id && dropMode === 'above',
           'drop-below': dropTarget === row.id && dropMode === 'below',
           'drop-inside': dropTarget === row.id && dropMode === 'inside',
@@ -31,7 +36,7 @@
         @dragover.prevent="onItemDragOver($event, row)"
         @dragleave="onItemDragLeave"
         @drop.prevent.stop="onItemDrop(row)"
-        @click="selectItem(row)"
+        @click="selectItem(row, $event)"
       >
         <!-- Expand toggle for groups -->
         <button
@@ -166,6 +171,10 @@ function loadExpanded() {
 
 onMounted(loadExpanded)
 watch(() => store.layout?.id, loadExpanded)
+watch(() => store.selectedItemId, (id) => {
+  const item = store.selectedItem
+  if (item?.kind === 'group' && id && !expanded.value.has(id)) toggleExpand(id)
+})
 
 function toggleExpand(id) {
   const next = new Set(expanded.value)
@@ -236,13 +245,16 @@ function finishRename(row) {
 }
 
 // ── Selection ─────────────────────────────────────────────────────────────────
-function selectItem(row) {
-  store.selectedItemId = row.id
-  if (row.kind !== 'group') {
-    store.selectedElementId = row.id
-  } else {
-    store.selectedElementId = null
-    if (!expanded.value.has(row.id)) toggleExpand(row.id)
+function onAddGroupClick() {
+  if (store.selectedItemIds.length >= 2) store.groupSelectedItems()
+  else store.addGroup()
+}
+
+function selectItem(row, e) {
+  const additive = !!(e?.metaKey || e?.ctrlKey)
+  store.selectItem(row.id, { additive })
+  if (row.kind === 'group' && !additive && !expanded.value.has(row.id)) {
+    toggleExpand(row.id)
   }
 }
 
@@ -278,6 +290,7 @@ function onDragStart(e, id) {
   dragSrcId.value = id
   e.dataTransfer.effectAllowed = 'move'
   e.dataTransfer.setData('text/plain', id)
+  if (!store.isItemSelected(id)) store.selectItem(id)
 }
 
 function onDragEnd() {
@@ -326,25 +339,26 @@ function onItemDragOver(e, row) {
 
 function onItemDrop(row) {
   if (!dragSrcId.value || dragSrcId.value === row.id) { onDragEnd(); return }
+  const srcIds = store.getDragSourceIds(dragSrcId.value).filter(id => id !== row.id)
+  if (!srcIds.length) { onDragEnd(); return }
   const mode = dropMode.value
   if (mode === 'inside' && row.kind === 'group') {
-    store.moveItemToGroup(dragSrcId.value, row.id)
+    store.moveItemsToGroup(srcIds, row.id)
   } else if (mode === 'above') {
-    // Visuel au-dessus → after dans l’array
-    store.reorderItemAroundTarget(dragSrcId.value, row.id, 'after')
+    store.reorderItemsAroundTarget(srcIds, row.id, 'after')
   } else if (mode === 'below') {
-    // Visuel en-dessous → before dans l’array
-    store.reorderItemAroundTarget(dragSrcId.value, row.id, 'before')
+    store.reorderItemsAroundTarget(srcIds, row.id, 'before')
   }
   onDragEnd()
 }
 
 function onListBottomDrop() {
   if (!dragSrcId.value) { onDragEnd(); return }
+  const srcIds = store.getDragSourceIds(dragSrcId.value)
   const topLevel = flatTree.value.filter(r => r._parentId === null)
-  const lowestRow = topLevel[topLevel.length - 1]
-  if (lowestRow && lowestRow.id !== dragSrcId.value) {
-    store.reorderItemAroundTarget(dragSrcId.value, lowestRow.id, 'before')
+  const lowestRow = [...topLevel].reverse().find(r => !srcIds.includes(r.id)) || topLevel[topLevel.length - 1]
+  if (lowestRow && !srcIds.includes(lowestRow.id)) {
+    store.reorderItemsAroundTarget(srcIds, lowestRow.id, 'before')
   }
   onDragEnd()
 }
@@ -360,7 +374,7 @@ function onListDrop() {
     onListBottomDrop()
     return
   }
-  store.moveItemToGroup(dragSrcId.value, null)
+  store.moveItemsToGroup(store.getDragSourceIds(dragSrcId.value), null)
   onDragEnd()
 }
 </script>
@@ -407,12 +421,14 @@ function onListDrop() {
   padding: 5px 8px;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  user-select: none;
   transition: background var(--transition-fast);
   border: 1px solid transparent;
   min-width: 0;
 }
 .layer-item:hover { background: var(--bg-hover); }
 .layer-item.selected { background: var(--bg-tertiary); }
+.layer-item.selected.primary { box-shadow: inset 2px 0 0 var(--accent-primary); }
 .layer-item.is-group { background: rgba(108,122,255,0.04); }
 .layer-item.is-group.selected { background: rgba(108,122,255,0.12); }
 .layer-item.drop-inside { border-color: var(--accent-primary); background: rgba(108,122,255,0.1); }

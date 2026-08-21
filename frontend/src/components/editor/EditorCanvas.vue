@@ -70,7 +70,8 @@
           v-for="el in store.allElements" :key="el.id"
           class="canvas-element"
           :class="{
-            selected: store.selectedElementId === el.id,
+            selected: store.selectedElementIds.has(el.id),
+            primary: store.selectedElementId === el.id,
             locked: el._layerLocked,
             'is-background': BACKGROUND_ATOM_TYPES.has(el.atomType),
             'drawing-active': drawingMode.active.value && drawingMode.drawingElementId.value === el.id,
@@ -395,9 +396,17 @@ function onElementMouseDown(e, el) {
   if (drawingMode.active.value && drawingMode.drawingElementId.value !== el.id) {
     drawingMode.exit()
   }
+
+  if (e.ctrlKey || e.metaKey) {
+    e.preventDefault()
+    e.stopPropagation()
+    store.selectItem(el.id, { additive: true })
+    return
+  }
+
+  const alreadyInSet = store.selectedElementIds.has(el.id)
   const wasAlreadySelected = store.selectedElementId === el.id
-  store.selectedElementId = el.id
-  store.selectedItemId = el.id // sync calque → flèches / panneau calques
+  if (!alreadyInSet) store.selectItem(el.id)
 
   // Clic sur une case d'une piste déjà sélectionnée → sélection de case
   if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' &&
@@ -441,15 +450,16 @@ function onElementMouseDown(e, el) {
   // Le fond de carte n'est pas déplaçable, pas de drag en mode dessin, ni si moveLocked
   const isMoveLocked = el.type === 'atom' && el.atomType === 'drawing' && el.params?.moveLocked
   if (!el._layerLocked && !BACKGROUND_ATOM_TYPES.has(el.atomType) && !drawingMode.active.value && !isMoveLocked) {
-    dragDrop.startDrag(e, el.id)
+    dragDrop.startDrag(e, el.id, {
+      onPureClick: alreadyInSet ? () => store.selectItem(el.id) : null,
+    })
   }
 }
 
 function onCanvasBgClick(e) {
   if (e.target === containerRef.value || e.target.classList.contains('card-boundary') || e.target.classList.contains('canvas-viewport')) {
     if (drawingMode.active.value) { drawingMode.exit(); return }
-    store.selectedElementId = null
-    store.selectedItemId = null
+    store.selectItem(null)
   }
   // Pan with middle mouse or if clicking on background
   if (e.button === 1) {
@@ -654,7 +664,7 @@ function onKeyDown(e) {
 
   if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
   if (inInput) return
-  if (!store.selectedItemId) return
+  if (!store.selectedItemIds.length) return
   e.preventDefault()
   const step = e.shiftKey ? 10 * store.snapGrid : store.snapGrid
   const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0

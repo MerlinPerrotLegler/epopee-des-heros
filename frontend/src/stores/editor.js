@@ -62,8 +62,9 @@ export const useEditorStore = defineStore('editor', () => {
   const history = ref([])
 
   // Selection
-  const selectedElementId = ref(null) // canvas selection (element only)
-  const selectedItemId    = ref(null) // layers panel selection (element or group)
+  const selectedElementId = ref(null) // canvas selection (element only, primary)
+  const selectedItemId    = ref(null) // layers panel selection (element or group, primary)
+  const selectedItemIds   = ref([])   // multi-sélection calques (TSD-028)
   const activeCellIdx     = ref(null)
 
   // Canvas
@@ -198,6 +199,91 @@ export const useEditorStore = defineStore('editor', () => {
     return result
   }
 
+  function _isDescendant(ancestorId, itemId) {
+    const anc = _findItem(definition.value.layers || [], ancestorId)
+    if (!anc || anc.kind !== 'group') return false
+    return !!_findItem(anc.children || [], itemId)
+  }
+
+  /** Items du set qui ne sont pas descendants d’un autre item du set. */
+  function _selectionRoots(idList = selectedItemIds.value) {
+    const idSet = new Set(idList)
+    const roots = []
+    function walk(items, ancestorSelected) {
+      for (const item of items) {
+        const sel = idSet.has(item.id)
+        if (sel && !ancestorSelected) roots.push(item.id)
+        if (item.kind === 'group') walk(item.children || [], ancestorSelected || sel)
+      }
+    }
+    walk(definition.value.layers || [], false)
+    return roots
+  }
+
+  function _collectByIds(ids) {
+    const idSet = new Set(ids)
+    const collected = []
+    function walk(items) {
+      for (const item of items) {
+        if (idSet.has(item.id)) collected.push(item)
+        else if (item.kind === 'group') walk(item.children || [])
+      }
+    }
+    walk(definition.value.layers || [])
+    return collected
+  }
+
+  function _syncPrimaryFromIds() {
+    const ids = selectedItemIds.value
+    if (!ids.length) {
+      selectedItemId.value = null
+      selectedElementId.value = null
+      return
+    }
+    if (!ids.includes(selectedItemId.value)) {
+      selectedItemId.value = ids[ids.length - 1]
+    }
+    const primary = _findItem(definition.value.layers || [], selectedItemId.value)
+    if (primary && primary.kind !== 'group') {
+      selectedElementId.value = primary.id
+      return
+    }
+    let elId = null
+    for (let i = ids.length - 1; i >= 0; i--) {
+      const it = _findItem(definition.value.layers || [], ids[i])
+      if (it && it.kind !== 'group') { elId = it.id; break }
+    }
+    selectedElementId.value = elId
+  }
+
+  function selectItem(id, { additive = false } = {}) {
+    if (!id) {
+      selectedItemIds.value = []
+      selectedItemId.value = null
+      selectedElementId.value = null
+      return
+    }
+    if (additive) {
+      const ids = [...selectedItemIds.value]
+      const idx = ids.indexOf(id)
+      if (idx >= 0) ids.splice(idx, 1)
+      else ids.push(id)
+      selectedItemIds.value = ids
+      if (ids.includes(id)) selectedItemId.value = id
+      else if (!ids.includes(selectedItemId.value)) {
+        selectedItemId.value = ids[ids.length - 1] || null
+      }
+    } else {
+      selectedItemIds.value = [id]
+      selectedItemId.value = id
+    }
+    _syncPrimaryFromIds()
+  }
+
+  function isItemSelected(id) {
+    return selectedItemIds.value.includes(id)
+  }
+
   // ── Migration (old format: layers[].elements[] → new tree format) ─────────
 
   function _migrateDefinition(def) {
@@ -267,6 +353,21 @@ export const useEditorStore = defineStore('editor', () => {
     if (!selectedElementId.value) return null
     const item = _findItem(definition.value.layers || [], selectedElementId.value)
     return item?.kind !== 'group' ? item : null
+  })
+
+  /** Élément ids visuellement sélectionnés (set + enfants des groupes du set). */
+  const selectedElementIds = computed(() => {
+    const set = new Set()
+    const idSet = new Set(selectedItemIds.value)
+    function walk(items, inherited) {
+      for (const item of items) {
+        const sel = inherited || idSet.has(item.id)
+        if (item.kind === 'group') walk(item.children || [], sel)
+        else if (sel) set.add(item.id)
+      }
+    }
+    walk(definition.value.layers || [], false)
+    return set
   })
 
   const allElements = computed(() => {
@@ -464,6 +565,7 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = []
       selectedElementId.value = null
       selectedItemId.value = layers.value[0]?.id || null
+      selectedItemIds.value = selectedItemId.value ? [selectedItemId.value] : []
       requestFit.value = 'fit'
       await _preloadComponents({ force: true })
     } finally {
@@ -587,6 +689,7 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = []
       selectedElementId.value = null
       selectedItemId.value = null
+      selectedItemIds.value = []
       requestFit.value = 'fit'
     } finally {
       loading.value = false
@@ -618,6 +721,7 @@ export const useEditorStore = defineStore('editor', () => {
       history.value = []
       selectedElementId.value = null
       selectedItemId.value = null
+      selectedItemIds.value = []
       requestFit.value = 'fit'
     } finally {
       loading.value = false
@@ -692,6 +796,16 @@ export const useEditorStore = defineStore('editor', () => {
 
   watch(selectedElementId, () => { activeCellIdx.value = null })
 
+  watch(selectedItemId, (id) => {
+    if (!id) {
+      if (selectedItemIds.value.length) selectedItemIds.value = []
+      return
+    }
+    if (!selectedItemIds.value.includes(id)) {
+      selectedItemIds.value = [id]
+    }
+  })
+
   function markDirty() {
     if (!assertEditable()) return
     dirty.value = true
@@ -713,6 +827,8 @@ export const useEditorStore = defineStore('editor', () => {
       children: []
     })
     selectedItemId.value = id
+    selectedItemIds.value = [id]
+    selectedElementId.value = null
     markDirty()
   }
 
@@ -751,6 +867,7 @@ export const useEditorStore = defineStore('editor', () => {
     })
     selectedElementId.value = plan.id
     selectedItemId.value = plan.id
+    selectedItemIds.value = [plan.id]
     markDirty()
     return plan
   }
@@ -764,7 +881,7 @@ export const useEditorStore = defineStore('editor', () => {
     markDirty()
   }
 
-  function removeItem(id) {
+  function removeItem(id, { noHistory = false } = {}) {
     if (!assertEditable()) return
     const item = _findItem(definition.value.layers, id)
     if (!item) return
@@ -776,15 +893,28 @@ export const useEditorStore = defineStore('editor', () => {
     if (!parentArr) return
     const idx = parentArr.findIndex(i => i.id === removeId)
     if (idx === -1) return
-    _snapshot()
+    if (!noHistory) _snapshot()
     const [removed] = parentArr.splice(idx, 1)
-    if (selectedItemId.value && _findItem([removed], selectedItemId.value)) {
-      selectedItemId.value = null
+    const gone = (checkId) => checkId && _findItem([removed], checkId)
+    selectedItemIds.value = selectedItemIds.value.filter(sid => !gone(sid))
+    if (gone(selectedItemId.value)) {
+      selectedItemId.value = selectedItemIds.value[selectedItemIds.value.length - 1] || null
     }
-    if (selectedElementId.value && _findItem([removed], selectedElementId.value)) {
+    if (gone(selectedElementId.value)) {
       selectedElementId.value = null
     }
+    _syncPrimaryFromIds()
     markDirty()
+  }
+
+  function removeSelectedItems() {
+    const ids = _selectionRoots()
+    if (!ids.length) return
+    if (!assertEditable()) return
+    _snapshot()
+    for (const id of ids) {
+      removeItem(id, { noHistory: true })
+    }
   }
 
   // Move itemId before/after targetId in potentially different containers
@@ -807,6 +937,34 @@ export const useEditorStore = defineStore('editor', () => {
     let tgtIdx = tgtParent.findIndex(i => i.id === targetId)
     const insertIdx = position === 'before' ? tgtIdx : tgtIdx + 1
     tgtParent.splice(insertIdx, 0, srcItem)
+    markDirty()
+  }
+
+  function reorderItemsAroundTarget(srcIds, targetId, position /* 'before'|'after' */) {
+    if (!assertEditable()) return
+    const ids = [...new Set(srcIds)].filter(id => id && id !== targetId && !_isDescendant(id, targetId))
+    if (!ids.length) return
+    if (ids.length === 1) {
+      reorderItemAroundTarget(ids[0], targetId, position)
+      return
+    }
+    _snapshot()
+    const collected = _collectByIds(ids)
+    for (const item of collected) {
+      const arr = _findParentArray(definition.value.layers, item.id)
+      if (!arr) continue
+      const idx = arr.findIndex(i => i.id === item.id)
+      if (idx >= 0) arr.splice(idx, 1)
+    }
+    const tgtParent = _findParentArray(definition.value.layers, targetId)
+    if (!tgtParent) {
+      definition.value.layers.push(...collected)
+      markDirty()
+      return
+    }
+    const tgtIdx = tgtParent.findIndex(i => i.id === targetId)
+    const insertIdx = position === 'before' ? tgtIdx : tgtIdx + 1
+    tgtParent.splice(insertIdx, 0, ...collected)
     markDirty()
   }
 
@@ -868,6 +1026,91 @@ export const useEditorStore = defineStore('editor', () => {
       }
     }
     markDirty()
+  }
+
+  function moveItemsToGroup(itemIds, groupId) {
+    if (!assertEditable()) return
+    const ids = [...new Set(itemIds)].filter(id => {
+      if (!id || id === groupId) return false
+      if (groupId && _isDescendant(id, groupId)) return false
+      return true
+    })
+    if (!ids.length) return
+    if (ids.length === 1) {
+      moveItemToGroup(ids[0], groupId)
+      return
+    }
+    _snapshot()
+    const collected = _collectByIds(ids)
+    for (const item of collected) {
+      const arr = _findParentArray(definition.value.layers, item.id)
+      if (!arr) continue
+      const idx = arr.findIndex(i => i.id === item.id)
+      if (idx >= 0) arr.splice(idx, 1)
+    }
+    if (groupId === null) {
+      definition.value.layers.push(...collected)
+    } else {
+      const targetGroup = _findItem(definition.value.layers, groupId)
+      if (targetGroup?.kind === 'group') {
+        if (!targetGroup.children) targetGroup.children = []
+        targetGroup.children.push(...collected)
+      } else {
+        definition.value.layers.push(...collected)
+      }
+    }
+    markDirty()
+  }
+
+  function groupSelectedItems() {
+    if (!assertEditable() || !layout.value) return null
+    const ids = _selectionRoots()
+    if (ids.length < 2) return null
+
+    const parentArrays = ids.map(id => _findParentArray(definition.value.layers, id))
+    const sameParent = parentArrays.every(p => p && p === parentArrays[0])
+    const dest = sameParent ? parentArrays[0] : definition.value.layers
+
+    _snapshot()
+    const collected = _collectByIds(ids)
+
+    let insertIdx = dest.length
+    if (sameParent) {
+      const indexes = ids
+        .map(id => dest.findIndex(i => i.id === id))
+        .filter(i => i >= 0)
+      if (indexes.length) insertIdx = Math.min(...indexes)
+    }
+
+    for (const item of collected) {
+      const arr = _findParentArray(definition.value.layers, item.id)
+      if (!arr) continue
+      const idx = arr.findIndex(i => i.id === item.id)
+      if (idx >= 0) arr.splice(idx, 1)
+    }
+
+    const groupCount = _countGroups(definition.value.layers)
+    const group = {
+      id: crypto.randomUUID(),
+      kind: 'group',
+      name: `Groupe ${groupCount + 1}`,
+      locked: false,
+      visible: true,
+      opacity: 1,
+      children: collected,
+    }
+    dest.splice(Math.min(insertIdx, dest.length), 0, group)
+    selectItem(group.id)
+    markDirty()
+    return group
+  }
+
+  function _countGroups(items) {
+    let n = 0
+    for (const item of items) {
+      if (item.kind === 'group') n += 1 + _countGroups(item.children || [])
+    }
+    return n
   }
 
   // Move all elements inside a group by a delta
@@ -934,6 +1177,7 @@ export const useEditorStore = defineStore('editor', () => {
 
     selectedElementId.value = el.id
     selectedItemId.value = el.id
+    selectedItemIds.value = [el.id]
     markDirty()
 
     if (el.type === 'component' && el.componentId && !componentsCache.value[el.componentId]) {
@@ -972,14 +1216,32 @@ export const useEditorStore = defineStore('editor', () => {
     const clone = cloneLayerItem(item)
     const idx = parentArr.indexOf(item)
     parentArr.splice(idx + 1, 0, clone)
-    selectedItemId.value = clone.id
-    if (clone.kind === 'group') {
-      selectedElementId.value = null
-    } else {
-      selectedElementId.value = clone.id
-    }
+    selectItem(clone.id)
     markDirty()
     return clone
+  }
+
+  function duplicateSelectedItems() {
+    const ids = _selectionRoots()
+    if (!ids.length) return
+    if (ids.length === 1) return duplicateItem(ids[0])
+    _snapshot()
+    const collected = _collectByIds(ids)
+    const cloneIds = []
+    for (let i = collected.length - 1; i >= 0; i--) {
+      const item = collected[i]
+      const parentArr = _findParentArray(definition.value.layers, item.id)
+      if (!parentArr) continue
+      const clone = cloneLayerItem(item)
+      const idx = parentArr.indexOf(item)
+      parentArr.splice(idx + 1, 0, clone)
+      cloneIds.unshift(clone.id)
+    }
+    selectedItemIds.value = cloneIds
+    selectedItemId.value = cloneIds[cloneIds.length - 1] || null
+    _syncPrimaryFromIds()
+    markDirty()
+    return cloneIds
   }
 
   function duplicateElement(elementId) {
@@ -1008,16 +1270,59 @@ export const useEditorStore = defineStore('editor', () => {
     return Math.round(value / snapGrid.value) * snapGrid.value
   }
 
-  // Move the currently selected item (element or group) by a delta in mm
+  // Move the currently selected items (elements and/or groups) by a delta in mm
+  function _shiftItem(item, dx_mm, dy_mm) {
+    if (item.kind === 'group') {
+      for (const child of item.children || []) _shiftItem(child, dx_mm, dy_mm)
+    } else {
+      item.x_mm = (item.x_mm || 0) + dx_mm
+      item.y_mm = (item.y_mm || 0) + dy_mm
+    }
+  }
+
   function moveSelected(dx_mm, dy_mm) {
     if (!assertEditable()) return
-    const item = selectedItem.value
-    if (!item || item.locked) return
-    if (item.kind === 'group') {
-      moveGroupBy(item.id, dx_mm, dy_mm)
-    } else {
-      updateElement(item.id, { x_mm: item.x_mm + dx_mm, y_mm: item.y_mm + dy_mm })
+    if (!dx_mm && !dy_mm) return
+    const items = _selectionRoots()
+      .map(id => _findItem(definition.value.layers, id))
+      .filter(item => item && !item.locked)
+    if (!items.length) return
+    _snapshot()
+    for (const item of items) _shiftItem(item, dx_mm, dy_mm)
+    markDirty()
+  }
+
+  function getDragStartPositions(clickedId) {
+    const ids = []
+    if (selectedElementIds.value.has(clickedId)) {
+      function walk(item, parentLocked) {
+        const locked = parentLocked || !!item.locked
+        if (item.kind === 'group') {
+          for (const c of item.children || []) walk(c, locked)
+        } else if (!locked) {
+          ids.push(item.id)
+        }
+      }
+      for (const id of _selectionRoots()) {
+        const item = _findItem(definition.value.layers || [], id)
+        if (item) walk(item, false)
+      }
     }
+    if (!ids.length) ids.push(clickedId)
+    const out = []
+    for (const id of ids) {
+      const item = _findItem(definition.value.layers || [], id)
+      if (!item || item.kind === 'group') continue
+      out.push({ id, x: item.x_mm || 0, y: item.y_mm || 0 })
+    }
+    return out
+  }
+
+  function getDragSourceIds(dragSrcId) {
+    if (selectedItemIds.value.includes(dragSrcId) && selectedItemIds.value.length > 1) {
+      return _selectionRoots()
+    }
+    return dragSrcId ? [dragSrcId] : []
   }
 
   // ── Backward-compat aliases ───────────────────────────────────────────────
@@ -1029,7 +1334,8 @@ export const useEditorStore = defineStore('editor', () => {
 
   return {
     layout, loading, dirty, saving, autoSave,
-    selectedElementId, selectedItemId, selectedLayerId,
+    selectedElementId, selectedItemId, selectedItemIds, selectedLayerId,
+    selectedElementIds, selectItem, isItemSelected,
     activeCellIdx, backgroundElement,
     zoom, panX, panY, snapGrid, showGrid, requestFit,
     guideOptions, guidesActive, activeGuides, setGuideOption, refreshGuides, clearGuides, scheduleGuidesClear,
@@ -1044,12 +1350,13 @@ export const useEditorStore = defineStore('editor', () => {
     history, canUndo, undo, _snapshot,
     loadLayout, loadComponent, loadMolecule, saveDefinition, markDirty, applyLayoutMeta, setAutoSave,
     // Group/item ops
-    addGroup, addLayer, addPlan, updateItem, updateLayer, removeItem, removeLayer,
-    moveItemToGroup, moveGroupBy, reorderItemAroundTarget, nudgeItemInStack,
+    addGroup, addLayer, addPlan, updateItem, updateLayer, removeItem, removeLayer, removeSelectedItems,
+    moveItemToGroup, moveItemsToGroup, moveGroupBy, reorderItemAroundTarget, reorderItemsAroundTarget,
+    nudgeItemInStack, groupSelectedItems,
     // Move selected
-    moveSelected,
+    moveSelected, getDragStartPositions, getDragSourceIds,
     // Element ops
-    addElement, updateElement, removeElement, duplicateElement, duplicateItem,
+    addElement, updateElement, removeElement, duplicateElement, duplicateItem, duplicateSelectedItems,
     // Data schema
     addSchemaField, removeSchemaField,
     snap, _preloadComponents, invalidateComponentCache,

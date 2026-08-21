@@ -55,17 +55,23 @@ function onKeyDown(e) {
 
   if (isInputFocused()) return
 
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'g' || e.key === 'G')) {
+    e.preventDefault()
+    if (store.selectedItemIds.length >= 2) store.groupSelectedItems()
+    return
+  }
+
   if ((e.ctrlKey || e.metaKey) && (e.key === 'd' || e.key === 'D')) {
-    if (store.selectedItemId) {
+    if (store.selectedItemIds.length) {
       e.preventDefault()
-      store.duplicateItem(store.selectedItemId)
+      store.duplicateSelectedItems()
     }
     return
   }
 
-  if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedItemId) {
+  if ((e.key === 'Delete' || e.key === 'Backspace') && store.selectedItemIds.length) {
     e.preventDefault()
-    store.removeItem(store.selectedItemId)
+    store.removeSelectedItems()
     return
   }
 

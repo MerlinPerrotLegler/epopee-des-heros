@@ -71,6 +71,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] TSD-027 rédigé — Ingrédients de fabrication (atomes `cadreChanfrein` / `losange` + composant seed 6 cases)
 - [x] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
 - [x] Molécule **Ingrédients de fabrication** (page Molécules + palette Ajouter, seed `mol-ingredients-fabrication`)
+- [x] **TSD-028** Multi-sélection calques (Cmd/Ctrl+clic) : déplacer le set, grouper (⊞ / ⌘G), layout + composant
 
 ### Phase 2 — Médias & assets
 
@@ -179,6 +180,7 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (6) | **TSD-028 Multi-sélection calques** : Cmd/Ctrl+clic (panneau + canvas), drag/flèches du set, grouper via ⊞ ou ⌘G, Delete/⌘D sur le set. Layout et composant. Tests store 7/7 OK. |
 | 2026-08-21 (5) | Molécule **Ingrédients de fabrication** (`mol-ingredients-fabrication`) : restauration API/UI Molécules + seed idempotent (même définition 56×28 que le composant). Posable depuis Ajouter / page Molécules. |
 | 2026-08-21 (4) | **TSD-027 implémenté** : atomes `cadreChanfrein` / `losange` (viewBox mm), masquage cases vides instance/print, binding interne `craft.ingredientN.ref` / `ingredientNq.text`, seed idempotent `cmp-ingredients-fabrication`. Tests géométrie + slots + flatten + extractBindingPaths verts ; suite **181/181**. |
 | 2026-08-21 (3) | TSD-027 (Review) : atomes `cadreChanfrein` + `losange` ; composant seed **Ingrédients de fabrication** (56×28 mm, 6 cases, masquage instance/print, binding `craft.ingredientN.ref` / `ingredientNq.text`). Implémentation en attente de relecture spec. |

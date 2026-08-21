@@ -18,8 +18,11 @@ export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm
   let startMouse = { x: 0, y: 0 }
   let startEl = { x: 0, y: 0, w: 0, h: 0 }
   let currentElementId = null
+  let startPositions = []
+  let dragMoved = false
+  let onPureClick = null
 
-  function startDrag(e, elementId) {
+  function startDrag(e, elementId, opts = {}) {
     const el = findElement(elementId)
     if (!el || el._layerLocked) return
 
@@ -31,8 +34,12 @@ export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm
     currentElementId = elementId
     startMouse = { x: e.clientX, y: e.clientY }
     startEl = { x: el.x_mm, y: el.y_mm, w: el.width_mm, h: el.height_mm }
+    startPositions = typeof store.getDragStartPositions === 'function'
+      ? store.getDragStartPositions(elementId)
+      : [{ id: elementId, x: el.x_mm, y: el.y_mm }]
+    dragMoved = false
+    onPureClick = opts.onPureClick || null
 
-    store.selectedElementId = elementId
     store.refreshGuides(el)
 
     document.addEventListener('mousemove', onDragMove)
@@ -72,17 +79,30 @@ export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm
 
     const newX = store.snap(startEl.x + dx_mm)
     const newY = store.snap(startEl.y + dy_mm)
+    const appliedDx = newX - startEl.x
+    const appliedDy = newY - startEl.y
+    if (appliedDx !== 0 || appliedDy !== 0) {
+      dragMoved = true
+      onPureClick = null
+    }
 
-    store.updateElement(currentElementId, { x_mm: newX, y_mm: newY }, { noHistory: true })
+    for (const p of startPositions) {
+      store.updateElement(p.id, { x_mm: p.x + appliedDx, y_mm: p.y + appliedDy }, { noHistory: true })
+    }
     store.refreshGuides(findElement(currentElementId))
   }
 
   function onDragEnd() {
+    const clickHandler = (!dragMoved && onPureClick) ? onPureClick : null
     isDragging.value = false
     currentElementId = null
+    startPositions = []
+    dragMoved = false
+    onPureClick = null
     store.clearGuides()
     document.removeEventListener('mousemove', onDragMove)
     document.removeEventListener('mouseup', onDragEnd)
+    if (clickHandler) clickHandler()
   }
 
   function onResizeMove(e) {
