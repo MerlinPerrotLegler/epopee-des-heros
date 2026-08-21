@@ -1,5 +1,14 @@
 import { ref } from 'vue'
-import { clientDeltaToCardMm } from '@/utils/cssMm.js'
+import { clientDeltaToCardMm, clientPointToCardMm } from '@/utils/cssMm.js'
+import {
+  applyRotationDelta,
+  gestureAppliedDelta,
+  normalizeDeg,
+  pointerAngleDeg,
+  resetAppliedDelta,
+  selectionPivot,
+  shortestAngleDelta,
+} from '@/utils/elementRotation.js'
 
 /**
  * Composable for drag-and-drop with snap grid.
@@ -13,7 +22,15 @@ import { clientDeltaToCardMm } from '@/utils/cssMm.js'
 export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm) {
   const isDragging = ref(false)
   const isResizing = ref(false)
+  const isRotating = ref(false)
   const resizeHandle = ref(null) // 'n','s','e','w','ne','nw','se','sw'
+  const rotateLabel = ref(null)
+
+  let startRotateEls = []
+  let rotatePivot = { x: 0, y: 0 }
+  let startPrimaryRotation = 0
+  let lastPointerAngle = 0
+  let accumulatedPointerDelta = 0
 
   let startMouse = { x: 0, y: 0 }
   let startEl = { x: 0, y: 0, w: 0, h: 0 }
@@ -147,6 +164,117 @@ export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm
     document.removeEventListener('mouseup', onResizeEnd)
   }
 
+  function startElsFrom(elementId) {
+    const raw = typeof store.getDragStartPositions === 'function'
+      ? store.getDragStartPositions(elementId)
+      : []
+    return raw.map(p => ({
+      id: p.id,
+      x_mm: p.x_mm ?? p.x ?? 0,
+      y_mm: p.y_mm ?? p.y ?? 0,
+      width_mm: p.width_mm ?? p.w ?? 0,
+      height_mm: p.height_mm ?? p.h ?? 0,
+      rotation: p.rotation || 0,
+    }))
+  }
+
+  function applyUpdates(updates, noHistory) {
+    for (const u of updates) {
+      store.updateElement(u.id, {
+        x_mm: u.x_mm,
+        y_mm: u.y_mm,
+        rotation: u.rotation,
+      }, { noHistory })
+    }
+  }
+
+  function pointerOnCard(e) {
+    const cardEl = getCardEl()
+    if (!cardEl) return null
+    return clientPointToCardMm(
+      cardEl,
+      e.clientX,
+      e.clientY,
+      getCardWidthMm(),
+      getCardHeightMm()
+    )
+  }
+
+  function setLabel(e, appliedDelta) {
+    const deg = Math.round(normalizeDeg(startPrimaryRotation + appliedDelta))
+    rotateLabel.value = { text: `${deg}°`, x: e.clientX + 12, y: e.clientY + 12 }
+  }
+
+  function resetRotationToZero(elementId) {
+    const els = startElsFrom(elementId)
+    if (!els.length) return
+    const primary = els.find(item => item.id === elementId) || els[0]
+    const delta = resetAppliedDelta(primary.rotation)
+    if (delta === 0) return
+    store._snapshot()
+    const pivot = selectionPivot(els)
+    applyUpdates(applyRotationDelta(els, delta, pivot), true)
+  }
+
+  function startRotate(e, elementId) {
+    const el = findElement(elementId)
+    if (!el || el._layerLocked) return
+
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (e.detail >= 2) {
+      resetRotationToZero(elementId)
+      return
+    }
+
+    const pt = pointerOnCard(e)
+    if (!pt) return
+
+    store._snapshot()
+    isRotating.value = true
+    currentElementId = elementId
+    startRotateEls = startElsFrom(elementId)
+    if (!startRotateEls.length) {
+      isRotating.value = false
+      return
+    }
+    rotatePivot = selectionPivot(startRotateEls)
+    const primary = startRotateEls.find(item => item.id === elementId) || startRotateEls[0]
+    startPrimaryRotation = primary.rotation || 0
+    lastPointerAngle = pointerAngleDeg(pt.x_mm, pt.y_mm, rotatePivot.x, rotatePivot.y)
+    accumulatedPointerDelta = 0
+    setLabel(e, 0)
+
+    document.addEventListener('mousemove', onRotateMove)
+    document.addEventListener('mouseup', onRotateEnd)
+  }
+
+  function onRotateMove(e) {
+    if (!isRotating.value) return
+    const pt = pointerOnCard(e)
+    if (!pt) return
+    const ang = pointerAngleDeg(pt.x_mm, pt.y_mm, rotatePivot.x, rotatePivot.y)
+    accumulatedPointerDelta += shortestAngleDelta(lastPointerAngle, ang)
+    lastPointerAngle = ang
+    const appliedDelta = gestureAppliedDelta(
+      startPrimaryRotation,
+      accumulatedPointerDelta,
+      e.shiftKey
+    )
+    applyUpdates(applyRotationDelta(startRotateEls, appliedDelta, rotatePivot), true)
+    setLabel(e, appliedDelta)
+  }
+
+  function onRotateEnd() {
+    isRotating.value = false
+    currentElementId = null
+    startRotateEls = []
+    rotateLabel.value = null
+    document.removeEventListener('mousemove', onRotateMove)
+    document.removeEventListener('mouseup', onRotateEnd)
+  }
+
   function findElement(id) {
     return store.allElements.find(e => e.id === id)
   }
@@ -163,7 +291,8 @@ export function useDragAndDrop(store, getCardEl, getCardWidthMm, getCardHeightMm
   }
 
   return {
-    isDragging, isResizing, resizeHandle,
-    startDrag, startResize, resizeCursor
+    isDragging, isResizing, isRotating, resizeHandle,
+    rotateLabel,
+    startDrag, startResize, startRotate, resizeCursor,
   }
 }

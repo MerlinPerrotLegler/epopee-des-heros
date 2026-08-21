@@ -194,6 +194,12 @@
               @mousedown.stop="dragDrop.startResize($event, el.id, handle)"
             ></div>
           </template>
+          <div
+            v-if="showRotateHandle(el)"
+            class="rotate-handle"
+            title="Rotation (Shift : 15°)"
+            @mousedown.stop="dragDrop.startRotate($event, el.id)"
+          ></div>
         </div>
 
         <AlignmentGuidesOverlay
@@ -222,6 +228,12 @@
         </g>
       </svg>
     </div>
+
+    <div
+      v-if="rotateLabel"
+      class="rotate-angle-badge"
+      :style="{ left: rotateLabel.x + 'px', top: rotateLabel.y + 'px' }"
+    >{{ rotateLabel.text }}</div>
   </div>
 </template>
 
@@ -274,6 +286,16 @@ const dragDrop = useDragAndDrop(
   () => cardW.value,
   () => cardH.value
 )
+const rotateLabel = dragDrop.rotateLabel
+
+function showRotateHandle(el) {
+  return store.selectedElementId === el.id
+    && !el._layerLocked
+    && !BACKGROUND_ATOM_TYPES.has(el.atomType)
+    && !drawingMode.active.value
+    && (el.width_mm || 0) > 0
+    && (el.height_mm || 0) > 0
+}
 
 const rulerLen = computed(() => Math.max(cardW.value * CSS_PX_PER_MM * store.zoom + 200, 1000))
 
@@ -833,6 +855,48 @@ function startPan(e) {
 .handle-nw { top: -0.6mm; left: -0.6mm; }
 .handle-se { bottom: -0.6mm; right: -0.6mm; }
 .handle-sw { bottom: -0.6mm; left: -0.6mm; }
+
+.rotate-handle {
+  position: absolute;
+  left: 50%;
+  top: -5.2mm;
+  width: 1.6mm;
+  height: 1.6mm;
+  transform: translateX(-50%);
+  background: var(--accent-primary);
+  border: 0.15mm solid white;
+  border-radius: 50%;
+  z-index: 102;
+  cursor: grab;
+}
+.rotate-handle::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  width: 0.2mm;
+  height: 3.6mm;
+  transform: translateX(-50%);
+  background: var(--accent-primary);
+  pointer-events: none;
+}
+.rotate-handle:active {
+  cursor: grabbing;
+}
+
+.rotate-angle-badge {
+  position: fixed;
+  z-index: 400;
+  pointer-events: none;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 2px 6px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+}
 
 /* Placeholder boxes for components/molecules */
 .placeholder-box {

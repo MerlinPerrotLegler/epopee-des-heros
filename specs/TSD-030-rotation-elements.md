@@ -2,7 +2,7 @@
 
 | Field       | Value                         |
 |-------------|-------------------------------|
-| Status      | Review                        |
+| Status      | Done                          |
 | Author      | @merlinperrot                 |
 | Created     | 2026-08-21                    |
 | Last update | 2026-08-21                    |
@@ -150,12 +150,12 @@ N/A — `rotation` est déjà dans `definition` JSON (`PUT /layouts/:id/definiti
 
 ## 6. Implementation steps
 
-- [ ] Step 1 — `elementRotation.js` + tests (`elementRotation.test.js`) : normalize, snap, angles, un élément (xy inchangés), deux éléments (orbit + Δ rotation)
-- [ ] Step 2 — store : étendre le snapshot de drag (rotation + taille) ; action d’application du Δ (`updateElement` × n, `noHistory` pendant le geste)
-- [ ] Step 3 — `useDragAndDrop.js` : `startRotate` / `onRotateMove` / `onRotateEnd` (snapshot mousedown, Shift, `clientPointToCardMm`)
-- [ ] Step 4 — `EditorCanvas.vue` : poignée + trait, libellé d’angle écran, double-clic → Δ vers 0°
-- [ ] Step 5 — `PropertiesPanel` : normaliser `rotation` à la saisie (même helper)
-- [ ] Step 6 — vérifier preview / print (déjà `rotate` CSS) ; pas de régression resize
+- [x] Step 1 — `elementRotation.js` + tests (`elementRotation.test.js`) : normalize, snap, angles, un élément (xy inchangés), deux éléments (orbit + Δ rotation)
+- [x] Step 2 — store : étendre le snapshot de drag (rotation + taille) ; action d’application du Δ (`updateElement` × n, `noHistory` pendant le geste)
+- [x] Step 3 — `useDragAndDrop.js` : `startRotate` / `onRotateMove` / `onRotateEnd` (snapshot mousedown, Shift, `clientPointToCardMm`)
+- [x] Step 4 — `EditorCanvas.vue` : poignée + trait, libellé d’angle écran, double-clic → Δ vers 0°
+- [x] Step 5 — `PropertiesPanel` : normaliser `rotation` à la saisie (même helper)
+- [x] Step 6 — vérifier preview / print (déjà `rotate` CSS) ; pas de régression resize
 
 ---
 
@@ -182,15 +182,15 @@ N/A — `rotation` est déjà dans `definition` JSON (`PUT /layouts/:id/definiti
 
 The feature is done when ALL of these are true:
 
-- [ ] Un élément sélectionné affiche une poignée au-dessus du bord haut ; la glisser change `rotation` en live et à la sauvegarde
-- [ ] Shift accroche l’angle du primaire par pas de 15°
-- [ ] Le champ panneau et le canvas affichent la même valeur normalisée `(-180, 180]`
-- [ ] Multi-sélection : tout le set déverrouillé tourne autour du centre de la sélection ; positions et rotations à jour
-- [ ] Double-clic poignée ramène le primaire à 0° (set suit)
-- [ ] Undo d’un geste de rotation = une étape
-- [ ] Pas de poignée sur fond, locké, mode dessin
-- [ ] Tests du helper verts ; preview/print toujours `rotate()` CSS
-- [ ] Resize non régressé (comportement axes-carte actuel conservé)
+- [x] Un élément sélectionné affiche une poignée au-dessus du bord haut ; la glisser change `rotation` en live et à la sauvegarde
+- [x] Shift accroche l’angle du primaire par pas de 15°
+- [x] Le champ panneau et le canvas affichent la même valeur normalisée `(-180, 180]`
+- [x] Multi-sélection : tout le set déverrouillé tourne autour du centre de la sélection ; positions et rotations à jour
+- [x] Double-clic poignée ramène le primaire à 0° (set suit)
+- [x] Undo d’un geste de rotation = une étape
+- [x] Pas de poignée sur fond, locké, mode dessin
+- [x] Tests du helper verts ; preview/print toujours `rotate()` CSS
+- [x] Resize non régressé (comportement axes-carte actuel conservé)
 
 ---
 

@@ -1313,7 +1313,16 @@ export const useEditorStore = defineStore('editor', () => {
     for (const id of ids) {
       const item = _findItem(definition.value.layers || [], id)
       if (!item || item.kind === 'group') continue
-      out.push({ id, x: item.x_mm || 0, y: item.y_mm || 0 })
+      out.push({
+        id,
+        x: item.x_mm || 0,
+        y: item.y_mm || 0,
+        x_mm: item.x_mm || 0,
+        y_mm: item.y_mm || 0,
+        width_mm: item.width_mm || 0,
+        height_mm: item.height_mm || 0,
+        rotation: item.rotation || 0,
+      })
     }
     return out
   }

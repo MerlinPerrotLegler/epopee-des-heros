@@ -650,6 +650,7 @@ import { useFontsStore } from '@/stores/fonts.js'
 import { usePictosStore } from '@/stores/pictos.js'
 import { ATOM_TYPES } from '@/atoms/index.js'
 import { PARAM_HELP } from '@/atoms/paramHelp.js'
+import { normalizeDeg } from '@/utils/elementRotation.js'
 import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
 import { parseSlashContext } from '@/utils/richTextRegistry.js'
 import GradientStopEditor from './GradientStopEditor.vue'
@@ -895,6 +896,7 @@ function isMapValueSelect(key) {
 }
 
 function update(key, value) {
+  if (key === 'rotation') value = normalizeDeg(value)
   store.updateElement(el.value.id, { [key]: value })
 }
 
