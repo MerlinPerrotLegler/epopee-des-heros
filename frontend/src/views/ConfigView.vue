@@ -31,6 +31,11 @@
       <AIProviderPanel />
     </div>
 
+    <div v-if="activeTab === 'types'" class="config-body">
+      <p class="config-desc">Catalogue des types de layout (code interne + libellé affiché).</p>
+      <CardTypesPanel />
+    </div>
+
   </div>
 </template>
 
@@ -39,12 +44,14 @@ import { ref } from 'vue'
 import ConfigPanel from '@/components/editor/ConfigPanel.vue'
 import FontManager from '@/components/editor/FontManager.vue'
 import AIProviderPanel from '@/components/config/AIProviderPanel.vue'
+import CardTypesPanel from '@/components/config/CardTypesPanel.vue'
 
 const activeTab = ref('design')
 const tabs = [
   { id: 'design', label: 'Tokens design' },
   { id: 'fonts',  label: 'Polices' },
   { id: 'ai',     label: 'IA Provider' },
+  { id: 'types',  label: 'Types' },
 ]
 </script>
 

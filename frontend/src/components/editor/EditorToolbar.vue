@@ -20,7 +20,7 @@
       <span v-else class="toolbar-title">{{ store.layout?.name || '…' }}</span>
       <span class="badge" v-if="store.mode === 'component'">Composant</span>
       <span class="badge" v-else-if="store.mode === 'molecule'">Molécule</span>
-      <span class="badge" v-else-if="store.layout?.card_type">{{ store.layout.card_type }}</span>
+      <span class="badge" v-else-if="store.layout?.card_type">{{ typeLabel(store.layout.card_type, cardTypes) }}</span>
       <span class="badge" v-if="store.layout">{{ store.layout.width_mm }} × {{ store.layout.height_mm }} mm</span>
       <span class="badge badge-hex" v-if="store.layout?.shape === 'hexagon'" title="Layout hexagonal">⬡ Hexagonal</span>
       <div
@@ -100,6 +100,7 @@
       :verso-layouts="versoLayouts"
       :save-fn="saveLayoutMeta"
       @close="showSettings = false"
+      @types-changed="mergeCardType"
     />
     <ScreenCalibrateModal
       :open="showCalibrate"
@@ -118,6 +119,7 @@ import { getFacePartnerId } from '@/utils/layoutFaces.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
 import GuidesMenu from '@/components/editor/GuidesMenu.vue'
 import ScreenCalibrateModal from '@/components/editor/ScreenCalibrateModal.vue'
+import { typeLabel } from '@/utils/typeCode.js'
 
 const store = useEditorStore()
 const router = useRouter()
@@ -125,6 +127,14 @@ const showSettings = ref(false)
 const showCalibrate = ref(false)
 const cardTypes = ref([])
 const allLayouts = ref([])
+
+function mergeCardType(created) {
+  if (!created?.code) return
+  if (cardTypes.value.some((t) => t.code === created.code)) return
+  cardTypes.value = [...cardTypes.value, created].sort((a, b) =>
+    a.label.localeCompare(b.label, 'fr'),
+  )
+}
 
 function onOneToOne() {
   // Uses calibrated zoom if set, otherwise a HiDPI estimate (CSS mm alone is too small).

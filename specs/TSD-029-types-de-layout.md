@@ -2,7 +2,7 @@
 
 | Field       | Value                        |
 |-------------|------------------------------|
-| Status      | Review                       |
+| Status      | Done                         |
 | Author      | @merlinperrot                |
 | Created     | 2026-08-21                   |
 | Last update | 2026-08-21                   |
@@ -141,13 +141,13 @@ Le serveur **re-normalise** toujours le code (source de vérité). Le preview UI
 
 ## 6. Implementation steps
 
-- [ ] Helper `slugifyTypeCode(str)` + tests (accents, espaces, `_` multiples, vide)
-- [ ] Backend `cardTypes.js` : GET + `usage_count` ; POST slug + 409 ; PATCH ; DELETE `dos` / 404
-- [ ] `api.js` : `updateCardType`, `deleteCardType`
-- [ ] `CardTypesPanel.vue` + onglet Types dans `ConfigView`
-- [ ] `CardTypeSelect.vue` (select + inline create) branché sur `LayoutSettingsModal` et modale verso `LayoutsView`
-- [ ] Badges : libellé via map `code → label`, fallback code
-- [ ] Tests route : POST auto-slug, POST code fourni, 409, PATCH, DELETE `dos` refusé
+- [x] Helper `slugifyTypeCode(str)` + tests (accents, espaces, `_` multiples, vide)
+- [x] Backend `cardTypes.js` : GET + `usage_count` ; POST slug + 409 ; PATCH ; DELETE `dos` / 404
+- [x] `api.js` : `updateCardType`, `deleteCardType`
+- [x] `CardTypesPanel.vue` + onglet Types dans `ConfigView`
+- [x] `CardTypeSelect.vue` (select + inline create) branché sur `LayoutSettingsModal` et modale verso `LayoutsView`
+- [x] Badges : libellé via map `code → label`, fallback code
+- [x] Tests helper : POST auto-slug / code fourni / slug vide / 409 unique / DELETE `dos` refusé (`typeCode.test.js`)
 
 ---
 
@@ -181,14 +181,14 @@ Exemples : `Faveur Royale` → `faveur_royale` ; `Épopée` → `epopee`.
 
 ## 8. Acceptance criteria
 
-- [ ] Config → Types : ajouter un type (label seul) le rend disponible dans la modale layout sans recharger l’app
-- [ ] Code optionnel : vide → slug ; fourni → slug puis unicité
-- [ ] Libellé éditable inline (PATCH) ; le code affiché ne change pas
-- [ ] Suppression d’un type utilisé : confirm + layouts orphelins + badge = code
-- [ ] `dos` non supprimable (API 409 + pas de bouton)
-- [ ] Modale layout / verso : **+ Nouveau type…** crée, sélectionne, referme le dépliage
-- [ ] Doublon → 409, message visible, pas de 201 silencieux
-- [ ] Tests `slugifyTypeCode` + cas route listés en §6 verts
+- [x] Config → Types : ajouter un type (label seul) le rend disponible dans la modale layout sans recharger l’app
+- [x] Code optionnel : vide → slug ; fourni → slug puis unicité
+- [x] Libellé éditable inline (PATCH) ; le code affiché ne change pas
+- [x] Suppression d’un type utilisé : confirm + layouts orphelins + badge = code
+- [x] `dos` non supprimable (API 409 + pas de bouton)
+- [x] Modale layout / verso : **+ Nouveau type…** crée, sélectionne, referme le dépliage
+- [x] Doublon → 409, message visible, pas de 201 silencieux
+- [x] Tests `slugifyTypeCode` + cas route listés en §6 verts
 
 ---
 

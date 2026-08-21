@@ -79,7 +79,7 @@
 
           <div class="tile-info">
             <div class="tile-meta">
-              <span class="badge">{{ l.card_type }}</span>
+              <span class="badge">{{ typeLabel(l.card_type, cardTypes) }}</span>
               <span v-if="isHexLayout(l)" class="badge badge-hex" title="Layout hexagonal">⬡</span>
               <span v-if="l.is_back" class="tile-verso-badge">DOS</span>
             </div>
@@ -120,6 +120,7 @@
       :verso-layouts="versoLayouts"
       :save-fn="createFromPayload"
       @close="showCreate = false"
+      @types-changed="mergeCardType"
     />
 
     <LayoutSettingsModal
@@ -129,6 +130,7 @@
       :verso-layouts="versoLayouts"
       :save-fn="saveEditFromPayload"
       @close="editingLayout = null"
+      @types-changed="mergeCardType"
     />
 
     <!-- Create Verso Modal (from recto tile) -->
@@ -139,9 +141,11 @@
         <div class="field-row"><label>Nom</label><input v-model="versoForm.name" autofocus /></div>
         <div class="field-row">
           <label>Type</label>
-          <select v-model="versoForm.card_type">
-            <option v-for="t in cardTypes" :key="t.code" :value="t.code">{{ t.label }}</option>
-          </select>
+          <CardTypeSelect
+            v-model="versoForm.card_type"
+            :types="cardTypes"
+            @created="mergeCardType"
+          />
         </div>
         <div class="field-row">
           <label>Dimensions</label>
@@ -174,11 +178,21 @@ import {
 } from '@/utils/layoutFaces.js'
 import { useInlineRename } from '@/composables/useInlineRename.js'
 import LayoutSettingsModal from '@/components/layouts/LayoutSettingsModal.vue'
+import CardTypeSelect from '@/components/layouts/CardTypeSelect.vue'
+import { typeLabel } from '@/utils/typeCode.js'
 
 const router = useRouter()
 const layouts    = ref([])
 const cardTypes  = ref([])
 const showCreate = ref(false)
+
+function mergeCardType(created) {
+  if (!created?.code) return
+  if (cardTypes.value.some((t) => t.code === created.code)) return
+  cardTypes.value = [...cardTypes.value, created].sort((a, b) =>
+    a.label.localeCompare(b.label, 'fr'),
+  )
+}
 const editingLayout = ref(null)
 const search     = ref('')
 const sortKey    = ref('name')
@@ -233,12 +247,20 @@ const filtered = computed(() => {
   let list = faceTab.value === 'verso' ? versoLayouts.value : rectoLayouts.value
   if (search.value) {
     const q = search.value.toLowerCase()
-    list = list.filter(l => l.name.toLowerCase().includes(q) || l.card_type.toLowerCase().includes(q))
+    list = list.filter((l) => {
+      const label = typeLabel(l.card_type, cardTypes.value).toLowerCase()
+      return l.name.toLowerCase().includes(q)
+        || l.card_type.toLowerCase().includes(q)
+        || label.includes(q)
+    })
   }
   return [...list].sort((a, b) => {
     if (sortKey.value === 'name')      return a.name.localeCompare(b.name)
     if (sortKey.value === 'name_desc') return b.name.localeCompare(a.name)
-    if (sortKey.value === 'type')      return a.card_type.localeCompare(b.card_type) || a.name.localeCompare(b.name)
+    if (sortKey.value === 'type') {
+      return typeLabel(a.card_type, cardTypes.value).localeCompare(typeLabel(b.card_type, cardTypes.value), 'fr')
+        || a.name.localeCompare(b.name)
+    }
     if (sortKey.value === 'updated')   return (b.updated_at || '').localeCompare(a.updated_at || '')
     return 0
   })

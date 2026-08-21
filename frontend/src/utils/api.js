@@ -238,6 +238,8 @@ export const api = {
   // Card Types
   getCardTypes: () => request('/card-types'),
   createCardType: (data) => request('/card-types', { method: 'POST', body: data }),
+  updateCardType: (code, data) => request(`/card-types/${encodeURIComponent(code)}`, { method: 'PATCH', body: data }),
+  deleteCardType: (code) => request(`/card-types/${encodeURIComponent(code)}`, { method: 'DELETE' }),
 
   // Snapshots
   getSnapshots: () => request('/snapshots'),

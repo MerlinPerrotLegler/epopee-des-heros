@@ -5,9 +5,11 @@
       <div class="field-row"><label>Nom</label><input v-model="form.name" placeholder="Carte équipement" autofocus /></div>
       <div class="field-row">
         <label>Type</label>
-        <select v-model="form.card_type">
-          <option v-for="t in cardTypes" :key="t.code" :value="t.code">{{ t.label }}</option>
-        </select>
+        <CardTypeSelect
+          v-model="form.card_type"
+          :types="cardTypes"
+          @created="onTypeCreated"
+        />
       </div>
       <div class="field-row">
         <label>Forme hexagonale</label>
@@ -56,6 +58,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { hexHeightFromWidth } from '@/utils/hexGeometry.js'
+import { CREATE_TYPE_SENTINEL } from '@/utils/typeCode.js'
+import CardTypeSelect from '@/components/layouts/CardTypeSelect.vue'
 
 const props = defineProps({
   open: { type: Boolean, default: false },
@@ -66,7 +70,11 @@ const props = defineProps({
   saveFn: { type: Function, required: true },
 })
 
-const emit = defineEmits(['close', 'saved'])
+const emit = defineEmits(['close', 'saved', 'types-changed'])
+
+function onTypeCreated(created) {
+  emit('types-changed', created)
+}
 
 const form = ref(emptyForm())
 const saving = ref(false)
@@ -121,7 +129,7 @@ function swapDims() {
 }
 
 async function save() {
-  if (!form.value.name) return
+  if (!form.value.name || form.value.card_type === CREATE_TYPE_SENTINEL) return
   saving.value = true
   error.value = ''
   try {
