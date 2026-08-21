@@ -100,6 +100,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] Textures Track — `trakPath` segmenté, rendu texturé, sélection de case et contrôles `+` orthogonaux
 - [x] Textures Track — actions Vider / Propager / Mélanger et sélecteur par case
 - [x] Textures Track — éditeur de métadonnées dans la médiathèque
+- [x] Textures Track — aperçu config en + (centre + 4 voisins orthonormés) pour ajuster les marges
 
 ### Phase 3 — Instances de cartes & data binding
 
@@ -187,6 +188,8 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (18) | Config textures Track : aperçu 5 tuiles en + (centre + N/O/E/S) pour ajuster les marges en live (chevauchement / trou). Helper `plusTilePreviewLayout` + tests. |
+| 2026-08-21 (17) | Contenu Ingrédients toujours éditable (Properties) : data/preview > défauts molécule ; plus de champs disabled ; `resolveIngredientContentValue`. |
 | 2026-08-21 (16) | **Ingrédients éditables UI+data** : défaut `nameInLayout=craft` à la pose ; formulaire instance / DataPanel contenu vs avancé ; Properties section Contenu → previewData ; helpers `partitionBindablePaths` / `mergeDataWithBindablePaths`. |
 | 2026-08-21 (15) | **TSD-031** Taille canvas composant éditable après création (⚙ éditeur + liste, PATCH `width_mm`/`height_mm`). Helper `normalizeComponentMeta` + tests store `applyLayoutMeta`. Instances posées non mises à jour. QA visuelle restante. |
 | 2026-08-21 (14) | **TSD-030 implémenté** : poignée canvas Figma, Shift 15°, multi-sélection autour du pivot, double-clic → 0°, champ panneau normalisé `(-180, 180]`. Helper `elementRotation.js` + 12 tests. `npm test` **235/235**. QA visuelle éditeur restante. |

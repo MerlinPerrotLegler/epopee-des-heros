@@ -49,33 +49,32 @@
       </p>
     </div>
 
-    <!-- Contenu Ingrédients de fabrication (previewData) -->
+    <!-- Contenu Ingrédients de fabrication (toujours éditable ; data > défauts) -->
     <div class="panel-section" v-if="isIngredientsMolecule">
-      <div class="panel-section-title">Contenu (aperçu data)</div>
-      <p class="ing-hint">Écrit dans Preview data — utile pour tester sans onglet Data.</p>
+      <div class="panel-section-title">Contenu</div>
+      <p class="ing-hint">
+        Modifiable en permanence. La data (preview / instance) prend le pas sur les défauts de la molécule.
+      </p>
 
       <div class="param-block">
         <div class="param-header"><label class="param-label">Titre</label></div>
         <input
-          :value="ingPreviewValue('title.text')"
-          @input="setIngPreview('title.text', $event.target.value)"
-          :disabled="!ingPrefix"
+          :value="ingContentValue('title.text')"
+          @input="setIngContent('title.text', $event.target.value)"
         />
       </div>
       <div class="param-block">
         <div class="param-header"><label class="param-label">Sous-titre</label></div>
         <input
-          :value="ingPreviewValue('subtitle.text')"
-          @input="setIngPreview('subtitle.text', $event.target.value)"
-          :disabled="!ingPrefix"
+          :value="ingContentValue('subtitle.text')"
+          @input="setIngContent('subtitle.text', $event.target.value)"
         />
       </div>
       <div class="param-block">
         <div class="param-header"><label class="param-label">Picto en-tête (ref)</label></div>
         <select
-          :value="ingPreviewValue('headerIcon.ref')"
-          @change="setIngPreview('headerIcon.ref', $event.target.value)"
-          :disabled="!ingPrefix"
+          :value="ingContentValue('headerIcon.ref')"
+          @change="setIngContent('headerIcon.ref', $event.target.value)"
         >
           <option value="">— choisir —</option>
           <option v-for="opt in allPictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
@@ -89,18 +88,16 @@
       >
         <span class="ing-slot-label">{{ n }}</span>
         <select
-          :value="ingPreviewValue(`ingredient${n}.ref`)"
-          @change="setIngPreview(`ingredient${n}.ref`, $event.target.value)"
-          :disabled="!ingPrefix"
+          :value="ingContentValue(`ingredient${n}.ref`)"
+          @change="setIngContent(`ingredient${n}.ref`, $event.target.value)"
           title="Picto"
         >
           <option value="">— picto —</option>
           <option v-for="opt in allPictoRefOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
         </select>
         <input
-          :value="ingPreviewValue(`ingredient${n}q.text`)"
-          @input="setIngPreview(`ingredient${n}q.text`, $event.target.value)"
-          :disabled="!ingPrefix"
+          :value="ingContentValue(`ingredient${n}q.text`)"
+          @input="setIngContent(`ingredient${n}q.text`, $event.target.value)"
           placeholder="qté"
           class="ing-qty"
         />
@@ -715,6 +712,8 @@ import { normalizeDeg } from '@/utils/elementRotation.js'
 import { getMapValueOptionsFromRows, resolveMapRows, hasAtomLevelMapRows } from '@/utils/binding.js'
 import {
   INGREDIENTS_FABRICATION_MOLECULE_ID,
+  INGREDIENTS_DEFAULT_NAME_IN_LAYOUT,
+  resolveIngredientContentValue,
 } from '@/utils/ingredientSlots.js'
 import { parseSlashContext } from '@/utils/richTextRegistry.js'
 import GradientStopEditor from './GradientStopEditor.vue'
@@ -918,12 +917,34 @@ const isIngredientsMolecule = computed(() =>
 
 const ingPrefix = computed(() => {
   if (!isIngredientsMolecule.value) return ''
-  return String(el.value?.nameInLayout || '').trim()
+  return String(el.value?.nameInLayout || '').trim() || INGREDIENTS_DEFAULT_NAME_IN_LAYOUT
 })
 
-watch(isIngredientsMolecule, (yes) => {
-  if (yes) pictosStore.load()
+const ingMoleculeDef = computed(() => {
+  if (!isIngredientsMolecule.value) return null
+  const mol = store.moleculesCache[el.value.moleculeId]
+  return mol?.definition || null
+})
+
+watch(isIngredientsMolecule, async (yes) => {
+  if (!yes) return
+  pictosStore.load()
+  const id = el.value?.moleculeId
+  if (id && !store.moleculesCache[id]) {
+    try {
+      const mol = await api.getMolecule(id)
+      store.moleculesCache = { ...store.moleculesCache, [id]: mol }
+    } catch { /* ignore */ }
+  }
 }, { immediate: true })
+
+function ensureIngPrefix() {
+  if (!el.value) return ingPrefix.value
+  if (!String(el.value.nameInLayout || '').trim()) {
+    update('nameInLayout', INGREDIENTS_DEFAULT_NAME_IN_LAYOUT)
+  }
+  return String(el.value.nameInLayout || '').trim() || INGREDIENTS_DEFAULT_NAME_IN_LAYOUT
+}
 
 function ensureIngPreviewData() {
   if (store.previewData === null) {
@@ -931,15 +952,19 @@ function ensureIngPreviewData() {
   }
 }
 
-function ingPreviewValue(suffix) {
+/** Affiche data si clé présente, sinon défaut molécule — toujours éditable. */
+function ingContentValue(suffix) {
   const prefix = ingPrefix.value
-  if (!prefix || !store.previewData) return ''
-  return store.previewData[`${prefix}.${suffix}`] ?? ''
+  return resolveIngredientContentValue(
+    ingMoleculeDef.value,
+    store.previewData,
+    prefix,
+    suffix,
+  )
 }
 
-function setIngPreview(suffix, value) {
-  const prefix = ingPrefix.value
-  if (!prefix) return
+function setIngContent(suffix, value) {
+  const prefix = ensureIngPrefix()
   ensureIngPreviewData()
   store.previewData[`${prefix}.${suffix}`] = value
 }

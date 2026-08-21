@@ -1,7 +1,7 @@
 // frontend/src/utils/trackFootprint.test.js
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { baseCellSizeMm, cellFootprintMm } from './trackFootprint.js'
+import { baseCellSizeMm, cellFootprintMm, plusTilePreviewLayout } from './trackFootprint.js'
 
 describe('baseCellSizeMm', () => {
   it('multiplies ratio by axis length', () => {
@@ -16,5 +16,42 @@ describe('cellFootprintMm', () => {
     assert.equal(a.h, 10)
     const b = cellFootprintMm(10, 10, { left: -0.1, right: 0, top: 0, bottom: 0 })
     assert.equal(b.w, 9)
+  })
+})
+
+describe('plusTilePreviewLayout', () => {
+  it('places five tiles in an orthogonal plus on a 3×3 logical grid', () => {
+    const { viewW, viewH, tiles } = plusTilePreviewLayout()
+    assert.equal(viewW, 3)
+    assert.equal(viewH, 3)
+    assert.deepEqual(tiles.map((t) => t.key), ['n', 'w', 'c', 'e', 's'])
+    const byKey = Object.fromEntries(tiles.map((t) => [t.key, t]))
+    assert.equal(byKey.c.x, 1)
+    assert.equal(byKey.c.y, 1)
+    assert.equal(byKey.n.x, 1)
+    assert.equal(byKey.n.y, 0)
+    assert.equal(byKey.w.x, 0)
+    assert.equal(byKey.e.x, 2)
+    assert.equal(byKey.s.y, 2)
+    assert.ok(tiles.every((t) => t.w === 1 && t.h === 1))
+  })
+
+  it('overlaps neighbors when a side margin is positive', () => {
+    const { viewW, tiles } = plusTilePreviewLayout({ left: 0.1 })
+    const byKey = Object.fromEntries(tiles.map((t) => [t.key, t]))
+    assert.equal(viewW, 3.1)
+    assert.equal(byKey.w.x, 0)
+    assert.equal(byKey.w.w, 1.1)
+    assert.equal(byKey.c.x, 1)
+    assert.ok(byKey.w.x + byKey.w.w > byKey.c.x)
+  })
+
+  it('leaves a gap when a side margin is negative', () => {
+    const { viewW, tiles } = plusTilePreviewLayout({ left: -0.1 })
+    const byKey = Object.fromEntries(tiles.map((t) => [t.key, t]))
+    assert.equal(viewW, 3)
+    assert.equal(byKey.c.x, 1.1)
+    assert.equal(byKey.w.x + byKey.w.w, 1)
+    assert.ok(byKey.w.x + byKey.w.w < byKey.c.x)
   })
 })

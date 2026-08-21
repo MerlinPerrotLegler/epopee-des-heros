@@ -115,9 +115,6 @@
     <div class="modal-overlay" v-if="preview" @click.self="preview = null">
       <div class="preview-modal">
         <button class="preview-close" @click="preview = null">✕</button>
-        <div class="preview-thumb-wrap">
-          <img :src="`/uploads/${preview.filename}`" :alt="preview.original_name" />
-        </div>
         <div class="preview-meta">
           <strong>{{ preview.original_name }}</strong>
           <code>{{ preview.id }}</code>
@@ -368,11 +365,6 @@ onMounted(loadAll)
   position: absolute; top: 8px; right: 8px; background: none; border: none;
   cursor: pointer; font-size: 16px; color: var(--text-muted);
 }
-.preview-thumb-wrap {
-  background: var(--bg-tertiary); border-radius: var(--radius-md);
-  display: flex; align-items: center; justify-content: center; min-height: 160px;
-}
-.preview-thumb-wrap img { max-width: 100%; max-height: 280px; object-fit: contain; }
 .preview-meta { display: flex; flex-direction: column; gap: 4px; }
 .preview-meta code { font-size: 11px; color: var(--text-muted); }
 .modal {

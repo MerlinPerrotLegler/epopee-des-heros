@@ -32,6 +32,12 @@
 
     <p class="tm-hint">{{ orientationHint }}</p>
 
+    <TrackMarginPreview
+      :filename="media.filename"
+      :original-name="media.original_name"
+      :margins="form.margins"
+    />
+
     <fieldset>
       <legend>Marges (ratio de la taille de case)</legend>
       <div class="tm-margins">
@@ -97,6 +103,7 @@
 import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'vue'
 import { reloadTrackTextures } from '@/composables/useTrackTextures.js'
 import { api } from '@/utils/api.js'
+import TrackMarginPreview from '@/components/media/TrackMarginPreview.vue'
 
 const props = defineProps({
   media: { type: Object, required: true },

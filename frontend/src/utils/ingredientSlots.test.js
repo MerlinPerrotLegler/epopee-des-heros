@@ -7,6 +7,7 @@ import {
   hiddenIngredientGroupNames,
   spaceEvenlyXs,
   layoutIngredientElements,
+  resolveIngredientContentValue,
 } from './ingredientSlots.js'
 import { buildIngredientsFabricationDefinition } from '../../../backend/db/ingredientsFabricationSeed.js'
 
@@ -196,5 +197,39 @@ describe('layoutIngredientElements', () => {
       containerWidthMm: 56,
     })
     assert.equal(JSON.stringify(def), before)
+  })
+})
+
+describe('resolveIngredientContentValue', () => {
+  const def = buildIngredientsFabricationDefinition()
+
+  it('returns molecule defaults when data has no key', () => {
+    assert.equal(
+      resolveIngredientContentValue(def, null, 'craft', 'title.text'),
+      'INGRÉDIENTS DE FABRICATION',
+    )
+    assert.equal(
+      resolveIngredientContentValue(def, {}, 'craft', 'ingredient1.ref'),
+      '',
+    )
+  })
+
+  it('lets data take precedence when key is present', () => {
+    const data = {
+      'craft.title.text': 'Custom',
+      'craft.ingredient1.ref': 'fer',
+    }
+    assert.equal(
+      resolveIngredientContentValue(def, data, 'craft', 'title.text'),
+      'Custom',
+    )
+    assert.equal(
+      resolveIngredientContentValue(def, data, 'craft', 'ingredient1.ref'),
+      'fer',
+    )
+    assert.equal(
+      resolveIngredientContentValue(def, { 'craft.title.text': '' }, 'craft', 'title.text'),
+      '',
+    )
   })
 })

@@ -11,6 +11,50 @@ export function defaultMoleculeNameInLayout(moleculeId) {
   return ''
 }
 
+/**
+ * Défaut contenu depuis la définition molécule (suffixe `nameInLayout.param`, ex. `title.text`).
+ * La data / previewData prend le pas à l'affichage quand la clé est présente.
+ */
+export function getIngredientContentDefault(definition, suffix) {
+  const parts = String(suffix || '').split('.')
+  if (parts.length < 2) return ''
+  const param = parts.pop()
+  const nameInLayout = parts.join('.')
+  const layers = definition?.layers
+  if (!Array.isArray(layers)) return ''
+
+  let found = ''
+  function walk(items) {
+    for (const item of items || []) {
+      if (!item) continue
+      if (item.kind === 'group') {
+        walk(item.children || [])
+        continue
+      }
+      if (item.nameInLayout === nameInLayout && item.params && param in item.params) {
+        const v = item.params[param]
+        found = v == null ? '' : String(v)
+        return true
+      }
+    }
+    return false
+  }
+  walk(layers)
+  return found
+}
+
+/**
+ * Valeur effective : data gagne si la clé est présente, sinon défaut molécule.
+ */
+export function resolveIngredientContentValue(definition, data, prefix, suffix) {
+  const key = prefix ? `${prefix}.${suffix}` : suffix
+  if (data && typeof data === 'object' && key in data) {
+    const v = data[key]
+    return v == null ? '' : String(v)
+  }
+  return getIngredientContentDefault(definition, suffix)
+}
+
 export function isBlankBindingValue(v) {
   if (v == null) return true
   const s = String(v).trim()
