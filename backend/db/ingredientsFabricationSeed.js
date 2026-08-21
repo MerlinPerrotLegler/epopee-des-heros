@@ -125,7 +125,7 @@ export function buildIngredientsFabricationDefinition() {
       params: { ...PICTO_BASE },
     }),
     atomEl('ing-header-title', 'title', {
-      x: 7.5, y: 0.3, w: 47.5, h: 4.5,
+      x: 0, y: 0.3, w: BLOCK_W, h: 4.5,
       nameInLayout: 'title',
       params: {
         text: 'INGRÉDIENTS DE FABRICATION',

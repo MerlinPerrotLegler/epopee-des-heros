@@ -33,6 +33,22 @@ describe('isIngredientSlotEmpty', () => {
     assert.equal(isIngredientSlotEmpty(data, 'craft', 2), true)
     assert.equal(isIngredientSlotEmpty(data, 'other', 1), true)
   })
+
+  it('hides when quantity is zero even if ref is set', () => {
+    const data = {
+      'craft.ingredient1.ref': 'fer',
+      'craft.ingredient1q.text': '0',
+    }
+    assert.equal(isIngredientSlotEmpty(data, 'craft', 1), true)
+    assert.equal(isIngredientSlotEmpty({
+      'craft.ingredient1.ref': 'fer',
+      'craft.ingredient1q.text': '2',
+    }, 'craft', 1), false)
+    assert.equal(isIngredientSlotEmpty({
+      'craft.ingredient1.ref': 'fer',
+      'craft.ingredient1q.text': '0,0',
+    }, 'craft', 1), true)
+  })
 })
 
 describe('hiddenIngredientGroupNames', () => {
@@ -159,6 +175,27 @@ describe('layoutIngredientElements', () => {
     const rightEdge = cadres[1].x_mm
     const mid = (leftEdge + rightEdge) / 2
     assert.ok(Math.abs(diamonds[0].x_mm - (mid - 0.8)) < 1e-6)
+
+    const title = els.find((e) => e.nameInLayout === 'title')
+    assert.equal(title.x_mm, 0)
+    assert.equal(title.width_mm, 56)
+  })
+
+  it('hides slot when quantity is 0', () => {
+    const data = {
+      'craft.ingredient1.ref': 'fer',
+      'craft.ingredient1q.text': '0',
+      'craft.ingredient2.ref': 'bois',
+      'craft.ingredient2q.text': '1',
+    }
+    const els = layoutIngredientElements(def, {
+      data,
+      prefix: 'craft',
+      hideEmptySlots: true,
+      containerWidthMm: 56,
+    })
+    assert.equal(els.filter((e) => e.atomType === 'cadreChanfrein').length, 1)
+    assert.equal(els.filter((e) => e.atomType === 'losange').length, 0)
   })
 
   it('does not emit a diamond when only slot 2 is filled', () => {

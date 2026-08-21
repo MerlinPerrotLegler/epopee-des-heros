@@ -61,12 +61,23 @@ export function isBlankBindingValue(v) {
   return s === ''
 }
 
+/** Quantité numérique nulle (« 0 », 0, « 0,0 »…) — absente ou vide ≠ zéro. */
+export function isZeroQuantity(v) {
+  if (v == null) return false
+  const s = String(v).trim().replace(',', '.')
+  if (s === '') return false
+  const n = Number(s)
+  return Number.isFinite(n) && n === 0
+}
+
 /** prefix = nameInLayout du composant/molécule sur le layout, ex. "craft" */
 export function isIngredientSlotEmpty(data, prefix, n) {
-  const key = `${prefix}.ingredient${n}.ref`
   if (!data || typeof data !== 'object') return true
-  if (!(key in data)) return true
-  return isBlankBindingValue(data[key])
+  const refKey = `${prefix}.ingredient${n}.ref`
+  if (!(refKey in data) || isBlankBindingValue(data[refKey])) return true
+  const qtyKey = `${prefix}.ingredient${n}q.text`
+  if (qtyKey in data && isZeroQuantity(data[qtyKey])) return true
+  return false
 }
 
 /**
@@ -187,7 +198,13 @@ export function layoutIngredientElements(definition, options = {}) {
   if (header) {
     for (const child of header.children || []) {
       if (child && child.kind === 'element' && child.visible !== false) {
-        result.push(cloneEl(child))
+        const clone = cloneEl(child)
+        // Titre : toute la largeur du bloc
+        if (clone.nameInLayout === 'title') {
+          clone.x_mm = 0
+          clone.width_mm = Number(containerWidthMm) || clone.width_mm
+        }
+        result.push(clone)
       }
     }
   }

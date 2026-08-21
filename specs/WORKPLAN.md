@@ -188,6 +188,7 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (21) | Ingrédients : titre pleine largeur (56 mm) au rendu ; slot masqué si quantité = 0 (en plus de `ref` vide). |
 | 2026-08-21 (20) | Aperçu Track : marges **par image** (plus partagées). Centre = marges en cours ; N/O/E/S = autres textures (voisins cochés d’abord) avec leurs propres marges. |
 | 2026-08-21 (19) | Marges Track : **cases toujours carrées**, l’image déborde (insets). Aperçu config en + sur grille 1:1 ; rendu `trak` / `trakPath` / `trakCorner` / `cardTrack` inchangé en placement, textures en overflow. Helper `textureDrawRect`. Tests layout verts. |
 | 2026-08-21 (18) | Config textures Track : aperçu 5 tuiles en + (centre + N/O/E/S) pour ajuster les marges en live (chevauchement / trou). Helper `plusTilePreviewLayout` + tests. |
