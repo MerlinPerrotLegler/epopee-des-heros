@@ -74,6 +74,9 @@ Le projet est divisé en 5 grandes phases :
 - [x] Molécule Ingrédients : reflow space-evenly (max 6, masquage vides, diamants entre cases visibles) ; seed composant arrêté
 - [x] **TSD-028** Multi-sélection calques (Cmd/Ctrl+clic) : déplacer le set, grouper (⊞ / ⌘G), layout + composant
 - [x] Pistes : texte libre par case (`cellOverrides.text`) — `trak`, `trakCorner`, `trakPath`, `cardTrack`
+- [ ] **TSD-029** Types de layout : UI Config + raccourci modale, PATCH libellé, slug auto, garde `dos`
+- [x] TSD-030 rédigé — Rotation éléments (poignée canvas Figma, Shift 15°, multi autour du centre)
+- [ ] TSD-030 implémenté : poignée canvas, snap Shift 15°, multi-sélection autour du pivot, helper + tests
 
 ### Phase 2 — Médias & assets
 
@@ -152,13 +155,13 @@ Le projet est divisé en 5 grandes phases :
 ## d) Progression globale
 
 ```
-Phase 1 — Éditeur          ████████████████████  100%
+Phase 1 — Éditeur          ███████████████████░   99%
 Phase 2 — Médias           ████████████████████  100%
 Phase 3 — Instances cartes ███████████████████░  92%
 Phase 4 — Export           ██████░░░░░░░░░░░░░░  30%
 Phase 5 — Règles / valid.  ░░░░░░░░░░░░░░░░░░░░   0%
 
-GLOBAL                     ████████████████░░░░  ~83%
+GLOBAL                     ████████████████░░░░  ~82%
 ```
 
 > Le pourcentage global pondère : Phase 1 = 40 %, Phase 2 = 15 %, Phase 3 = 25 %, Phase 4 = 15 %, Phase 5 = 5 %.
@@ -169,10 +172,12 @@ GLOBAL                     ████████████████░�
 
 > Classées par priorité décroissante. À réviser à chaque session.
 
-1. **[Phase 4]** Export PDF batch (jsPDF client, TSD-009 / QUESTIONS Q5)
-2. **[Phase 4]** Gabarit de coupe (marge, fond perdu)
-3. **[Phase 3]** Persister les mappings hors ImportJob (table `import_mappings`, QUESTIONS Q4)
-4. **[Phase 1]** Auth : `/uploads` public volontaire (images canvas) — documenté Q6
+1. **[Phase 1]** TSD-030 — implémenter la rotation canvas (poignée, Shift 15°, multi autour du pivot) — spec en Review
+2. **[Phase 1]** TSD-029 Types de layout — UI Config + raccourci modale (spec en Review)
+3. **[Phase 4]** Export PDF batch (jsPDF client, TSD-009 / QUESTIONS Q5)
+4. **[Phase 4]** Gabarit de coupe (marge, fond perdu)
+5. **[Phase 3]** Persister les mappings hors ImportJob (table `import_mappings`, QUESTIONS Q4)
+6. **[Phase 1]** Auth : `/uploads` public volontaire (images canvas) — documenté Q6
 
 ---
 
@@ -182,8 +187,11 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (12) | **TSD-030 Rotation éléments** (Review) : poignée canvas façon Figma sur le primaire, Shift 15°, multi-sélection autour du centre (orbit `x/y` + Δ rotation). Champ panneau existant normalisé `(-180, 180]`. Hors scope : boîte englobante, resize axes locaux. Implémentation en attente de relecture spec. |
+| 2026-08-21 (11) | **TSD-029 Types de layout** (Review) : CRUD Config + raccourci « + Nouveau type » dans la modale layout/verso ; PATCH libellé ; slug auto si code vide ; DELETE `dos` refusé ; badges = libellé. Implémentation après relecture spec. |
 | 2026-08-21 (10) | **Molécule Ingrédients — reflow** : `spaceEvenlyXs` + `layoutIngredientElements` (max 6, masquage, diamants entre cases visibles). Branché dans `ComponentRenderer` / `CardPreview` pour `mol-ingredients-fabrication`. Seed composant arrêté ; positions seed space-evenly. TSD-027 mis à jour. Tests slots + seed + binding verts. |
 | 2026-08-21 (9) | **Fix select qui se ferme une fois sur deux** : `<select>` sorti des `<label>` (clic synthétique Chrome/Safari) ; focus `preventScroll` pour les panneaux `overflow:auto` ; MediaPicker ignore le menu natif hors DOM. Tests `nativeSelect.test.js` 7/7. |
+| 2026-08-21 (9) | **Texte des cases visible** : liste d’inputs dès la sélection d’une piste (plus besoin de cliquer une case pour voir le champ). |
 | 2026-08-21 (8) | **Texte par case des pistes** : `cellOverrides.text` remplace le numéro auto (`trak`, `trakCorner`, `trakPath`, `cardTrack`). Champ Texte dans « Édition par case » ; sélection de case étendue à `trak` / `trakCorner`. Mélanger/Vider conserve le texte. Tests layout + `resolveTrackCellText` verts. |
 | 2026-08-21 (7) | **Fix snap grille** : décocher « Grille / snap » désactive désormais `store.snap()` (drag, resize, drop) ; flèches en 0,1 mm (1 mm avec Shift). Cause : `showGrid` ne masquait que l’overlay. Tests store 9/9 OK. |
 | 2026-08-21 (6) | **TSD-028 Multi-sélection calques** : Cmd/Ctrl+clic (panneau + canvas), drag/flèches du set, grouper via ⊞ ou ⌘G, Delete/⌘D sur le set. Layout et composant. Tests store 7/7 OK. |

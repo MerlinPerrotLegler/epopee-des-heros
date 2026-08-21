@@ -5,7 +5,7 @@
 | Status      | Done                         |
 | Author      | @merlinperrot                |
 | Created     | 2026-03-13                   |
-| Last update | 2026-03-13                   |
+| Last update | 2026-08-21                   |
 | Depends on  | TSD-001 (canvas éditeur)     |
 
 ---
@@ -26,7 +26,7 @@ Les layouts et les instances de cartes sont associés à un `card_type` (ex : `e
 
 ### Out of scope
 - Renommage du `code` d'un type existant (trop destructif — les layouts référencent le code)
-- Modification du label après création (le code est la clé, le label est cosmétique)
+- Modification du label après création — **levé par TSD-029** (PATCH du libellé ; le `code` reste la clé)
 - Icône ou couleur associée à chaque type
 
 ---
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS card_types (
 
 | # | Description | Status | Found on |
 |---|-------------|--------|----------|
-| 1 | — | — | — |
+| 1 | UI Config / création de types jamais branchée (`createCardType` mort) | fixed in TSD-029 | 2026-08-21 |
 
 ---
 
@@ -128,3 +128,4 @@ CREATE TABLE IF NOT EXISTS card_types (
 
 - Le type `dos` est spécial : il est associé au flag `is_back = 1` sur les layouts. Ne pas supprimer.
 - L'atome `cardType` utilise le `card_type` du layout pour afficher un badge coloré selon une palette codée en dur dans `atoms/index.js`.
+- **TSD-029** : UI Config + raccourci modale layout, PATCH label, slug auto, 409 doublon, garde `dos`.

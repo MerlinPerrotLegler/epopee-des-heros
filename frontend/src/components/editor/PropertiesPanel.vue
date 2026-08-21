@@ -130,38 +130,35 @@
       </div>
     </div>
 
-    <!-- ── Textures des atomes de piste ── -->
-    <div class="panel-section" v-if="isTrackAtom">
-      <div class="panel-section-title">Textures de piste</div>
-      <div class="track-actions">
-        <button type="button" class="clear-btn" @click="clearAllTextures">Vider</button>
-        <button type="button" class="clear-btn" @click="openPropagatePicker">Propager</button>
-        <button type="button" class="clear-btn" @click="shuffleAll">Mélanger</button>
-      </div>
-      <div v-if="trackTextureError" class="ct-hint">Catalogue indisponible.</div>
-    </div>
-
     <!-- ── Section spéciale pistes : édition par case ── -->
     <div class="panel-section" v-if="supportsCellSelection">
-      <div class="panel-section-title">Édition par case</div>
+      <div class="panel-section-title">Texte des cases</div>
+      <div class="cell-text-list">
+        <label
+          v-for="cell in trackCells"
+          :key="`cell-text-${cell.idx}`"
+          class="cell-text-row"
+          :class="{ active: activeTrackCellIdx === cell.idx }"
+        >
+          <span class="cell-text-idx">{{ cell.n }}</span>
+          <input
+            type="text"
+            :value="cellOverrideText(cell.idx)"
+            :placeholder="String(cell.n ?? '')"
+            @focus="store.activeCellIdx = cell.idx"
+            @input="setCellPropAt(cell.idx, 'text', $event.target.value)"
+          />
+        </label>
+      </div>
+      <div class="panel-section-title" style="margin-top:10px">Édition par case</div>
       <div class="field-row" v-if="activeTrackCellIdx !== null">
         <label style="color:var(--accent-primary)">Case #{{ activeTrackCellIdx }}</label>
         <button class="clear-btn" @click="clearCellOverride">✕ Réinitialiser</button>
       </div>
       <div class="ct-hint" v-else>
-        Cliquez une case de la piste dans le canvas pour la sélectionner.
+        Cliquez une case (piste ou liste) pour fond et texture.
       </div>
       <template v-if="activeTrackCellIdx !== null">
-        <div class="field-row">
-          <label>Texte</label>
-          <input
-            type="text"
-            :value="activeCellOverride.text ?? ''"
-            :placeholder="String(activeCellDefaultText)"
-            @input="setCellProp('text', $event.target.value)"
-            style="flex:1"
-          />
-        </div>
         <div class="field-row">
           <label>Fond</label>
           <ColorPickerAlpha
@@ -192,6 +189,17 @@
           <button type="button" class="clear-btn" @click="shuffleActiveCell">Mélanger</button>
         </div>
       </template>
+    </div>
+
+    <!-- ── Textures des atomes de piste ── -->
+    <div class="panel-section" v-if="isTrackAtom">
+      <div class="panel-section-title">Textures de piste</div>
+      <div class="track-actions">
+        <button type="button" class="clear-btn" @click="clearAllTextures">Vider</button>
+        <button type="button" class="clear-btn" @click="openPropagatePicker">Propager</button>
+        <button type="button" class="clear-btn" @click="shuffleAll">Mélanger</button>
+      </div>
+      <div v-if="trackTextureError" class="ct-hint">Catalogue indisponible.</div>
     </div>
 
     <!-- ── TrakPath : édition des segments ── -->
@@ -992,10 +1000,31 @@ const activeCellOverride = computed(() => {
   return el.value.params?.cellOverrides?.[activeTrackCellIdx.value] ?? {}
 })
 
-const activeCellDefaultText = computed(() => {
-  const cell = trackCells.value.find((entry) => entry.idx === activeTrackCellIdx.value)
-  return cell?.n ?? ''
-})
+function cellOverrideText(idx) {
+  return el.value?.params?.cellOverrides?.[idx]?.text ?? ''
+}
+
+function setCellPropAt(idx, prop, value, markAsUser = false) {
+  if (idx === null || idx === undefined || !el.value) return
+  const overrides = { ...(el.value.params?.cellOverrides || {}) }
+  const cellData = { ...(overrides[idx] || {}) }
+  if (value === undefined || value === '') {
+    delete cellData[prop]
+  } else {
+    cellData[prop] = value
+  }
+  if (markAsUser && cellData.textureId != null) cellData.textureSource = 'user'
+  if (Object.keys(cellData).length === 0) {
+    delete overrides[idx]
+  } else {
+    overrides[idx] = cellData
+  }
+  updateParam('cellOverrides', overrides)
+}
+
+function setCellProp(prop, value, markAsUser = false) {
+  setCellPropAt(activeTrackCellIdx.value, prop, value, markAsUser)
+}
 
 const activeCellMatchContext = computed(() => {
   if (activeTrackCellIdx.value === null) return null
@@ -1011,24 +1040,6 @@ const activeCellMatchContext = computed(() => {
     neighborTextureIds,
   }
 })
-
-function setCellProp(prop, value, markAsUser = false) {
-  if (activeTrackCellIdx.value === null) return
-  const overrides = { ...(el.value.params?.cellOverrides || {}) }
-  const cellData = { ...(overrides[activeTrackCellIdx.value] || {}) }
-  if (value === undefined || value === '') {
-    delete cellData[prop]
-  } else {
-    cellData[prop] = value
-  }
-  if (markAsUser && cellData.textureId != null) cellData.textureSource = 'user'
-  if (Object.keys(cellData).length === 0) {
-    delete overrides[activeTrackCellIdx.value]
-  } else {
-    overrides[activeTrackCellIdx.value] = cellData
-  }
-  updateParam('cellOverrides', overrides)
-}
 
 function setCellTextureId(rawValue) {
   if (rawValue === '') {
@@ -1331,6 +1342,43 @@ function isParamFixed(paramKey) {
   font-size: 10px;
   font-style: italic;
   padding: 4px 0;
+}
+
+.cell-text-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 2px 0;
+}
+
+.cell-text-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 4px;
+  border-radius: 3px;
+  cursor: text;
+}
+
+.cell-text-row.active {
+  background: color-mix(in srgb, var(--accent-primary) 18%, transparent);
+}
+
+.cell-text-idx {
+  flex: 0 0 28px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.cell-text-row input {
+  flex: 1;
+  min-width: 0;
+  font-size: 11px;
 }
 
 .track-actions {
