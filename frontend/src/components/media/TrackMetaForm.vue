@@ -33,9 +33,12 @@
     <p class="tm-hint">{{ orientationHint }}</p>
 
     <TrackMarginPreview
-      :filename="media.filename"
-      :original-name="media.original_name"
-      :margins="form.margins"
+      :center="{
+        filename: media.filename,
+        originalName: media.original_name,
+        margins: form.margins,
+      }"
+      :neighbors="previewNeighbors"
     />
 
     <fieldset>
@@ -104,6 +107,7 @@ import { computed, defineComponent, h, onMounted, reactive, ref, watch } from 'v
 import { reloadTrackTextures } from '@/composables/useTrackTextures.js'
 import { api } from '@/utils/api.js'
 import TrackMarginPreview from '@/components/media/TrackMarginPreview.vue'
+import { pickPlusNeighborTiles } from '@/utils/trackFootprint.js'
 
 const props = defineProps({
   media: { type: Object, required: true },
@@ -171,6 +175,11 @@ const neighborChoices = computed(() => tracks.value
   }))
   .filter((track) => Number.isInteger(track.id) && track.mediaId !== props.media.id)
   .sort((a, b) => a.id - b.id))
+
+const previewNeighbors = computed(() => pickPlusNeighborTiles(tracks.value, {
+  currentMediaId: props.media.id,
+  voisinIds: form.voisins,
+}))
 
 async function loadCatalogs() {
   ;[types.value, tags.value, tracks.value] = await Promise.all([

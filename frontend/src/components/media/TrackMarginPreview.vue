@@ -1,54 +1,59 @@
 <template>
-  <div class="plus-preview" role="img" :aria-label="ariaLabel" :style="cssVars">
-    <div class="plus-frame">
+  <div class="plus-preview" role="img" :aria-label="ariaLabel" :style="padVars">
+    <div class="plus-stage">
       <div class="plus-grid">
         <div
-          v-for="key in slotKeys"
-          :key="key"
+          v-for="slot in slots"
+          :key="slot.key"
           class="plus-slot"
-          :class="key"
+          :class="slot.key"
         >
-          <img v-if="src" :src="src" :alt="key === 'c' ? 'Tuile centrale' : `Voisin ${key}`" />
-          <span class="plus-cell" :class="{ center: key === 'c' }" />
+          <img
+            v-if="slot.tile?.filename"
+            :src="`/uploads/${slot.tile.filename}`"
+            :alt="slot.tile.originalName || slot.key"
+            :style="overflowCssVars(slot.tile.margins)"
+          />
+          <span class="plus-cell" :class="{ center: slot.key === 'c' }" />
         </div>
       </div>
     </div>
-    <p class="plus-hint">Cases carrées — l’image déborde selon les marges pour juger les joints.</p>
+    <p class="plus-hint">
+      Cases carrées — chaque image garde ses propres marges.
+      Le centre est celle que tu édites.
+    </p>
   </div>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { overflowCssVars, plusPreviewPad } from '@/utils/trackFootprint.js'
 
 const props = defineProps({
-  filename: { type: String, default: '' },
-  originalName: { type: String, default: '' },
-  margins: { type: Object, default: () => ({ left: 0, right: 0, top: 0, bottom: 0 }) },
+  center: { type: Object, default: () => ({}) },
+  neighbors: { type: Object, default: () => ({}) },
 })
 
-const slotKeys = ['n', 'w', 'c', 'e', 's']
+const slots = computed(() => ([
+  { key: 'n', tile: props.neighbors.n || null },
+  { key: 'w', tile: props.neighbors.w || null },
+  { key: 'c', tile: props.center?.filename ? props.center : null },
+  { key: 'e', tile: props.neighbors.e || null },
+  { key: 's', tile: props.neighbors.s || null },
+]))
 
-const src = computed(() => props.filename ? `/uploads/${props.filename}` : '')
-const ariaLabel = computed(() =>
-  `Aperçu orthogonal de ${props.originalName || 'la tuile'} : cases carrées, image débordante`)
-
-const cssVars = computed(() => {
-  const m = props.margins || {}
-  const ml = Number(m.left) || 0
-  const mr = Number(m.right) || 0
-  const mt = Number(m.top) || 0
-  const mb = Number(m.bottom) || 0
+const padVars = computed(() => {
+  const pad = plusPreviewPad(slots.value.map((slot) => slot.tile))
   return {
-    '--ml': ml,
-    '--mr': mr,
-    '--mt': mt,
-    '--mb': mb,
-    '--pad-l': Math.max(0, ml),
-    '--pad-r': Math.max(0, mr),
-    '--pad-t': Math.max(0, mt),
-    '--pad-b': Math.max(0, mb),
+    '--pad-l': pad.left,
+    '--pad-r': pad.right,
+    '--pad-t': pad.top,
+    '--pad-b': pad.bottom,
   }
 })
+
+const ariaLabel = computed(() =>
+  `Aperçu orthogonal de ${props.center?.originalName || 'la tuile'} avec voisins aux marges distinctes`)
 </script>
 
 <style scoped>
@@ -60,17 +65,15 @@ const cssVars = computed(() => {
   max-width: 420px;
   margin: 0 auto;
 }
-.plus-frame {
-  display: grid;
-  grid-template-columns: var(--pad-l)fr 3fr var(--pad-r)fr;
-  grid-template-rows: var(--pad-t)fr 3fr var(--pad-b)fr;
-  width: 100%;
-  aspect-ratio: 1;
+.plus-stage {
+  padding:
+    calc(var(--pad-t) * 33.333%)
+    calc(var(--pad-r) * 33.333%)
+    calc(var(--pad-b) * 33.333%)
+    calc(var(--pad-l) * 33.333%);
   overflow: visible;
 }
 .plus-grid {
-  grid-column: 2;
-  grid-row: 2;
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   grid-template-rows: 1fr 1fr 1fr;
@@ -78,6 +81,7 @@ const cssVars = computed(() => {
     ". n ."
     "w c e"
     ". s .";
+  aspect-ratio: 1;
   overflow: visible;
   background-color: #b0b0b0;
   background-image:

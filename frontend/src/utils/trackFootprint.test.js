@@ -1,7 +1,14 @@
 // frontend/src/utils/trackFootprint.test.js
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { baseCellSizeMm, cellFootprintMm, plusTilePreviewLayout, textureDrawRect } from './trackFootprint.js'
+import {
+  baseCellSizeMm,
+  cellFootprintMm,
+  pickPlusNeighborTiles,
+  plusPreviewPad,
+  plusTilePreviewLayout,
+  textureDrawRect,
+} from './trackFootprint.js'
 
 describe('baseCellSizeMm', () => {
   it('multiplies ratio by axis length', () => {
@@ -63,5 +70,43 @@ describe('plusTilePreviewLayout', () => {
     assert.equal(byKey.c.x, 1.1)
     assert.equal(byKey.w.x + byKey.w.w, 1)
     assert.ok(byKey.w.x + byKey.w.w < byKey.c.x)
+  })
+})
+
+describe('pickPlusNeighborTiles', () => {
+  const tracks = [
+    { id: 'a', filename: 'center.png', track_meta: { id: 1, margins: { left: 0.5 } } },
+    { id: 'b', filename: 'one.png', original_name: 'One', track_meta: { id: 2, margins: { left: 0.1 } } },
+    { id: 'c', filename: 'two.png', original_name: 'Two', track_meta: { id: 3, margins: { top: 0.2 } } },
+  ]
+
+  it('keeps each neighbor’s own margins and never copies the center’s', () => {
+    const neighbors = pickPlusNeighborTiles(tracks, { currentMediaId: 'a', voisinIds: [3, 2] })
+    assert.equal(neighbors.n.filename, 'two.png')
+    assert.equal(neighbors.n.margins.top, 0.2)
+    assert.equal(neighbors.w.filename, 'one.png')
+    assert.equal(neighbors.w.margins.left, 0.1)
+    assert.equal(neighbors.n.margins.left, 0)
+    assert.ok(!Object.values(neighbors).some((tile) => tile?.filename === 'center.png'))
+  })
+
+  it('fills remaining slots from the catalogue without repeating the current image', () => {
+    const neighbors = pickPlusNeighborTiles(tracks, { currentMediaId: 'a', voisinIds: [] })
+    const files = ['n', 'w', 'e', 's'].map((key) => neighbors[key]?.filename)
+    assert.equal(neighbors.n.filename, 'one.png')
+    assert.equal(neighbors.w.filename, 'two.png')
+    assert.equal(files.filter(Boolean).length, 2)
+  })
+})
+
+describe('plusPreviewPad', () => {
+  it('uses the max overflow of each tile, not a shared margin', () => {
+    const pad = plusPreviewPad([
+      { margins: { left: 0.1, top: 0 } },
+      { margins: { left: 0, top: 0.4 } },
+    ])
+    assert.equal(pad.left, 0.1)
+    assert.equal(pad.top, 0.4)
+    assert.equal(pad.right, 0)
   })
 })

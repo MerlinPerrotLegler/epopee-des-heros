@@ -5,13 +5,17 @@ export function baseCellSizeMm({ cellSize, axisLengthMm }) {
   return r * axis
 }
 
-export function cellFootprintMm(baseW, baseH, margins = {}) {
-  const m = {
+export function normalizeMargins(margins = {}) {
+  return {
     left: Number(margins.left) || 0,
     right: Number(margins.right) || 0,
     top: Number(margins.top) || 0,
     bottom: Number(margins.bottom) || 0,
   }
+}
+
+export function cellFootprintMm(baseW, baseH, margins = {}) {
+  const m = normalizeMargins(margins)
   const insetLeft = baseW * m.left
   const insetRight = baseW * m.right
   const insetTop = baseH * m.top
@@ -79,4 +83,76 @@ export function plusTilePreviewLayout(margins = {}) {
     }
   })
   return { viewW, viewH, tiles, footprint }
+}
+
+const NEIGHBOR_KEYS = ['n', 'w', 'e', 's']
+
+function toPreviewTile(track) {
+  if (!track?.filename) return null
+  return {
+    filename: track.filename,
+    originalName: track.original_name || track.track_meta?.label || '',
+    margins: normalizeMargins(track.track_meta?.margins),
+  }
+}
+
+/**
+ * Jusqu’à 4 autres textures autour du centre.
+ * Priorité aux voisins cochés, puis le reste du catalogue.
+ * Chaque tuile conserve ses propres marges (jamais celles du centre).
+ */
+export function pickPlusNeighborTiles(tracks, { currentMediaId, voisinIds = [] } = {}) {
+  const others = (tracks || []).filter((track) => track && track.id !== currentMediaId)
+  const byLogicalId = new Map()
+  for (const track of others) {
+    const logicalId = track.track_meta?.id
+    if (Number.isInteger(logicalId)) byLogicalId.set(logicalId, track)
+  }
+  const selected = []
+  const seen = new Set()
+  for (const rawId of voisinIds || []) {
+    const logicalId = Number(rawId)
+    const track = byLogicalId.get(logicalId)
+    if (!track || seen.has(track.id)) continue
+    seen.add(track.id)
+    selected.push(track)
+  }
+  const rest = others
+    .filter((track) => !seen.has(track.id))
+    .sort((a, b) => (a.track_meta?.id ?? 0) - (b.track_meta?.id ?? 0))
+  const pool = [...selected, ...rest]
+  const neighbors = {}
+  for (let i = 0; i < NEIGHBOR_KEYS.length; i += 1) {
+    neighbors[NEIGHBOR_KEYS[i]] = toPreviewTile(pool[i])
+  }
+  return neighbors
+}
+
+/** Padding de l’aperçu = plus grand débord positif parmi les tuiles visibles. */
+export function plusPreviewPad(tiles = []) {
+  const pad = { left: 0, right: 0, top: 0, bottom: 0 }
+  for (const tile of tiles) {
+    if (!tile) continue
+    const m = normalizeMargins(tile.margins)
+    pad.left = Math.max(pad.left, m.left)
+    pad.right = Math.max(pad.right, m.right)
+    pad.top = Math.max(pad.top, m.top)
+    pad.bottom = Math.max(pad.bottom, m.bottom)
+  }
+  return {
+    left: Math.max(0, pad.left),
+    right: Math.max(0, pad.right),
+    top: Math.max(0, pad.top),
+    bottom: Math.max(0, pad.bottom),
+  }
+}
+
+export function overflowCssVars(margins = {}) {
+  const m = normalizeMargins(margins)
+  return {
+    '--ml': m.left,
+    '--mr': m.right,
+    '--mt': m.top,
+    '--mb': m.bottom,
+  }
 }
