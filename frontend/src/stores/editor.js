@@ -1266,7 +1266,7 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   function snap(value) {
-    if (!snapGrid.value) return value
+    if (!showGrid.value || !snapGrid.value) return value
     return Math.round(value / snapGrid.value) * snapGrid.value
   }
 

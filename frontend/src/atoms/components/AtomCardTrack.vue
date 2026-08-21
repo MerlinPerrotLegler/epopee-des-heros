@@ -19,7 +19,7 @@
       textColor      {string}  Couleur du texte
       fontSize       {number}  Taille du texte en mm
       svgMediaId     {string}  SVG décoratif dans les coins (optionnel)
-      cellOverrides  {object}  { [idx]: { textureId, coin, textureSource } }
+      cellOverrides  {object}  { [idx]: { textureId, coin, textureSource, text, bgColor } }
   -->
   <svg
     width="100%"
@@ -57,7 +57,7 @@
         :font-size="fontSz"
         :font-family="p.fontFamily || 'Outfit'" font-weight="600"
         :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
-      >{{ cell.n }}</text>
+      >{{ cell.text }}</text>
       <rect
         v-if="selected && cell.idx === activeCellIdx"
         :x="sv(cell.x)" :y="sv(cell.y)"

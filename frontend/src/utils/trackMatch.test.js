@@ -31,14 +31,14 @@ describe('isTextureCompatible', () => {
 })
 
 describe('clearAllTextureOverrides', () => {
-  it('removes only texture keys and keeps bgColor/svgMediaId', () => {
+  it('removes only texture keys and keeps bgColor/svgMediaId/text', () => {
     const existing = {
-      0: { textureId: 1, coin: 90, textureSource: 'user', bgColor: '#abc', svgMediaId: 42 },
+      0: { textureId: 1, coin: 90, textureSource: 'user', bgColor: '#abc', svgMediaId: 42, text: 'GO' },
       1: { bgColor: '#def' },
     }
     const out = clearAllTextureOverrides(existing)
     assert.deepEqual(out, {
-      0: { bgColor: '#abc', svgMediaId: 42 },
+      0: { bgColor: '#abc', svgMediaId: 42, text: 'GO' },
       1: { bgColor: '#def' },
     })
   })
@@ -76,14 +76,15 @@ describe('shuffleTrackTextures', () => {
     assert.ok(!out[1] || out[1].textureSource === 'system' || out[1].textureId == null)
   })
 
-  it('preserves bgColor/svgMediaId while reshuffling system textures', () => {
+  it('preserves bgColor/svgMediaId/text while reshuffling system textures', () => {
     const existing = {
-      0: { textureId: 0, coin: 0, textureSource: 'system', bgColor: '#abc', svgMediaId: 3 },
+      0: { textureId: 0, coin: 0, textureSource: 'system', bgColor: '#abc', svgMediaId: 3, text: 'A' },
       1: { textureId: 1, coin: 0, textureSource: 'system', bgColor: '#def' },
     }
     const out = shuffleTrackTextures({ cells, textures: [t0, t1], existingOverrides: existing })
     assert.equal(out[0].bgColor, '#abc')
     assert.equal(out[0].svgMediaId, 3)
+    assert.equal(out[0].text, 'A')
     assert.equal(out[1].bgColor, '#def')
     assert.equal(out[0].textureSource, 'system')
     assert.ok(out[0].textureId != null)

@@ -236,6 +236,7 @@ import {
   buildCardTrackFootprints,
   hitTestCardTrackCell,
 } from '@/utils/cardTrackLayout.js'
+import { hitTestTrakCell } from '@/utils/trakLayout.js'
 import {
   buildTrakPathCells,
   orthogonalDirections,
@@ -410,7 +411,8 @@ function onElementMouseDown(e, el) {
 
   // Clic sur une case d'une piste déjà sélectionnée → sélection de case
   if (wasAlreadySelected && !el._layerLocked && el.type === 'atom' &&
-      (el.atomType === 'cardTrack' || el.atomType === 'trakPath')) {
+      (el.atomType === 'cardTrack' || el.atomType === 'trakPath'
+        || el.atomType === 'trak' || el.atomType === 'trakCorner')) {
     const cardEl = cardBoundaryRef.value
     if (cardEl) {
       const { x_mm, y_mm } = clientPointToCardMm(
@@ -434,11 +436,22 @@ function onElementMouseDown(e, el) {
           relY_mm,
           footprintByIndex,
         )
-      } else {
+      } else if (el.atomType === 'trakPath') {
         idx = trakPathLayout(el).cells.find((cell) =>
           relX_mm >= cell.x && relX_mm < cell.x + cell.w &&
           relY_mm >= cell.y && relY_mm < cell.y + cell.h
         )?.idx ?? null
+      } else if (el.atomType === 'trak') {
+        idx = hitTestTrakCell({
+          params: effectiveAtomParams(el),
+          width_mm: el.width_mm,
+          height_mm: el.height_mm,
+          texturesById: trackTexturesByLogicalId.value,
+          relX_mm,
+          relY_mm,
+        })
+      } else {
+        idx = 0
       }
       if (idx !== null) {
         store.activeCellIdx = idx
@@ -666,7 +679,9 @@ function onKeyDown(e) {
   if (inInput) return
   if (!store.selectedItemIds.length) return
   e.preventDefault()
-  const step = e.shiftKey ? 10 * store.snapGrid : store.snapGrid
+  const step = store.showGrid
+    ? (e.shiftKey ? 10 * store.snapGrid : store.snapGrid)
+    : (e.shiftKey ? 1 : 0.1)
   const dx = e.key === 'ArrowLeft' ? -step : e.key === 'ArrowRight' ? step : 0
   const dy = e.key === 'ArrowUp'   ? -step : e.key === 'ArrowDown'  ? step : 0
   store.moveSelected(dx, dy)

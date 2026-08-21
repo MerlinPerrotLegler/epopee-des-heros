@@ -74,4 +74,16 @@ describe('buildCardTrackCells variable footprints', () => {
     )
     assert.equal(hitTestCardTrackCell(params, 63, 88, 33, 5), 2)
   })
+
+  it('uses cellOverrides.text instead of the auto number', () => {
+    const cells = buildCardTrackCells({
+      n_start: 0,
+      cells_top: 1,
+      cells_left: 1,
+      cellOverrides: { 0: { text: 'START' }, 2: { text: '' } },
+    }, 63, 88)
+    assert.equal(cells[0].text, 'START')
+    assert.equal(cells[1].text, 1)
+    assert.equal(cells[2].text, '')
+  })
 })

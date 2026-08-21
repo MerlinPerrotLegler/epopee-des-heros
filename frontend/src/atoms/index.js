@@ -417,7 +417,7 @@ export const ATOM_TYPES = {
       fontSize:    2.5,
       svgMediaId:  null,     // SVG décoratif optionnel
       textRotation: 45,      // rotation du chiffre en degrés
-      cellOverrides: {},     // { 0: { textureId, coin, textureSource } }
+      cellOverrides: {},     // { 0: { textureId, coin, textureSource, text } }
     },
     defaultSize: { width_mm: 5, height_mm: 5 }
   },
@@ -436,7 +436,7 @@ export const ATOM_TYPES = {
       fontSize:    2.5,
       fontFamily:  null,
       caps:        false, // triangles rectangles aux extrémités
-      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource } }
+      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource, text } }
     },
     defaultSize: { width_mm: 55, height_mm: 5 }
   },
@@ -452,7 +452,7 @@ export const ATOM_TYPES = {
       textColor: null,
       fontSize: 2.5,
       fontFamily: null,
-      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource } }
+      cellOverrides: {}, // { [idx]: { textureId, coin, textureSource, text } }
     },
     defaultSize: { width_mm: 55, height_mm: 25 },
   },
@@ -483,7 +483,7 @@ export const ATOM_TYPES = {
       fontFamily:   null,
       svgMediaId:   null,         // SVG décoratif dans tous les coins
       // ── Surcharges par case ────────────────────────────────────────
-      cellOverrides: {},          // { [idx]: { textureId, coin, textureSource } }
+      cellOverrides: {},          // { [idx]: { textureId, coin, textureSource, text } }
     },
     defaultSize: { width_mm: 63, height_mm: 88 }
   },

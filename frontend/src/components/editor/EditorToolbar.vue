@@ -62,12 +62,12 @@
       >1:1</button>
       <button class="btn-zoom btn-sm" @click="store.requestFit = 'fit'" title="Ajuster à la fenêtre">⊡</button>
       <span class="toolbar-divider"></span>
-      <label class="toggle-label">
+      <label class="toggle-label" title="Affiche la grille et active le snap au pas indiqué">
         <input type="checkbox" v-model="store.showGrid" />
-        Grille
+        Grille / snap
       </label>
       <label class="snap-label">
-        Snap
+        pas
         <input type="number" v-model.number="store.snapGrid" min="0.5" max="10" step="0.5" class="snap-input" />
         mm
       </label>

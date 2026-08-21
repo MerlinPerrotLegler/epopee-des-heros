@@ -7,6 +7,7 @@
  * TOUTE modification ici affecte simultanément le rendu ET la détection de clic.
  */
 import { cellFootprintMm } from './trackFootprint.js'
+import { resolveTrackCellText } from './trackCellText.js'
 
 // ── Calcul des paramètres structurels ──────────────────────────────────────────
 /**
@@ -117,7 +118,7 @@ function getCornerRot(corner, params) {
  * Toutes les positions (x, y, cx, cy) et dimensions (w, h) sont en mm.
  *
  * @returns {Array<{
- *   idx, n, isCorner, corner?, side?,
+ *   idx, n, text, isCorner, corner?, side?,
  *   x, y, w, h, cx, cy, textRot
  * }>}
  */
@@ -225,18 +226,22 @@ export function buildCardTrackCells(params, width_mm, height_mm, footprintByInde
   const closureDy = topLeft.y + topLeft.h - lastCell.y
   const bottomLeftIdx = 3 + 2 * tc + lc
 
-  return raw.map((cell) => ({
-    ...cell,
-    ...(cell.idx >= bottomLeftIdx
-      ? {
-          x: cell.x + closureDx,
-          y: cell.y + closureDy,
-          cx: cell.cx + closureDx,
-          cy: cell.cy + closureDy,
-        }
-      : {}),
-    n: n0 + ((cell.idx - startOffset + total) % total),
-  }))
+  return raw.map((cell) => {
+    const n = n0 + ((cell.idx - startOffset + total) % total)
+    return {
+      ...cell,
+      ...(cell.idx >= bottomLeftIdx
+        ? {
+            x: cell.x + closureDx,
+            y: cell.y + closureDy,
+            cx: cell.cx + closureDx,
+            cy: cell.cy + closureDy,
+          }
+        : {}),
+      n,
+      text: resolveTrackCellText(params.cellOverrides?.[cell.idx], n),
+    }
+  })
 }
 
 /**

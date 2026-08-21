@@ -41,79 +41,51 @@
         :font-size="fontSizePx"
         :font-family="params.fontFamily || 'Outfit'"
         font-weight="600"
-      >{{ cell.n }}</text>
+      >{{ cell.text }}</text>
+      <rect
+        v-if="selected && cell.idx === activeCellIdx"
+        :x="sv(cell.x)" :y="sv(cell.y)"
+        :width="sv(cell.w)" :height="sv(cell.h)"
+        fill="none"
+        stroke="#facc15"
+        :stroke-width="2"
+        pointer-events="none"
+      />
     </g>
   </svg>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useEditorStore } from '@/stores/editor.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
-import { baseCellSizeMm, cellFootprintMm } from '@/utils/trackFootprint.js'
+import { buildTrakCells } from '@/utils/trakLayout.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
+  selected:  { type: Boolean, default: false },
   printMode: { type: Boolean, default: false },
 })
 
+const store = useEditorStore()
 const p = computed(() => props.params)
 const { byLogicalId } = useTrackTextures()
-
-const cells = computed(() => {
-  const start = p.value.n_start ?? 0
-  const end   = p.value.n_end   ?? 10
-  const lo = Math.min(start, end)
-  const hi = Math.max(start, end)
-  const arr = []
-  if (p.value.reverse) {
-    for (let i = hi; i >= lo; i--) arr.push(i)
-  } else {
-    for (let i = lo; i <= hi; i++) arr.push(i)
-  }
-  return arr
-})
+const activeCellIdx = computed(() => store.activeCellIdx)
 
 const isVertical = computed(() => p.value.direction === 'vertical')
 
 const SCALE = 10
 function sv(mm) { return mm * SCALE }
 
-const baseSizeMm = computed(() => baseCellSizeMm({
-  cellSize: p.value.cellSize ?? 0.1,
-  axisLengthMm: isVertical.value ? props.height_mm : props.width_mm,
-}))
 const fontSizePx = computed(() => sv(p.value.fontSize || 2.5))
-
-const cellLayouts = computed(() => {
-  let offset = 0
-  return cells.value.map((n, idx) => {
-    const override = p.value.cellOverrides?.[idx] || {}
-    const texture = byLogicalId.value[override.textureId] || null
-    const footprint = cellFootprintMm(
-      baseSizeMm.value,
-      baseSizeMm.value,
-      texture?.margins,
-    )
-    const x = isVertical.value ? 0 : offset
-    const y = isVertical.value ? offset : 0
-    offset += isVertical.value ? footprint.h : footprint.w
-    return {
-      idx,
-      n,
-      x,
-      y,
-      w: footprint.w,
-      h: footprint.h,
-      cx: x + footprint.w / 2,
-      cy: y + footprint.h / 2,
-      texture,
-      coin: Number(override.coin) || 0,
-      textureSource: override.textureSource,
-    }
-  })
-})
+const cellLayouts = computed(() => buildTrakCells({
+  params: p.value,
+  width_mm: props.width_mm,
+  height_mm: props.height_mm,
+  texturesById: byLogicalId.value,
+}))
 
 // Le viewBox reste celui de la boîte logique de l'atome : 1 mm SVG reste
 // 1 mm physique. Les empreintes plus grandes débordent sans être remises à

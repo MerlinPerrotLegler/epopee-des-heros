@@ -116,6 +116,15 @@ describe('buildTrakPathCells', () => {
     assert.equal(contentW, 11.5)
   })
 
+  it('uses cellOverrides.text instead of the auto number', () => {
+    const { cells } = buildTrakPathCells({
+      ...baseArgs,
+      segments: [{ direction: 'right', count: 3 }],
+      cellOverrides: { 1: { text: 'GO' }, 2: { text: '' } },
+    })
+    assert.deepEqual(cells.map((cell) => cell.text), [0, 'GO', ''])
+  })
+
   it('returns an empty zero-sized layout for invalid segments', () => {
     assert.deepEqual(buildTrakPathCells({
       ...baseArgs,

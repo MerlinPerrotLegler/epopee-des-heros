@@ -1,4 +1,5 @@
 import { baseCellSizeMm, cellFootprintMm } from './trackFootprint.js'
+import { resolveTrackCellText } from './trackCellText.js'
 
 const DIRECTIONS = new Set(['up', 'down', 'left', 'right'])
 
@@ -58,6 +59,7 @@ export function buildTrakPathCells({
       const override = overrides[idx] || {}
       const texture = textures[override.textureId] || null
       const footprint = cellFootprintMm(baseSize, baseSize, texture?.margins)
+      const n = (Number(n_start) || 0) + idx
 
       if (segment.direction === 'left') cursorX -= footprint.w
       if (segment.direction === 'up') cursorY -= footprint.h
@@ -71,7 +73,8 @@ export function buildTrakPathCells({
 
       cells.push({
         idx,
-        n: (Number(n_start) || 0) + idx,
+        n,
+        text: resolveTrackCellText(override, n),
         x: cursorX,
         y: cursorY,
         w: footprint.w,

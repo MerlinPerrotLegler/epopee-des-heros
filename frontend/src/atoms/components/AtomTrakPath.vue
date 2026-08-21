@@ -34,7 +34,7 @@
         :font-size="fontSize"
         :font-family="params.fontFamily || 'Outfit'"
         font-weight="600"
-      >{{ cell.n }}</text>
+      >{{ cell.text }}</text>
       <rect
         v-if="selected && cell.idx === activeCellIdx"
         :x="sv(cell.x)"

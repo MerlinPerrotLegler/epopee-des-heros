@@ -153,6 +153,16 @@
       </div>
       <template v-if="activeTrackCellIdx !== null">
         <div class="field-row">
+          <label>Texte</label>
+          <input
+            type="text"
+            :value="activeCellOverride.text ?? ''"
+            :placeholder="String(activeCellDefaultText)"
+            @input="setCellProp('text', $event.target.value)"
+            style="flex:1"
+          />
+        </div>
+        <div class="field-row">
           <label>Fond</label>
           <ColorPickerAlpha
             :model-value="activeCellOverride.bgColor ?? null"
@@ -644,6 +654,7 @@ import { api } from '@/utils/api.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { buildCardTrackCells } from '@/utils/cardTrackLayout.js'
 import { buildTrakPathCells } from '@/utils/trakPathLayout.js'
+import { trakCellNumbers } from '@/utils/trakLayout.js'
 import {
   clearAllTextureOverrides,
   propagateTextureOverrides,
@@ -714,8 +725,7 @@ const trackTextures = computed(() =>
 const isTrackAtom = computed(() =>
   el.value?.type === 'atom' && TRACK_ATOMS.has(el.value.atomType))
 const supportsCellSelection = computed(() =>
-  el.value?.type === 'atom' &&
-  (el.value.atomType === 'cardTrack' || el.value.atomType === 'trakPath'))
+  el.value?.type === 'atom' && TRACK_ATOMS.has(el.value.atomType))
 const activeTrackCellIdx = computed(() =>
   supportsCellSelection.value && store.activeCellIdx !== null
     ? store.activeCellIdx
@@ -922,6 +932,7 @@ const trackCells = computed(() => {
     const cells = buildCardTrackCells(params, el.value.width_mm, el.value.height_mm)
     return cells.map((cell, index) => ({
       idx: cell.idx,
+      n: cell.n,
       requiredType: cell.isCorner ? 'coin' : 'droit',
       requiredAlignment: cell.side === 'left' || cell.side === 'right'
         ? 'vertical'
@@ -951,6 +962,7 @@ const trackCells = computed(() => {
   if (atomType === 'trakCorner') {
     return [{
       idx: 0,
+      n: Number(params.n) || 0,
       requiredType: 'coin',
       requiredAlignment: 'both',
       direction: 'up',
@@ -958,18 +970,19 @@ const trackCells = computed(() => {
     }]
   }
 
-  const count = Math.abs((Number(params.n_end) || 0) - (Number(params.n_start) || 0)) + 1
+  const numbers = trakCellNumbers(params)
   const vertical = params.direction === 'vertical'
-  return Array.from({ length: count }, (_, idx) => ({
+  return numbers.map((n, idx) => ({
     idx,
-    requiredType: idx === 0 || idx === count - 1 ? 'impasse' : 'droit',
+    n,
+    requiredType: idx === 0 || idx === numbers.length - 1 ? 'impasse' : 'droit',
     requiredAlignment: vertical ? 'vertical' : 'horizontal',
     direction: vertical
-      ? (idx === 0 ? 'up' : idx === count - 1 ? 'down' : 'vertical')
-      : (idx === 0 ? 'left' : idx === count - 1 ? 'right' : 'horizontal'),
+      ? (idx === 0 ? 'up' : idx === numbers.length - 1 ? 'down' : 'vertical')
+      : (idx === 0 ? 'left' : idx === numbers.length - 1 ? 'right' : 'horizontal'),
     neighborIdxs: [
       ...(idx > 0 ? [idx - 1] : []),
-      ...(idx < count - 1 ? [idx + 1] : []),
+      ...(idx < numbers.length - 1 ? [idx + 1] : []),
     ],
   }))
 })
@@ -977,6 +990,11 @@ const trackCells = computed(() => {
 const activeCellOverride = computed(() => {
   if (activeTrackCellIdx.value === null || !el.value) return {}
   return el.value.params?.cellOverrides?.[activeTrackCellIdx.value] ?? {}
+})
+
+const activeCellDefaultText = computed(() => {
+  const cell = trackCells.value.find((entry) => entry.idx === activeTrackCellIdx.value)
+  return cell?.n ?? ''
 })
 
 const activeCellMatchContext = computed(() => {

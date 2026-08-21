@@ -5,7 +5,7 @@
 | Status      | Done                              |
 | Author      | @merlinperrot                     |
 | Created     | 2026-03-13                        |
-| Last update | 2026-03-13                        |
+| Last update | 2026-08-21                        |
 | Depends on  | TSD-003 (atomes visuels)          |
 
 ---
@@ -30,7 +30,6 @@ Les cartes du jeu ont deux familles de visuels non couverts dans TSD-003 :
 ### Out of scope
 - Piste circulaire (arc)
 - Piste interactive en jeu (uniquement rendu statique pour les cartes)
-- Éditeur de cas individual (pour `cellOverrides`) — la modification se fait en JSON dans PropertiesPanel
 
 ---
 
@@ -49,8 +48,8 @@ Les cartes du jeu ont deux familles de visuels non couverts dans TSD-003 :
 ### Atome `cardTrack`
 - Occupe idéalement toute la carte (63×88 mm par défaut)
 - Distribution auto des cases sur 4 bords depuis `n_start` à `n_end` (défaut 0→50)
-- **Sélection de case** : double-clic sur une case déjà sélectionnée dans l'éditeur → surlignage jaune de la case, `activeCellIdx` dans le store
-- **Surcharges** (`cellOverrides`) : map `{idx: {bgColor?, svgMediaId?}}` — chaque case peut avoir sa propre couleur de fond ou un SVG décoratif
+- **Sélection de case** : clic sur une case d'une piste déjà sélectionnée (`cardTrack`, `trakPath`, `trak`, `trakCorner`) → surlignage jaune, `activeCellIdx` dans le store ; champ Texte dans PropertiesPanel
+- **Surcharges** (`cellOverrides`) : map `{idx: {bgColor?, svgMediaId?, textureId?, coin?, textureSource?, text?}}` — chaque case peut avoir sa propre couleur de fond, une texture, et un **texte libre** (remplace le numéro auto). Champ vide dans le panneau = numéro auto.
 - **Style plume** (`penStyle: true`) : remplace les bordures par des traits calligraphiques SVG (fuseaux remplis)
 
 ### Atome `caracteristique`
@@ -76,7 +75,8 @@ Pas de table dédiée. Les params sont stockés dans `definition.layers[].elemen
   "fontSize": 2.5,
   "borderColor": "#6c7aff",
   "borderWidth": 0.2,
-  "caps": false
+  "caps": false,
+  "cellOverrides": {}
 }
 ```
 
@@ -90,7 +90,8 @@ Pas de table dédiée. Les params sont stockés dans `definition.layers[].elemen
   "borderColor": "#6c7aff",
   "borderWidth": 0.2,
   "svgMediaId": "",
-  "textRotation": 45
+  "textRotation": 45,
+  "cellOverrides": {}
 }
 ```
 
@@ -161,6 +162,7 @@ N/A — ces atomes sont purement frontend/rendus. Pas de nouveaux endpoints.
 - [x] Sélection de case dans `EditorCanvas` : `hitTestCardTrackCell()` + `store.activeCellIdx`
 - [x] `PropertiesPanel` : sections dédiées pour chaque param (couleurs, overrides, plume)
 - [x] `atoms/index.js` : `defaultParams` + `defaultSize` pour tous les 4 atomes, `STAT_TYPES` exporté
+- [x] Texte libre par case : `cellOverrides[idx].text` via `resolveTrackCellText`, champ PropertiesPanel, sélection `trak` / `trakCorner`
 
 ---
 
@@ -185,6 +187,7 @@ N/A — ces atomes sont purement frontend/rendus. Pas de nouveaux endpoints.
 - [x] Sélection de case dans `cardTrack` surligne la case en jaune
 - [x] `penStyle` remplace les bordures par des fuseaux calligraphiques SVG
 - [x] `caracteristique` affiche la bonne couleur selon le type de stat
+- [x] Chaque case (`trak`, `trakCorner`, `trakPath`, `cardTrack`) accepte un texte libre via `cellOverrides[idx].text`
 
 ---
 
@@ -205,6 +208,7 @@ N/A — ces atomes sont purement frontend/rendus. Pas de nouveaux endpoints.
 ## 11. Notes & références
 
 - `cardTrackLayout.js` est l'utilitaire partagé entre le rendu SVG (`AtomCardTrack.vue`) et la détection de clic (`hitTestCardTrackCell()` dans `EditorCanvas.vue`) — toute modification structurelle doit se faire là.
+- `trakLayout.js` calcule les cases de `trak` (numéros, empreintes, hit-test). `trackCellText.js` (`resolveTrackCellText`) applique `cellOverrides[idx].text` sur toutes les pistes.
 - `cardTrackStrokes.js` génère un pool de variantes de traits calligraphiques déterministes (seed-based) pour garantir la cohérence entre renders.
 - Les traits de plume sont des fuseaux remplis (filled polygons), pas des `<path stroke>`, pour un résultat plus robuste en export SVG/PNG.
 - `STAT_TYPES` définit 7 stats avec couleurs fixes ; les couleurs ne sont pas configurables pour garantir la cohérence du jeu.

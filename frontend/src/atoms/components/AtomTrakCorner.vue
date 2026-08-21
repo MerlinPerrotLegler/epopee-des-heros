@@ -34,24 +34,37 @@
       font-family="Outfit"
       font-weight="600"
       :transform="`rotate(${params.textRotation ?? 45},${contentW / 2},${contentH / 2})`"
-    >{{ params.n ?? 0 }}</text>
+    >{{ cellText }}</text>
+    <rect
+      v-if="selected && activeCellIdx === 0"
+      x="0" y="0" :width="contentW" :height="contentH"
+      fill="none"
+      stroke="#facc15"
+      :stroke-width="2"
+      pointer-events="none"
+    />
   </svg>
 </template>
 
 <script setup>
 import { computed } from 'vue'
+import { useEditorStore } from '@/stores/editor.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { cellFootprintMm } from '@/utils/trackFootprint.js'
+import { resolveTrackCellText } from '@/utils/trackCellText.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
   width_mm:  Number,
   height_mm: Number,
+  selected:  { type: Boolean, default: false },
   printMode: { type: Boolean, default: false },
 })
 
+const store = useEditorStore()
 const p = computed(() => props.params)
 const { byLogicalId } = useTrackTextures()
+const activeCellIdx = computed(() => store.activeCellIdx)
 
 const SCALE = 10
 const override = computed(() => p.value.cellOverrides?.[0] || {})
@@ -69,6 +82,7 @@ const contentW = computed(() => footprint.value.w * SCALE)
 const contentH = computed(() => footprint.value.h * SCALE)
 const fontSz = computed(() => (p.value.fontSize || 2.5) * SCALE)
 const coin = computed(() => Number(override.value.coin) || 0)
+const cellText = computed(() => resolveTrackCellText(override.value, p.value.n ?? 0))
 const textureOpacity = computed(() =>
   override.value.textureSource === 'system' && !props.printMode ? 0.35 : 1)
 </script>

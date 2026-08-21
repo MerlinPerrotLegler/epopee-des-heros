@@ -72,6 +72,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
 - [x] Molécule **Ingrédients de fabrication** (page Molécules + palette Ajouter, seed `mol-ingredients-fabrication`)
 - [x] **TSD-028** Multi-sélection calques (Cmd/Ctrl+clic) : déplacer le set, grouper (⊞ / ⌘G), layout + composant
+- [x] Pistes : texte libre par case (`cellOverrides.text`) — `trak`, `trakCorner`, `trakPath`, `cardTrack`
 
 ### Phase 2 — Médias & assets
 
@@ -180,6 +181,8 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (8) | **Texte par case des pistes** : `cellOverrides.text` remplace le numéro auto (`trak`, `trakCorner`, `trakPath`, `cardTrack`). Champ Texte dans « Édition par case » ; sélection de case étendue à `trak` / `trakCorner`. Mélanger/Vider conserve le texte. Tests layout + `resolveTrackCellText` verts. |
+| 2026-08-21 (7) | **Fix snap grille** : décocher « Grille / snap » désactive désormais `store.snap()` (drag, resize, drop) ; flèches en 0,1 mm (1 mm avec Shift). Cause : `showGrid` ne masquait que l’overlay. Tests store 9/9 OK. |
 | 2026-08-21 (6) | **TSD-028 Multi-sélection calques** : Cmd/Ctrl+clic (panneau + canvas), drag/flèches du set, grouper via ⊞ ou ⌘G, Delete/⌘D sur le set. Layout et composant. Tests store 7/7 OK. |
 | 2026-08-21 (5) | Molécule **Ingrédients de fabrication** (`mol-ingredients-fabrication`) : restauration API/UI Molécules + seed idempotent (même définition 56×28 que le composant). Posable depuis Ajouter / page Molécules. |
 | 2026-08-21 (4) | **TSD-027 implémenté** : atomes `cadreChanfrein` / `losange` (viewBox mm), masquage cases vides instance/print, binding interne `craft.ingredientN.ref` / `ingredientNq.text`, seed idempotent `cmp-ingredients-fabrication`. Tests géométrie + slots + flatten + extractBindingPaths verts ; suite **181/181**. |

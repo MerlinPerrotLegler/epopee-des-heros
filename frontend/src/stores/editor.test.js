@@ -201,3 +201,24 @@ describe('editor multi-selection', () => {
     assert.equal(store.layers[0].kind, 'element')
   })
 })
+
+describe('editor snap', () => {
+  let store
+
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    store = useEditorStore()
+    store.setAutoSave(false)
+    store.snapGrid = 1
+  })
+
+  it('rounds to snapGrid while the grid is on', () => {
+    store.showGrid = true
+    assert.equal(store.snap(3.6), 4)
+  })
+
+  it('does not snap when the grid is off', () => {
+    store.showGrid = false
+    assert.equal(store.snap(3.6), 3.6)
+  })
+})
