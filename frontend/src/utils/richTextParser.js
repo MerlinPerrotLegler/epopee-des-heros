@@ -6,7 +6,7 @@
  * Arguments : () ou {} interchangeables
  */
 
-export const STAT_CODES = ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE', 'DEF']
+export const STAT_CODES = ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEF', 'VIE', 'DEF']
 export const PICTO_VIEWS = ['icon', 'label', 'both']
 export const ALIGN_VALUES = ['left', 'right', 'center', 'justify']
 export const SEPARATOR_TIERS = ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire']

@@ -158,7 +158,7 @@ $$$pow(x,2)$$$         bloc centré
 | `/INI`     | Nom seul           |
 
 
-Codes : `FOR`, `DEX`, `INI`, `CHA`, `MAG`, `DEV`, `VIE`, `DEF`.
+Codes : `FOR`, `DEX`, `INI`, `CHA`, `MAG`, `DEF`, `VIE`, `DEF`.
 
 ### SVG
 

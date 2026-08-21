@@ -100,7 +100,7 @@ export const PARAM_HELP = {
   penPoolSize:   'Nombre de variantes de trait dans le pool',
 
   // ── AtomCaracteristique ────────────────────────────────────────────────────
-  stat:          'Statistique affichée (FOR, DEX, INI, CHA, MAG, DEV, VIE)',
+  stat:          'Statistique affichée (FOR, DEX, INI, CHA, MAG, DEF, VIE)',
   modifier:      'Modificateur précédant la stat, ex : +2 ou -1 (laisser vide pour aucun)',
   threshold:     'Seuil après un chevron >, ex : 5 pour afficher "FOR > 5" (laisser vide pour aucun)',
 

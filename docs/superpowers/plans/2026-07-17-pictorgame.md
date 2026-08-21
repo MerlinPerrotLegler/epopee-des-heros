@@ -609,7 +609,7 @@ Ordre : shortcodes existants **d’abord**, puis :
 // \\/[a-zA-Z0-9_-]+   pour \ref  — attention échappement
 // \/[a-zA-Z0-9_-]+    pour /ref  — mais NE DOIT PAS manger /D8{…} déjà matchés
 
-const TOKEN_RE = /(\$\$\$[\s\S]+?\$\$\$|\$\$[^$]+?\$\$|\/D12\{[^}]*\}|\/D8\{[^}]*\}|\/R\{[^}]*\}|\/(FOR|DEX|INI|CHA|MAG|DEV|VIE|DEF)(?:\{[^}]*\})?|\/SVG\{[^}]*\}|\\[a-zA-Z0-9_-]+|\/[a-zA-Z0-9_-]+)/g
+const TOKEN_RE = /(\$\$\$[\s\S]+?\$\$\$|\$\$[^$]+?\$\$|\/D12\{[^}]*\}|\/D8\{[^}]*\}|\/R\{[^}]*\}|\/(FOR|DEX|INI|CHA|MAG|DEF|VIE|DEF)(?:\{[^}]*\})?|\/SVG\{[^}]*\}|\\[a-zA-Z0-9_-]+|\/[a-zA-Z0-9_-]+)/g
 ```
 
 Dans la boucle, avant le fallback stat :

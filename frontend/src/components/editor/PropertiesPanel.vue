@@ -1185,7 +1185,7 @@ const ENUM_MAPS = {
   blendMode:       ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-burn', 'color-dodge'],
   shape:           ['ellipse', 'circle'],
   direction:       ['horizontal', 'vertical'],
-  stat:            ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
+  stat:            ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEF', 'VIE'],
   svgPosition:     ['front', 'behind'],
   tier:            ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
   view:            ['icon', 'horizontal', 'vertical', 'horizontal-inverse', 'vertical-inverse', 'text'],
