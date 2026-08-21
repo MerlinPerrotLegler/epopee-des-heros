@@ -4,6 +4,10 @@ import {
   INGREDIENTS_FABRICATION_ID,
   INGREDIENTS_FABRICATION_MOLECULE_ID,
   buildIngredientsFabricationDefinition,
+  CASE_X,
+  DIAMOND_X,
+  CASE_W,
+  BLOCK_W,
 } from './ingredientsFabricationSeed.js'
 
 describe('buildIngredientsFabricationDefinition', () => {
@@ -20,7 +24,7 @@ describe('buildIngredientsFabricationDefinition', () => {
     assert.ok(names.includes('header'))
   })
 
-  it('places cases and diamonds at the spec mm coordinates', () => {
+  it('places cases space-evenly across block width', () => {
     const cadreOf = (name) => {
       const g = def.layers.find((l) => l.name === name)
       return g.children.find((c) => c.atomType === 'cadreChanfrein')
@@ -29,12 +33,13 @@ describe('buildIngredientsFabricationDefinition', () => {
       const g = def.layers.find((l) => l.name === name)
       return g.children.find((c) => c.atomType === 'losange')
     }
-    assert.equal(cadreOf('ingredient1').x_mm, 0.5)
-    assert.equal(cadreOf('ingredient2').x_mm, 9.9)
-    assert.equal(cadreOf('ingredient6').x_mm, 47.5)
+    const space = (BLOCK_W - 6 * CASE_W) / 7
+    assert.ok(Math.abs(cadreOf('ingredient1').x_mm - space) < 1e-9)
+    assert.ok(Math.abs(cadreOf('ingredient2').x_mm - (space + CASE_W + space)) < 1e-9)
+    assert.ok(Math.abs(cadreOf('ingredient6').x_mm - CASE_X[5]) < 1e-9)
     assert.equal(cadreOf('ingredient1').y_mm, 11)
-    assert.equal(diamondOf('diamond2').x_mm, 8)
-    assert.equal(diamondOf('diamond6').x_mm, 45.6)
+    assert.ok(Math.abs(diamondOf('diamond2').x_mm - DIAMOND_X[0]) < 1e-9)
+    assert.ok(Math.abs(diamondOf('diamond6').x_mm - DIAMOND_X[4]) < 1e-9)
     assert.equal(diamondOf('diamond2').y_mm, 18.2)
   })
 
@@ -48,7 +53,7 @@ describe('buildIngredientsFabricationDefinition', () => {
 })
 
 describe('INGREDIENTS_FABRICATION_ID', () => {
-  it('is the stable component id', () => {
+  it('is the stable legacy component id', () => {
     assert.equal(INGREDIENTS_FABRICATION_ID, 'cmp-ingredients-fabrication')
   })
 })

@@ -71,6 +71,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] TSD-027 rédigé — Ingrédients de fabrication (atomes `cadreChanfrein` / `losange` + composant seed 6 cases)
 - [x] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
 - [x] Molécule **Ingrédients de fabrication** (page Molécules + palette Ajouter, seed `mol-ingredients-fabrication`)
+- [x] Molécule Ingrédients : reflow space-evenly (max 6, masquage vides, diamants entre cases visibles) ; seed composant arrêté
 - [x] **TSD-028** Multi-sélection calques (Cmd/Ctrl+clic) : déplacer le set, grouper (⊞ / ⌘G), layout + composant
 - [x] Pistes : texte libre par case (`cellOverrides.text`) — `trak`, `trakCorner`, `trakPath`, `cardTrack`
 
@@ -181,6 +182,7 @@ GLOBAL                     ████████████████░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (10) | **Molécule Ingrédients — reflow** : `spaceEvenlyXs` + `layoutIngredientElements` (max 6, masquage, diamants entre cases visibles). Branché dans `ComponentRenderer` / `CardPreview` pour `mol-ingredients-fabrication`. Seed composant arrêté ; positions seed space-evenly. TSD-027 mis à jour. Tests slots + seed + binding verts. |
 | 2026-08-21 (9) | **Fix select qui se ferme une fois sur deux** : `<select>` sorti des `<label>` (clic synthétique Chrome/Safari) ; focus `preventScroll` pour les panneaux `overflow:auto` ; MediaPicker ignore le menu natif hors DOM. Tests `nativeSelect.test.js` 7/7. |
 | 2026-08-21 (8) | **Texte par case des pistes** : `cellOverrides.text` remplace le numéro auto (`trak`, `trakCorner`, `trakPath`, `cardTrack`). Champ Texte dans « Édition par case » ; sélection de case étendue à `trak` / `trakCorner`. Mélanger/Vider conserve le texte. Tests layout + `resolveTrackCellText` verts. |
 | 2026-08-21 (7) | **Fix snap grille** : décocher « Grille / snap » désactive désormais `store.snap()` (drag, resize, drop) ; flèches en 0,1 mm (1 mm avec Shift). Cause : `showGrid` ne masquait que l’overlay. Tests store 9/9 OK. |

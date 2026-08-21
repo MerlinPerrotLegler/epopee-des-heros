@@ -33,7 +33,11 @@ import { ref, computed, watch, defineComponent, h } from 'vue'
 import { mmCss, CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import { flattenComponentElements } from '@/utils/componentDefinition.js'
-import { hiddenIngredientGroupNames } from '@/utils/ingredientSlots.js'
+import {
+  INGREDIENTS_FABRICATION_MOLECULE_ID,
+  hiddenIngredientGroupNames,
+  layoutIngredientElements,
+} from '@/utils/ingredientSlots.js'
 import { api } from '@/utils/api.js'
 import AtomRenderer from '@/components/editor/AtomRenderer.vue'
 
@@ -158,11 +162,23 @@ const InlineComponentRenderer = defineComponent({
 
     const prefix = computed(() => p.element.nameInLayout || '')
     const compEls = computed(() => {
+      const def = comp.value?.definition
+      if (
+        p.element.type === 'molecule'
+        && p.element.moleculeId === INGREDIENTS_FABRICATION_MOLECULE_ID
+      ) {
+        return layoutIngredientElements(def, {
+          data: p.data,
+          prefix: prefix.value,
+          hideEmptySlots: p.hideEmptySlots,
+          containerWidthMm: compW.value,
+        })
+      }
       const skipGroupNames = p.hideEmptySlots
         ? hiddenIngredientGroupNames(p.data, prefix.value)
         : undefined
       return flattenComponentElements(
-        comp.value?.definition,
+        def,
         skipGroupNames ? { skipGroupNames } : {},
       )
     })

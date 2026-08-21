@@ -1,18 +1,45 @@
 /**
- * Seed idempotent du composant « Ingrédients de fabrication » (TSD-027).
+ * Seed idempotent de la molécule « Ingrédients de fabrication » (TSD-027).
  * INSERT si l'id est absent — jamais d'UPDATE de definition.
+ * Positions des 6 cases : space-evenly sur BLOCK_W.
  */
 
 export const INGREDIENTS_FABRICATION_ID = 'cmp-ingredients-fabrication'
+export const INGREDIENTS_FABRICATION_MOLECULE_ID = 'mol-ingredients-fabrication'
 
-const CASE_X = [0.5, 9.9, 19.3, 28.7, 38.1, 47.5]
-const DIAMOND_X = [8.0, 17.4, 26.8, 36.2, 45.6]
+const BLOCK_W = 56
+const BLOCK_H = 28
+const SLOT_COUNT = 6
 const ROW_Y = 11
 const CASE_W = 7.2
 const CASE_H = 16
 const DIAMOND_SIZE = 1.6
 const DIAMOND_Y = 18.2
 const INSET = 0.6
+
+/** space-evenly : space = (W − N×caseW) / (N+1) */
+function spaceEvenlyCaseXs(n, caseW, containerW) {
+  const space = Math.max(0, (containerW - n * caseW) / (n + 1))
+  const xs = []
+  for (let i = 0; i < n; i++) {
+    xs.push(space + i * (caseW + space))
+  }
+  return { xs, space }
+}
+
+function diamondXsBetween(caseXs, caseW, diamondSize) {
+  const out = []
+  for (let i = 0; i < caseXs.length - 1; i++) {
+    const leftEdge = caseXs[i] + caseW
+    const rightEdge = caseXs[i + 1]
+    const mid = (leftEdge + rightEdge) / 2
+    out.push(mid - diamondSize / 2)
+  }
+  return out
+}
+
+const { xs: CASE_X } = spaceEvenlyCaseXs(SLOT_COUNT, CASE_W, BLOCK_W)
+const DIAMOND_X = diamondXsBetween(CASE_X, CASE_W, DIAMOND_SIZE)
 
 function atomEl(id, atomType, { x, y, w, h, nameInLayout = '', params = {} }) {
   return {
@@ -128,7 +155,7 @@ export function buildIngredientsFabricationDefinition() {
 
   const layers = [header]
 
-  for (let n = 1; n <= 6; n++) {
+  for (let n = 1; n <= SLOT_COUNT; n++) {
     const x = CASE_X[n - 1]
     if (n >= 2) {
       layers.push(group(`ing-diamond${n}`, `diamond${n}`, [
@@ -173,11 +200,10 @@ export function buildIngredientsFabricationDefinition() {
   return { layers, dataSchema: {} }
 }
 
-export const INGREDIENTS_FABRICATION_MOLECULE_ID = 'mol-ingredients-fabrication'
-
 const BLOCK_NAME = 'Ingrédients de fabrication'
 const BLOCK_DESC = 'Bloc picto + quantité (6 cases) pour cartes d\'équipement'
 
+/** @deprecated Composant legacy — ne plus seed au boot ; conservé pour DB déjà peuplées. */
 export async function seedIngredientsFabrication(db) {
   if (!db) return
   const existing = await db.prepare(
@@ -191,8 +217,8 @@ export async function seedIngredientsFabrication(db) {
     INGREDIENTS_FABRICATION_ID,
     BLOCK_NAME,
     BLOCK_DESC,
-    56,
-    28,
+    BLOCK_W,
+    BLOCK_H,
     JSON.stringify(buildIngredientsFabricationDefinition()),
   )
 }
@@ -205,8 +231,8 @@ export async function seedIngredientsFabricationMolecule(db) {
   if (existing) return
 
   const definition = {
-    width_mm: 56,
-    height_mm: 28,
+    width_mm: BLOCK_W,
+    height_mm: BLOCK_H,
     ...buildIngredientsFabricationDefinition(),
   }
   await db.prepare(
@@ -218,3 +244,6 @@ export async function seedIngredientsFabricationMolecule(db) {
     JSON.stringify(definition),
   )
 }
+
+/** Exposé pour les tests (positions space-evenly N=6). */
+export { CASE_X, DIAMOND_X, CASE_W, BLOCK_W }

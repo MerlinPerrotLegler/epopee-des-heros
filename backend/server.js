@@ -11,7 +11,7 @@ import { DATA_DIR } from './paths.js';
 import { requireAuth, requireAdmin } from './middleware/sessionAuth.js';
 import { closeDb, getDb, initDatabase } from './db/database.js';
 import { seedBuiltins } from './db/seedBuiltins.js';
-import { seedIngredientsFabrication, seedIngredientsFabricationMolecule } from './db/ingredientsFabricationSeed.js';
+import { seedIngredientsFabricationMolecule } from './db/ingredientsFabricationSeed.js';
 import { useMysql } from './db/sqlDialect.js';
 
 import authRouter from './routes/auth.js';
@@ -171,7 +171,6 @@ async function main() {
     bootState.dbError = null;
     try {
       await seedBuiltins();
-      await seedIngredientsFabrication(getDb());
       await seedIngredientsFabricationMolecule(getDb());
       bootState.seeded = true;
     } catch (seedErr) {

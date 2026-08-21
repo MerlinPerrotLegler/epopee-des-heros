@@ -25,7 +25,11 @@ import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { mmCss } from '@/utils/cssMm.js'
 import { flattenComponentElements } from '@/utils/componentDefinition.js'
-import { hiddenIngredientGroupNames } from '@/utils/ingredientSlots.js'
+import {
+  INGREDIENTS_FABRICATION_MOLECULE_ID,
+  hiddenIngredientGroupNames,
+  layoutIngredientElements,
+} from '@/utils/ingredientSlots.js'
 import { resolveElementParams } from '@/utils/binding.js'
 import AtomRenderer from './AtomRenderer.vue'
 
@@ -50,11 +54,20 @@ const compW = computed(() => comp.value?.width_mm || comp.value?.definition?.wid
 const compH = computed(() => comp.value?.height_mm || comp.value?.definition?.height_mm || 40)
 
 const elements = computed(() => {
+  const def = comp.value?.definition
+  if (props.moleculeId === INGREDIENTS_FABRICATION_MOLECULE_ID) {
+    return layoutIngredientElements(def, {
+      data: props.data,
+      prefix: props.nameInLayout || '',
+      hideEmptySlots: props.hideEmptySlots,
+      containerWidthMm: compW.value,
+    })
+  }
   const skipGroupNames = props.hideEmptySlots
     ? hiddenIngredientGroupNames(props.data, props.nameInLayout || '')
     : undefined
   return flattenComponentElements(
-    comp.value?.definition,
+    def,
     skipGroupNames ? { skipGroupNames } : {},
   )
 })
