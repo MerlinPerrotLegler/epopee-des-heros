@@ -6,25 +6,28 @@
     preserveAspectRatio="xMinYMin meet"
     overflow="visible"
   >
-    <g v-for="cell in cells" :key="`path-cell-${cell.idx}`">
-      <rect
-        :x="sv(cell.x)"
-        :y="sv(cell.y)"
-        :width="sv(cell.w)"
-        :height="sv(cell.h)"
-        :fill="params.bgColor || '#2a3050'"
-      />
-      <image
-        v-if="cell.texture"
-        :href="`/uploads/${cell.texture.mediaId}`"
-        :x="sv(cell.x)"
-        :y="sv(cell.y)"
-        :width="sv(cell.w)"
-        :height="sv(cell.h)"
-        preserveAspectRatio="xMidYMid meet"
-        :opacity="textureOpacity(cell)"
-        :transform="`rotate(${cell.coin},${sv(cell.cx)},${sv(cell.cy)})`"
-      />
+    <rect
+      v-for="cell in cells"
+      :key="`bg-${cell.idx}`"
+      :x="sv(cell.x)"
+      :y="sv(cell.y)"
+      :width="sv(cell.w)"
+      :height="sv(cell.h)"
+      :fill="params.bgColor || '#2a3050'"
+    />
+    <image
+      v-for="cell in texturedCells"
+      :key="`img-${cell.idx}`"
+      :href="`/uploads/${cell.texture.mediaId}`"
+      :x="sv(cell.image.x)"
+      :y="sv(cell.image.y)"
+      :width="sv(cell.image.w)"
+      :height="sv(cell.image.h)"
+      preserveAspectRatio="none"
+      :opacity="textureOpacity(cell)"
+      :transform="`rotate(${cell.coin},${sv(cell.cx)},${sv(cell.cy)})`"
+    />
+    <g v-for="cell in cells" :key="`fg-${cell.idx}`">
       <text
         :x="sv(cell.cx)"
         :y="sv(cell.cy)"
@@ -81,6 +84,7 @@ const cells = computed(() => buildTrakPathCells({
   width_mm: props.width_mm,
   height_mm: props.height_mm,
 }).cells)
+const texturedCells = computed(() => cells.value.filter((cell) => cell.texture))
 
 function sv(mm) {
   return mm * SCALE

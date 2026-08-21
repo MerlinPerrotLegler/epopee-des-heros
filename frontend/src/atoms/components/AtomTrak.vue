@@ -6,7 +6,7 @@
     preserveAspectRatio="xMidYMid meet"
     overflow="visible"
   >
-    <g v-for="cell in cellLayouts" :key="`cell-${cell.n}-${cell.idx}`">
+    <g v-for="cell in cellLayouts" :key="`bg-${cell.n}-${cell.idx}`">
       <polygon
         v-if="params.caps && cell.idx === 0"
         :points="capPoints('start', cell)"
@@ -23,16 +23,18 @@
         :width="sv(cell.w)" :height="sv(cell.h)"
         :fill="params.bgColor || '#2a3050'"
       />
-      <image
-        v-if="cell.texture"
-        :href="`/uploads/${cell.texture.mediaId}`"
-        :x="sv(cell.x)" :y="sv(cell.y)"
-        :width="sv(cell.w)" :height="sv(cell.h)"
-        preserveAspectRatio="xMidYMid meet"
-        :opacity="textureOpacity(cell)"
-        :transform="`rotate(${cell.coin},${sv(cell.cx)},${sv(cell.cy)})`"
-      />
-
+    </g>
+    <image
+      v-for="cell in texturedCells"
+      :key="`img-${cell.n}-${cell.idx}`"
+      :href="`/uploads/${cell.texture.mediaId}`"
+      :x="sv(cell.image.x)" :y="sv(cell.image.y)"
+      :width="sv(cell.image.w)" :height="sv(cell.image.h)"
+      preserveAspectRatio="none"
+      :opacity="textureOpacity(cell)"
+      :transform="`rotate(${cell.coin},${sv(cell.cx)},${sv(cell.cy)})`"
+    />
+    <g v-for="cell in cellLayouts" :key="`fg-${cell.n}-${cell.idx}`">
       <text
         :x="sv(cell.cx)" :y="sv(cell.cy)"
         text-anchor="middle"
@@ -86,9 +88,10 @@ const cellLayouts = computed(() => buildTrakCells({
   height_mm: props.height_mm,
   texturesById: byLogicalId.value,
 }))
+const texturedCells = computed(() => cellLayouts.value.filter((cell) => cell.texture))
 
 // Le viewBox reste celui de la boîte logique de l'atome : 1 mm SVG reste
-// 1 mm physique. Les empreintes plus grandes débordent sans être remises à
+// 1 mm physique. Les images plus grandes débordent sans être remises à
 // l'échelle dans la boîte.
 const svgW = computed(() => sv(props.width_mm))
 const svgH = computed(() => sv(props.height_mm))

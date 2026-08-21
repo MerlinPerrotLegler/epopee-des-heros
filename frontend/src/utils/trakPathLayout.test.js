@@ -100,7 +100,7 @@ describe('buildTrakPathCells', () => {
     assert.equal(result.contentH, 13)
   })
 
-  it('advances by texture footprints along the segment direction', () => {
+  it('keeps square cells; the image overflows instead of moving the next cell', () => {
     const { cells, contentW } = buildTrakPathCells({
       ...baseArgs,
       segments: [{ direction: 'right', count: 2 }],
@@ -110,10 +110,13 @@ describe('buildTrakPathCells', () => {
       },
     })
 
-    assert.equal(cells[0].w, 6.5)
-    assert.equal(cells[1].x, 6.5)
+    assert.equal(cells[0].w, 5)
+    assert.equal(cells[0].h, 5)
+    assert.equal(cells[1].x, 5)
+    assert.equal(cells[0].image.w, 6.5)
+    assert.equal(cells[0].image.x, -0.5)
     assert.equal(cells[0].texture.mediaId, 'track.png')
-    assert.equal(contentW, 11.5)
+    assert.equal(contentW, 10)
   })
 
   it('uses cellOverrides.text instead of the auto number', () => {

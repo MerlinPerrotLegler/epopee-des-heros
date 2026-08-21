@@ -1,4 +1,4 @@
-import { baseCellSizeMm, cellFootprintMm } from './trackFootprint.js'
+import { baseCellSizeMm, textureDrawRect } from './trackFootprint.js'
 import { resolveTrackCellText } from './trackCellText.js'
 
 const DIRECTIONS = new Set(['up', 'down', 'left', 'right'])
@@ -58,11 +58,10 @@ export function buildTrakPathCells({
       const idx = cells.length
       const override = overrides[idx] || {}
       const texture = textures[override.textureId] || null
-      const footprint = cellFootprintMm(baseSize, baseSize, texture?.margins)
       const n = (Number(n_start) || 0) + idx
 
-      if (segment.direction === 'left') cursorX -= footprint.w
-      if (segment.direction === 'up') cursorY -= footprint.h
+      if (segment.direction === 'left') cursorX -= baseSize
+      if (segment.direction === 'up') cursorY -= baseSize
 
       const isPathEnd = idx === 0 || idx === total - 1
       const role = isPathEnd
@@ -77,10 +76,10 @@ export function buildTrakPathCells({
         text: resolveTrackCellText(override, n),
         x: cursorX,
         y: cursorY,
-        w: footprint.w,
-        h: footprint.h,
-        cx: cursorX + footprint.w / 2,
-        cy: cursorY + footprint.h / 2,
+        w: baseSize,
+        h: baseSize,
+        cx: cursorX + baseSize / 2,
+        cy: cursorY + baseSize / 2,
         direction: segment.direction,
         role,
         requiredType: role,
@@ -90,12 +89,13 @@ export function buildTrakPathCells({
           ...(idx < total - 1 ? [idx + 1] : []),
         ],
         texture,
+        image: textureDrawRect(cursorX, cursorY, baseSize, baseSize, texture?.margins),
         coin: Number(override.coin) || 0,
         textureSource: override.textureSource,
       })
 
-      if (segment.direction === 'right') cursorX += footprint.w
-      if (segment.direction === 'down') cursorY += footprint.h
+      if (segment.direction === 'right') cursorX += baseSize
+      if (segment.direction === 'down') cursorY += baseSize
     }
   }
 
@@ -109,6 +109,8 @@ export function buildTrakPathCells({
     cell.y -= minY
     cell.cx -= minX
     cell.cy -= minY
+    cell.image.x -= minX
+    cell.image.y -= minY
   }
 
   return {

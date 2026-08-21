@@ -1,4 +1,4 @@
-import { baseCellSizeMm, cellFootprintMm } from './trackFootprint.js'
+import { baseCellSizeMm, textureDrawRect } from './trackFootprint.js'
 import { resolveTrackCellText } from './trackCellText.js'
 
 export function trakCellNumbers(params = {}) {
@@ -35,20 +35,20 @@ export function buildTrakCells({
     const n = numbers[idx]
     const override = overrides[idx] || {}
     const texture = texturesById[override.textureId] || null
-    const footprint = cellFootprintMm(baseSize, baseSize, texture?.margins)
     const x = isVertical ? 0 : offset
     const y = isVertical ? offset : 0
-    offset += isVertical ? footprint.h : footprint.w
+    offset += baseSize
     cells.push({
       idx,
       n,
       text: resolveTrackCellText(override, n),
       x,
       y,
-      w: footprint.w,
-      h: footprint.h,
-      cx: x + footprint.w / 2,
-      cy: y + footprint.h / 2,
+      w: baseSize,
+      h: baseSize,
+      cx: x + baseSize / 2,
+      cy: y + baseSize / 2,
+      image: textureDrawRect(x, y, baseSize, baseSize, texture?.margins),
       texture,
       coin: Number(override.coin) || 0,
       textureSource: override.textureSource,

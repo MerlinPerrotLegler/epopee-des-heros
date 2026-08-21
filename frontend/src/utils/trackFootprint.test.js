@@ -1,7 +1,7 @@
 // frontend/src/utils/trackFootprint.test.js
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
-import { baseCellSizeMm, cellFootprintMm, plusTilePreviewLayout } from './trackFootprint.js'
+import { baseCellSizeMm, cellFootprintMm, plusTilePreviewLayout, textureDrawRect } from './trackFootprint.js'
 
 describe('baseCellSizeMm', () => {
   it('multiplies ratio by axis length', () => {
@@ -16,6 +16,16 @@ describe('cellFootprintMm', () => {
     assert.equal(a.h, 10)
     const b = cellFootprintMm(10, 10, { left: -0.1, right: 0, top: 0, bottom: 0 })
     assert.equal(b.w, 9)
+  })
+})
+
+describe('textureDrawRect', () => {
+  it('keeps the cell origin and overflows by side insets', () => {
+    const r = textureDrawRect(20, 10, 10, 10, { left: 0.1, top: 0.2 })
+    assert.equal(r.x, 19)
+    assert.equal(r.y, 8)
+    assert.equal(r.w, 11)
+    assert.equal(r.h, 12)
   })
 })
 

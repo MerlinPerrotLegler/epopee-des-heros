@@ -58,7 +58,7 @@ describe('buildCardTrackCells variable footprints', () => {
     }
   })
 
-  it('hit-tests the same expanded footprint geometry used for rendering', () => {
+  it('hit-tests the logical cell even when a texture would overflow', () => {
     const params = {
       cells_top: 2,
       cells_left: 2,
@@ -68,11 +68,22 @@ describe('buildCardTrackCells variable footprints', () => {
       wide: { margins: { right: 0.2 } },
     })
 
-    assert.equal(
-      hitTestCardTrackCell(params, 63, 88, 33, 5, footprints),
-      1,
-    )
+    assert.ok(footprints[1].w > footprints[0].w)
     assert.equal(hitTestCardTrackCell(params, 63, 88, 33, 5), 2)
+    assert.equal(hitTestCardTrackCell(params, 63, 88, 33, 5, footprints), 1)
+  })
+
+  it('does not move cells when textures have margins', () => {
+    const withTx = buildCardTrackCells({
+      cells_top: 2,
+      cells_left: 2,
+      cellOverrides: { 1: { textureId: 'wide' } },
+    }, 63, 88)
+    const plain = buildCardTrackCells({ cells_top: 2, cells_left: 2 }, 63, 88)
+    assert.deepEqual(
+      withTx.map(({ x, y, w, h }) => ({ x, y, w, h })),
+      plain.map(({ x, y, w, h }) => ({ x, y, w, h })),
+    )
   })
 
   it('uses cellOverrides.text instead of the auto number', () => {

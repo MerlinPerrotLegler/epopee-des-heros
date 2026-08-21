@@ -28,7 +28,7 @@
     preserveAspectRatio="xMidYMid meet"
     overflow="visible"
   >
-    <g v-for="cell in cells" :key="`cell-${cell.idx}`">
+    <g v-for="cell in cells" :key="`bg-${cell.idx}`">
       <rect
         :x="sv(cell.x)" :y="sv(cell.y)"
         :width="sv(cell.w)" :height="sv(cell.h)"
@@ -41,15 +41,18 @@
         :width="sv(cell.w)" :height="sv(cell.h)"
         preserveAspectRatio="xMidYMid meet"
       />
-      <image
-        v-if="cellTexture(cell)"
-        :href="`/uploads/${cellTexture(cell).mediaId}`"
-        :x="sv(cell.x)" :y="sv(cell.y)"
-        :width="sv(cell.w)" :height="sv(cell.h)"
-        preserveAspectRatio="xMidYMid meet"
-        :opacity="textureOpacity(cell)"
-        :transform="`rotate(${cellCoin(cell)},${sv(cell.cx)},${sv(cell.cy)})`"
-      />
+    </g>
+    <image
+      v-for="cell in texturedCells"
+      :key="`img-${cell.idx}`"
+      :href="`/uploads/${cellTexture(cell).mediaId}`"
+      :x="sv(imageRect(cell).x)" :y="sv(imageRect(cell).y)"
+      :width="sv(imageRect(cell).w)" :height="sv(imageRect(cell).h)"
+      preserveAspectRatio="none"
+      :opacity="textureOpacity(cell)"
+      :transform="`rotate(${cellCoin(cell)},${sv(cell.cx)},${sv(cell.cy)})`"
+    />
+    <g v-for="cell in cells" :key="`fg-${cell.idx}`">
       <text
         :x="sv(cell.cx)" :y="sv(cell.cy)"
         text-anchor="middle" dominant-baseline="central"
@@ -82,8 +85,8 @@ import { useEditorStore }          from '@/stores/editor.js'
 import { useTrackTextures }        from '@/composables/useTrackTextures.js'
 import {
   buildCardTrackCells,
-  buildCardTrackFootprints,
 } from '@/utils/cardTrackLayout.js'
+import { textureDrawRect } from '@/utils/trackFootprint.js'
 
 const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
@@ -109,15 +112,9 @@ const H = computed(() => props.height_mm * SCALE)
 function sv(mm) { return mm * SCALE }
 
 // ── Cellules (via utilitaire partagé) ─────────────────────────────────────────
-const footprints = computed(() =>
-  buildCardTrackFootprints(
-    p.value,
-    props.width_mm,
-    props.height_mm,
-    byLogicalId.value,
-  ))
 const cells = computed(() =>
-  buildCardTrackCells(p.value, props.width_mm, props.height_mm, footprints.value))
+  buildCardTrackCells(p.value, props.width_mm, props.height_mm))
+const texturedCells = computed(() => cells.value.filter((cell) => cellTexture(cell)))
 
 // ── Surcharges par case ───────────────────────────────────────────────────────
 // params.cellOverrides = { "5": { textureId: 2, coin: 90, textureSource: "user" }, ... }
@@ -132,6 +129,10 @@ function textureForIndex(idx) {
 
 function cellTexture(cell) {
   return textureForIndex(cell.idx)
+}
+
+function imageRect(cell) {
+  return textureDrawRect(cell.x, cell.y, cell.w, cell.h, cellTexture(cell)?.margins)
 }
 
 function cellCoin(cell) {

@@ -19,6 +19,7 @@ describe('buildTrakCells', () => {
     assert.deepEqual(cells.map((cell) => cell.n), [1, 2, 3])
     assert.deepEqual(cells.map((cell) => cell.text), [1, 'X', 3])
     assert.equal(cells[1].x, cells[0].w)
+    assert.equal(cells[0].w, cells[0].h)
   })
 
   it('reverses numbering when reverse is set', () => {
@@ -29,6 +30,27 @@ describe('buildTrakCells', () => {
       texturesById: {},
     })
     assert.deepEqual(cells.map((cell) => cell.n), [2, 1, 0])
+  })
+
+  it('keeps square cells when a texture has margins', () => {
+    const cells = buildTrakCells({
+      params: {
+        n_start: 0,
+        n_end: 1,
+        cellSize: 0.2,
+        cellOverrides: { 0: { textureId: 3 } },
+      },
+      width_mm: 50,
+      height_mm: 5,
+      texturesById: {
+        3: { margins: { left: 0.1, right: 0.2 } },
+      },
+    })
+    assert.equal(cells[0].w, 10)
+    assert.equal(cells[0].h, 10)
+    assert.equal(cells[1].x, 10)
+    assert.equal(cells[0].image.w, 13)
+    assert.equal(cells[0].image.x, -1)
   })
 })
 

@@ -26,6 +26,20 @@ export function cellFootprintMm(baseW, baseH, margins = {}) {
   }
 }
 
+/**
+ * Rectangle de l’image : la case (x, y, baseW × baseH) reste fixe.
+ * Marges positives → débord ; négatives → retrait dans la case.
+ */
+export function textureDrawRect(x, y, baseW, baseH, margins = {}) {
+  const fp = cellFootprintMm(baseW, baseH, margins)
+  return {
+    x: x - fp.insetLeft,
+    y: y - fp.insetTop,
+    w: fp.w,
+    h: fp.h,
+  }
+}
+
 /** Cases du + orthogonal : nord, ouest, centre, est, sud. */
 export const PLUS_TILE_SLOTS = [
   { key: 'n', col: 1, row: 0 },

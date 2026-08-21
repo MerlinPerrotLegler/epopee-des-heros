@@ -246,7 +246,6 @@ import { resolveElementParams } from '@/utils/binding.js'
 import { defaultMoleculeNameInLayout } from '@/utils/ingredientSlots.js'
 import { resolveEffectiveAtomParams } from '@/utils/effectiveAtomParams.js'
 import {
-  buildCardTrackFootprints,
   hitTestCardTrackCell,
 } from '@/utils/cardTrackLayout.js'
 import { hitTestTrakCell } from '@/utils/trakLayout.js'
@@ -445,19 +444,12 @@ function onElementMouseDown(e, el) {
       const relY_mm = y_mm - el.y_mm
       let idx = null
       if (el.atomType === 'cardTrack') {
-        const footprintByIndex = buildCardTrackFootprints(
-          el.params || {},
-          el.width_mm,
-          el.height_mm,
-          trackTexturesByLogicalId.value,
-        )
         idx = hitTestCardTrackCell(
           el.params || {},
           el.width_mm,
           el.height_mm,
           relX_mm,
           relY_mm,
-          footprintByIndex,
         )
       } else if (el.atomType === 'trakPath') {
         idx = trakPathLayout(el).cells.find((cell) =>
