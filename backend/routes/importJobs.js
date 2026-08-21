@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { getDb, getSqliteSync } from '../db/database.js';
 import { useMysql } from '../db/sqlDialect.js';
 import { runImportPipeline, runImportPipelineAsync, normalizeGoogleSheetsUrl, parseCsvText } from './cards.js';
+import { isSyncableImportSource } from '../utils/parseCsv.js';
 
 const router = Router();
 
@@ -46,6 +47,10 @@ router.post('/:id/sync', async (req, res) => {
 
   const mappings = typeof job.mappings === 'string' ? JSON.parse(job.mappings) : job.mappings;
 
+  if (!isSyncableImportSource(job.source_url)) {
+    return res.status(422).json({ error: 'Ce job vient d\'un fichier local — resynchronisation impossible. Relancez un import CSV.' })
+  }
+
   try {
     const url = normalizeGoogleSheetsUrl(job.source_url);
     const response = await fetch(url);
@@ -63,6 +68,8 @@ router.post('/:id/sync', async (req, res) => {
         idColumn: job.id_column,
         mappings,
         jobId: job.id,
+        overwrite: true,
+        pruneMissing: false,
       })
       : runImportPipeline(getSqliteSync(), {
         rows,
@@ -72,6 +79,8 @@ router.post('/:id/sync', async (req, res) => {
         idColumn: job.id_column,
         mappings,
         jobId: job.id,
+        overwrite: true,
+        pruneMissing: false,
       });
 
     await db.prepare(`UPDATE import_jobs SET last_synced_at = CURRENT_TIMESTAMP, last_sync_stats = ? WHERE id = ?`)

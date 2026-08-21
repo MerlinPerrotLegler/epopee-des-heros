@@ -242,10 +242,10 @@ function initSqliteSync() {
   } catch {}
   try {
     const builtinPresets = JSON.stringify([
-      { type: 'illustration', label: 'Illustration', resolution: '1024x1024', style_preset: 'vivid', provider: 'openai', negative_prompt: '' },
-      { type: 'icon', label: 'Icône', resolution: '512x512', style_preset: 'natural', provider: 'openai', negative_prompt: 'photorealistic, photo' },
-      { type: 'fond', label: 'Fond', resolution: '1024x1792', style_preset: 'natural', provider: 'openai', negative_prompt: '' },
-      { type: 'texte_graphique', label: 'Texte graphique', resolution: '1024x512', style_preset: 'natural', provider: 'openai', negative_prompt: '' },
+      { type: 'illustration', label: 'Illustration', resolution: '1024x1024', style_preset: 'vivid', provider: 'openai', model: 'gpt-image-1', negative_prompt: '' },
+      { type: 'icon', label: 'Icône', resolution: '1024x1024', style_preset: 'natural', provider: 'openai', model: 'gpt-image-1', negative_prompt: 'photorealistic, photo' },
+      { type: 'fond', label: 'Fond', resolution: '1024x1536', style_preset: 'natural', provider: 'openai', model: 'gpt-image-1', negative_prompt: '' },
+      { type: 'texte_graphique', label: 'Texte graphique', resolution: '1024x1024', style_preset: 'natural', provider: 'openai', model: 'gpt-image-1', negative_prompt: '' },
     ])
     sqliteDb.prepare("INSERT OR IGNORE INTO ai_generation_config (id, media_type_presets) VALUES ('singleton', ?)").run(builtinPresets)
   } catch {}

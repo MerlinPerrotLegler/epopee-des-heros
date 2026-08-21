@@ -1,16 +1,25 @@
 <template>
   <div class="atom-config">
-    <div class="atom-tabs">
-      <button
-        v-for="atom in atomEntries"
-        :key="atom.type"
-        class="atom-tab"
-        :class="{ active: selectedAtom === atom.type }"
-        @click="selectedAtom = atom.type"
-      >
-        <span class="atom-tab-icon">{{ atom.icon || '◻' }}</span>
-        <span>{{ atom.label }}</span>
-      </button>
+    <div class="atom-sidebar">
+      <input
+        v-model.trim="search"
+        class="atom-search"
+        type="search"
+        placeholder="Rechercher un atome…"
+      />
+      <div class="atom-tabs">
+        <button
+          v-for="atom in visibleAtoms"
+          :key="atom.type"
+          class="atom-tab"
+          :class="{ active: selectedAtom === atom.type }"
+          @click="selectedAtom = atom.type"
+        >
+          <span class="atom-tab-icon">{{ atom.icon || '◻' }}</span>
+          <span>{{ atom.label }}</span>
+        </button>
+        <p v-if="!visibleAtoms.length" class="atom-empty">Aucun atome correspondant.</p>
+      </div>
     </div>
 
     <div v-if="selectedAtomDef" class="atom-body">
@@ -177,10 +186,16 @@ const ENUM_MAPS = {
   blendMode: ['normal', 'multiply', 'screen', 'overlay', 'soft-light', 'hard-light', 'color-burn', 'color-dodge'],
   shape: ['ellipse', 'circle'],
   direction: ['horizontal', 'vertical'],
-  stat: ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEV', 'VIE'],
+  stat: ['FOR', 'DEX', 'INI', 'CHA', 'MAG', 'DEF', 'VIE'],
   svgPosition: ['front', 'behind'],
   tier: ['fin', 'basic', 'rare', 'epic', 'mythique', 'legendaire'],
 }
+
+function normalizeSearch(s) {
+  return String(s).normalize('NFD').replace(/\p{Diacritic}/gu, '').toLowerCase()
+}
+
+const search = ref('')
 
 const atomEntries = computed(() =>
   Object.entries(ATOM_TYPES).map(([type, def]) => ({
@@ -190,7 +205,22 @@ const atomEntries = computed(() =>
     defaultParams: def.defaultParams || {},
   }))
 )
-const selectedAtom = ref(atomEntries.value[0]?.type || '')
+
+const sortedAtoms = computed(() =>
+  [...atomEntries.value].sort((a, b) =>
+    a.label.localeCompare(b.label, 'fr', { sensitivity: 'base' })
+  )
+)
+
+const visibleAtoms = computed(() => {
+  const q = normalizeSearch(search.value)
+  if (!q) return sortedAtoms.value
+  return sortedAtoms.value.filter(a =>
+    normalizeSearch(a.label).includes(q) || normalizeSearch(a.type).includes(q)
+  )
+})
+
+const selectedAtom = ref(sortedAtoms.value[0]?.type || '')
 const selectedAtomDef = computed(() => atomEntries.value.find(a => a.type === selectedAtom.value) || null)
 const selectedParamKeys = computed(() => selectedAtomDef.value ? Object.keys(selectedAtomDef.value.defaultParams) : [])
 
@@ -274,8 +304,35 @@ async function removeMapRow(index) {
 </script>
 
 <style scoped>
-.atom-config { display: grid; grid-template-columns: 240px 1fr; gap: 14px; }
-.atom-tabs { border: 1px solid var(--border-subtle); border-radius: var(--radius-md); background: var(--bg-primary); padding: 4px; display: flex; flex-direction: column; gap: 2px; }
+.atom-config { display: grid; grid-template-columns: 240px 1fr; gap: 14px; align-items: start; }
+.atom-sidebar {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-primary);
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-height: 0;
+  max-height: calc(100vh - 160px);
+  position: sticky;
+  top: 16px;
+}
+.atom-search {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 7px 10px;
+  font-size: 11px;
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  outline: none;
+}
+.atom-search:focus { border-color: var(--accent-primary); }
+.atom-search::placeholder { color: var(--text-muted); }
+.atom-tabs { display: flex; flex-direction: column; gap: 2px; overflow-y: auto; min-height: 0; }
+.atom-empty { margin: 8px 6px; font-size: 11px; color: var(--text-muted); }
 .atom-tab { display: flex; align-items: center; gap: 6px; border: none; border-radius: 6px; background: transparent; color: var(--text-muted); padding: 6px 8px; text-align: left; cursor: pointer; font-size: 11px; }
 .atom-tab:hover { background: var(--bg-hover); color: var(--text-primary); }
 .atom-tab.active { background: var(--bg-tertiary); color: var(--accent-primary); font-weight: 600; }

@@ -31,11 +31,18 @@ router.put('/', async (req, res) => {
 router.get('/ai', async (req, res) => {
   const db = getDb()
   const row = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
-  if (!row) return res.json({ provider: 'openai', api_key_set: false, global_prompt: '', media_type_presets: [] })
+  if (!row) {
+    return res.json({
+      provider: 'openai',
+      api_key_set: !!String(process.env.OPENAI_API_KEY || '').trim(),
+      global_prompt: '',
+      media_type_presets: [],
+    })
+  }
   const presets = parseJsonColumn(row.media_type_presets)
   res.json({
     provider: row.provider,
-    api_key_set: !!(row.api_key),
+    api_key_set: !!(row.api_key) || !!String(process.env.OPENAI_API_KEY || '').trim(),
     global_prompt: row.global_prompt,
     media_type_presets: Array.isArray(presets) ? presets : JSON.parse(row.media_type_presets || '[]'),
   })

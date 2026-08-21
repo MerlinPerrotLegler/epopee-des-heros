@@ -57,6 +57,13 @@
     <div class="modal-overlay" v-if="showMapping" @click.self="showMapping = false">
       <div class="modal">
         <h3>Mapping CSV → Bindings</h3>
+        <div class="field-row">
+          <label>Identifiant stable</label>
+          <select v-model="idColumn">
+            <option value="">— Sélectionner —</option>
+            <option v-for="col in csvColumns" :key="col" :value="col">{{ col }}</option>
+          </select>
+        </div>
         <div v-for="col in csvColumns" :key="col" class="field-row">
           <label>{{ col }}</label>
           <select v-model="mapping[col]">
@@ -65,8 +72,11 @@
           </select>
         </div>
         <div class="modal-actions">
+          <p v-if="importError" class="error-msg">{{ importError }}</p>
           <button class="btn-ghost" @click="showMapping = false">Annuler</button>
-          <button class="btn-primary" @click="doImport">Importer {{ csvPreview?.length }} cartes</button>
+          <button class="btn-primary" @click="doImport" :disabled="!idColumn || importing">
+            {{ importing ? 'Import…' : `Importer ${csvPreview?.length || 0} cartes` }}
+          </button>
         </div>
       </div>
     </div>
@@ -92,6 +102,9 @@ const csvPreview = ref(null)
 const csvColumns = ref([])
 const mapping = ref({})
 const showMapping = ref(false)
+const idColumn = ref('')
+const importing = ref(false)
+const importError = ref('')
 
 function togglePreview() {
   if (store.previewData !== null) {
@@ -116,6 +129,8 @@ function onCsvUpload(e) {
       csvPreview.value = results.data
       csvColumns.value = results.meta.fields || []
       mapping.value = {}
+      idColumn.value = csvColumns.value.find((h) => /^(id|name|nom)$/i.test(h)) || csvColumns.value[0] || ''
+      importError.value = ''
       // Auto-map matching column names
       for (const col of csvColumns.value) {
         const match = bindingPaths.value.find(bp =>
@@ -130,19 +145,33 @@ function onCsvUpload(e) {
 }
 
 async function doImport() {
-  if (!csvPreview.value || !store.layout) return
+  if (!csvPreview.value || !store.layout || !idColumn.value) return
   const cleanMapping = {}
   for (const [k, v] of Object.entries(mapping.value)) {
     if (v) cleanMapping[k] = v
   }
-  await api.importCards({
-    layout_id: store.layout.id,
-    rows: csvPreview.value,
-    mapping: cleanMapping
-  })
-  showMapping.value = false
-  csvPreview.value = null
-  alert(`${csvPreview.value?.length || 0} cartes importées !`)
+  importing.value = true
+  importError.value = ''
+  const count = csvPreview.value.length
+  try {
+    await api.importCards({
+      rows: csvPreview.value,
+      filename: 'editeur.csv',
+      mode: 'single',
+      layoutId: store.layout.id,
+      idColumn: idColumn.value,
+      mappings: { [store.layout.id]: cleanMapping },
+      label: `Import éditeur ${store.layout.name || ''}`.trim(),
+    })
+    showMapping.value = false
+    csvPreview.value = null
+    alert(`${count} cartes importées.`)
+  } catch (e) {
+    importError.value = e.message
+    alert(`Erreur import : ${e.message}`)
+  } finally {
+    importing.value = false
+  }
 }
 </script>
 
@@ -202,5 +231,11 @@ async function doImport() {
 .empty-hint {
   font-size: 11px;
   color: var(--text-muted);
+}
+
+.error-msg {
+  color: var(--accent-danger);
+  font-size: 11px;
+  margin: 0 auto 0 0;
 }
 </style>

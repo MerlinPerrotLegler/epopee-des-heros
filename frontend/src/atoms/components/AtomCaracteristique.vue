@@ -31,12 +31,18 @@ const wrapStyle = computed(() => ({
   height: mmCss(Math.max(1, effectiveFontMm.value * 1.35)),
 }))
 
+function alignToJustify(align) {
+  return { left: 'flex-start', right: 'flex-end', center: 'center', justify: 'center' }[align] ?? 'flex-start'
+}
+
 const rectStyle = computed(() => ({
   background: 'transparent',
   color: props.params.textColor ?? STAT_TYPES[props.params.stat]?.color ?? '#1a1a2e',
   fontSize: mmCss(effectiveFontMm.value),
   fontFamily: props.params.fontFamily || FONT_FAMILY,
   fontWeight: props.params.fontWeight || 700,
+  justifyContent: alignToJustify(props.params.textAlign || 'left'),
+  textAlign: props.params.textAlign || 'left',
 }))
 </script>
 
@@ -54,8 +60,6 @@ const rectStyle = computed(() => ({
   min-height: 0;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
-  text-align: left;
   border-radius: 3px;
   font-weight: 700;
   letter-spacing: 0.05em;

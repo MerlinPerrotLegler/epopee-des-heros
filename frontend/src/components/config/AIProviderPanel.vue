@@ -7,7 +7,8 @@
       <div class="field-row">
         <label>Provider</label>
         <select v-model="form.provider">
-          <option value="openai">OpenAI DALL-E 3</option>
+          <option value="openai">OpenAI (GPT Image)</option>
+          <option value="dalle3">OpenAI DALL-E 3</option>
           <option value="stability">Stability AI (bientôt)</option>
           <option value="fal">fal.ai (bientôt)</option>
         </select>
@@ -26,7 +27,8 @@
           {{ showKey ? '🙈' : '👁' }}
         </button>
       </div>
-      <p class="hint" v-if="form.api_key_set">Clé configurée. Laissez vide pour conserver l'existante.</p>
+      <p class="hint" v-if="form.api_key_set">Clé configurée (page Config ou variable OPENAI_API_KEY). Laissez vide pour conserver l'existante.</p>
+      <p class="hint" v-else>Saisissez une clé sk-… ou définissez OPENAI_API_KEY dans l'environnement du serveur.</p>
     </div>
 
     <!-- Global prompt -->
@@ -44,13 +46,14 @@
     <!-- Media type presets -->
     <div class="section">
       <div class="section-title">Presets par type de média</div>
-      <p class="hint">Chaque type définit la résolution, le style et le provider utilisés lors de la génération.</p>
+      <p class="hint">Chaque type définit le modèle, la résolution et le style. Les tailles 256/512 (anciens presets) sont converties en 1024×1024 à l'appel API.</p>
 
       <div class="preset-table">
         <div class="preset-header">
           <span>Type</span>
           <span>Label</span>
           <span>Provider</span>
+          <span>Modèle</span>
           <span>Résolution</span>
           <span>Style</span>
           <span></span>
@@ -63,15 +66,23 @@
           <input v-model="preset.label" placeholder="Label" />
           <select v-model="preset.provider">
             <option value="openai">OpenAI</option>
+            <option value="dalle3">DALL-E 3</option>
             <option value="stability">Stability</option>
             <option value="fal">fal.ai</option>
           </select>
+          <select v-model="preset.model">
+            <option value="gpt-image-1">gpt-image-1</option>
+            <option value="gpt-image-1.5">gpt-image-1.5</option>
+            <option value="dall-e-3">dall-e-3</option>
+          </select>
           <select v-model="preset.resolution">
-            <option value="256x256">256×256</option>
-            <option value="512x512">512×512</option>
             <option value="1024x1024">1024×1024</option>
-            <option value="1024x1792">1024×1792 (portrait)</option>
-            <option value="1792x1024">1792×1024 (paysage)</option>
+            <option value="1536x1024">1536×1024 (paysage GPT)</option>
+            <option value="1024x1536">1024×1536 (portrait GPT)</option>
+            <option value="1024x1792">1024×1792 (portrait DALL-E)</option>
+            <option value="1792x1024">1792×1024 (paysage DALL-E)</option>
+            <option value="512x512">512×512 (→ 1024)</option>
+            <option value="256x256">256×256 (→ 1024)</option>
           </select>
           <select v-model="preset.style_preset">
             <option value="vivid">vivid</option>
@@ -115,8 +126,17 @@ onMounted(async () => {
   try {
     const config = await api.getAIConfig()
     Object.assign(form, config)
+    normalizePresets()
   } catch {}
 })
+
+function normalizePresets() {
+  for (const p of form.media_type_presets || []) {
+    if (!p.model) {
+      p.model = (p.provider === 'dalle3' || p.provider === 'dall-e-3') ? 'dall-e-3' : 'gpt-image-1'
+    }
+  }
+}
 
 function addPreset() {
   form.media_type_presets.push({
@@ -125,6 +145,7 @@ function addPreset() {
     resolution: '1024x1024',
     style_preset: 'vivid',
     provider: form.provider || 'openai',
+    model: form.provider === 'dalle3' ? 'dall-e-3' : 'gpt-image-1',
     negative_prompt: '',
   })
 }
@@ -150,6 +171,7 @@ async function save() {
     // Refresh to get api_key_set status
     const updated = await api.getAIConfig()
     Object.assign(form, updated)
+    normalizePresets()
     apiKeyInput.value = ''
     saved.value = true
     setTimeout(() => { saved.value = false }, 2500)
@@ -239,7 +261,7 @@ async function save() {
 
 .preset-header {
   display: grid;
-  grid-template-columns: 120px 100px 90px 130px 80px 24px;
+  grid-template-columns: 100px 90px 80px 120px 150px 70px 24px;
   gap: 4px;
   padding: 2px 0;
   font-size: 10px;
@@ -251,7 +273,7 @@ async function save() {
 
 .preset-row {
   display: grid;
-  grid-template-columns: 120px 100px 90px 130px 80px 24px;
+  grid-template-columns: 100px 90px 80px 120px 150px 70px 24px;
   gap: 4px;
   align-items: center;
 }

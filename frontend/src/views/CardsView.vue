@@ -28,7 +28,13 @@
         <span v-if="job.last_synced_at" class="job-sync">
           Sync {{ formatDate(job.last_synced_at) }}
         </span>
-        <button class="btn-icon btn-xs" @click="syncJob(job)" :disabled="syncing === job.id" title="Synchroniser">
+        <button
+          v-if="isSyncableJob(job)"
+          class="btn-icon btn-xs"
+          @click="syncJob(job)"
+          :disabled="syncing === job.id"
+          title="Synchroniser depuis l'URL"
+        >
           <span :class="{ spinning: syncing === job.id }">↺</span>
         </button>
         <button class="btn-icon btn-xs danger" @click="confirmDeleteJob(job)" title="Supprimer ce job">×</button>
@@ -71,7 +77,7 @@
             <td class="td-meta">{{ getLayoutName(card.layout_id) }}</td>
             <td class="td-source">
               <span v-if="card.import_job_id" class="import-badge" :title="getJobLabel(card.import_job_id)">
-                ⟳ import
+                ⟳ {{ getJobLabel(card.import_job_id) }}
               </span>
             </td>
             <td class="td-data">
@@ -176,6 +182,12 @@
       <div class="preview-modal">
         <div class="preview-header">
           <span class="preview-title">{{ previewCard.name }}</span>
+          <button
+            class="btn-ghost btn-sm"
+            :disabled="exportingPng"
+            @click="exportPreviewPng"
+            title="Exporter en PNG"
+          >{{ exportingPng ? '…' : '⤓ PNG' }}</button>
           <button class="btn-icon" @click="previewCard = null">×</button>
         </div>
         <div class="preview-body">
@@ -220,11 +232,12 @@
 import { ref, computed, onMounted, nextTick } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '@/utils/api.js'
-import { getBindablePaths } from '@/utils/binding.js'
+import { getBindablePaths, isSyncableImportSource } from '@/utils/binding.js'
 import { CSS_PX_PER_MM } from '@/utils/cssMm.js'
 import { ATOM_PARAM_RULES_KEY, useConfigStore } from '@/stores/config.js'
 import ImportWizard from '@/components/cards/ImportWizard.vue'
 import CardPreview from '@/components/cards/CardPreview.vue'
+import { downloadElementPng, safePngFilename } from '@/utils/exportCardPng.js'
 
 const route = useRoute()
 const configStore = useConfigStore()
@@ -244,6 +257,7 @@ const previewCard = ref(null)
 const previewLayout = ref(null)
 const previewLoading = ref(false)
 const previewZoom = ref(1)
+const exportingPng = ref(false)
 const selectedCardIds = ref(new Set())
 const printLayoutById = ref({})
 const printSheetCards = ref([])
@@ -378,6 +392,10 @@ function getJobLabel(jobId) {
   return importJobs.value.find(j => j.id === jobId)?.label || jobId?.slice(0, 8)
 }
 
+function isSyncableJob(job) {
+  return isSyncableImportSource(job.source_url)
+}
+
 function formatDate(iso) {
   if (!iso) return ''
   return new Date(iso).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })
@@ -433,6 +451,23 @@ async function saveEditingCard() {
   const idx = cards.value.findIndex(c => c.id === editingCard.value.id)
   if (idx > -1) cards.value[idx] = { ...editingCard.value }
   editingCard.value = null
+}
+
+async function exportPreviewPng() {
+  if (!previewCard.value || exportingPng.value) return
+  const el = document.querySelector('.preview-body .card-boundary')
+  if (!el) {
+    alert('Aperçu pas encore prêt.')
+    return
+  }
+  exportingPng.value = true
+  try {
+    await downloadElementPng(el, safePngFilename(previewCard.value.name))
+  } catch (e) {
+    alert(`Export PNG : ${e.message}`)
+  } finally {
+    exportingPng.value = false
+  }
 }
 
 async function openPreview(card) {
@@ -613,6 +648,12 @@ function exportCsv() {
   border: 1px solid var(--border-subtle);
   padding: 1px 6px;
   border-radius: 10px;
+  display: inline-block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
 }
 
 .empty-state { flex: 1; text-align: center; padding: 60px; color: var(--text-muted); }
@@ -725,11 +766,12 @@ function exportCsv() {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 8px;
   padding: 10px 14px;
   border-bottom: 1px solid var(--border-subtle);
   flex-shrink: 0;
 }
-.preview-title { font-size: 13px; font-weight: 600; }
+.preview-title { font-size: 13px; font-weight: 600; flex: 1; min-width: 0; }
 
 .preview-body {
   padding: 20px;

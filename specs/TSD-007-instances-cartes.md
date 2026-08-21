@@ -654,7 +654,7 @@ function normalizeGoogleSheetsUrl(url) {
 
 | # | Description | Status | Found on |
 |---|-------------|--------|----------|
-| 1 | `parseCsvToObjects` (binding.js) ne gère pas les guillemets RFC 4180 | Open | 2026-03-12 |
+| 1 | `parseCsvToObjects` (binding.js) ne gère pas les guillemets RFC 4180 | Fixed (papaparse + parseCsvText backend) | 2026-03-12 |
 
 ---
 

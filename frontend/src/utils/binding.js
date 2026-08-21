@@ -193,9 +193,23 @@ export function extractBindingPaths(layoutDefinition, componentRegistry = {}) {
 }
 
 /**
- * Parse CSV text into array of objects using first row as headers.
- * Uses papaparse for RFC 4180 compliance (handles quoted fields, etc.)
+ * Auto-map CSV headers to binding paths. Does not overwrite keys already in `existing`.
  */
+export function autoMapColumns(headers, bindingPaths, existing = {}) {
+  const mapped = { ...existing }
+  for (const col of headers) {
+    if (mapped[col]) continue
+    const match = (bindingPaths || []).find((p) => {
+      if (p.paramName === col || p.path === col || p.nameInLayout === col) return true
+      if (p.path.endsWith(`.${col}`)) return true
+      const layoutTail = String(p.nameInLayout || '').split('.').pop()
+      return layoutTail === col
+    })
+    if (match) mapped[col] = match.path
+  }
+  return mapped
+}
+
 export function parseCsvToObjects(csvText) {
   const result = Papa.parse(csvText.trim(), {
     header: true,
@@ -219,4 +233,9 @@ export function normalizeGoogleSheetsUrl(url) {
     return `${base}/pub?output=csv${gid}`
   }
   return url
+}
+
+/** Re-sync is only possible for public HTTP(S) CSV URLs, not local files. */
+export function isSyncableImportSource(sourceUrl) {
+  return /^https?:\/\//i.test(String(sourceUrl || '').trim())
 }

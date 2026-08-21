@@ -151,7 +151,7 @@ function startPolling() {
 async function checkAIConfig() {
   try {
     const cfg = await api.getAIConfig()
-    aiConfigured.value = cfg.api_key_set && !!cfg.global_prompt
+    aiConfigured.value = !!cfg.api_key_set
   } catch { aiConfigured.value = false }
 }
 
@@ -170,14 +170,22 @@ function statusClass(item) {
 }
 
 async function generate(item) {
-  await api.generateMissingMedia(item.id)
-  const idx = items.value.findIndex(i => i.id === item.id)
-  if (idx > -1) items.value[idx] = { ...items.value[idx], status: 'generating' }
+  try {
+    await api.generateMissingMedia(item.id)
+    const idx = items.value.findIndex(i => i.id === item.id)
+    if (idx > -1) items.value[idx] = { ...items.value[idx], status: 'generating' }
+  } catch (e) {
+    window.alert(e.message)
+  }
 }
 
 async function generateAll() {
-  await api.generateAllMissingMedia()
-  await load()
+  try {
+    await api.generateAllMissingMedia()
+    await load()
+  } catch (e) {
+    window.alert(e.message)
+  }
 }
 
 async function ignore(item) {

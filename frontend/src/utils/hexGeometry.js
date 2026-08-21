@@ -27,6 +27,13 @@ export function hexHeightFromWidth(widthMm) {
   return Math.round(widthMm * HEX_RATIO * 10) / 10
 }
 
+/** Sommets SVG d'un hex pointy-top inscrit dans width×height (unités viewBox, typiquement mm). */
+export function hexPolygonPoints(width, height) {
+  const w = Number(width) || 0
+  const h = Number(height) || 0
+  return HEX_POINTS_PCT.map(([xp, yp]) => `${(xp / 100) * w},${(yp / 100) * h}`).join(' ')
+}
+
 /**
  * Génère le SVG d'un masque hexagonal pour sharp (export PNG).
  * @param {number} w — largeur en pixels

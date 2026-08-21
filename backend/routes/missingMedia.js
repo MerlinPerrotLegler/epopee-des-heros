@@ -1,11 +1,10 @@
 import { Router } from 'express'
 import { getDb } from '../db/database.js'
 import { parseJsonColumn } from '../db/sqlDialect.js'
-import { buildPrompt, generateOne } from '../services/aiGeneration.js'
+import { buildPrompt, generateOne, findImageElement, imageNameFromBindingPath, resolveApiKey } from '../services/aiGeneration.js'
 
 const router = Router()
 
-// ── Helper: compute prompt_configured for an entry ──────────────────────────
 async function isPromptConfigured(entry, db) {
   try {
     const instance = await db.prepare('SELECT layout_id FROM card_instances WHERE id = ?').get(entry.card_instance_id)
@@ -13,17 +12,16 @@ async function isPromptConfigured(entry, db) {
     const layout = await db.prepare('SELECT definition FROM layouts WHERE id = ?').get(instance.layout_id)
     if (!layout) return false
     const def = parseJsonColumn(layout.definition || '{}')
-    const nameInLayout = entry.binding_path.split('.')[0]
-    function find(items) {
-      for (const item of items || []) {
-        if (item.kind === 'group') { const r = find(item.children); if (r) return r }
-        else if (item.nameInLayout === nameInLayout && item.type === 'atom' && item.atomType === 'image') return item
-      }
-      return null
-    }
-    const el = find(def.layers || [])
+    const nameInLayout = imageNameFromBindingPath(entry.binding_path)
+    const el = findImageElement(def.layers || [], nameInLayout)
     return !!(el?.params?.ai_prompt_template)
   } catch { return false }
+}
+
+function runInBackground(task) {
+  setImmediate(() => {
+    Promise.resolve().then(task).catch(() => {})
+  })
 }
 
 // ── GET /api/missing-media ───────────────────────────────────────────────────
@@ -64,6 +62,11 @@ router.post('/generate-all', async (req, res) => {
   const db = getDb()
   const { media_type } = req.body || {}
 
+  const config = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
+  if (!resolveApiKey(config)) {
+    return res.status(400).json({ error: 'Clé API non configurée — Config > IA, ou variable OPENAI_API_KEY' })
+  }
+
   let sql = "SELECT id FROM missing_media WHERE status = 'pending'"
   const params = []
   if (media_type) { sql += ' AND media_type = ?'; params.push(media_type) }
@@ -76,11 +79,18 @@ router.post('/generate-all', async (req, res) => {
     if (await isPromptConfigured(entry, db)) queued.push(id)
   }
 
+  for (const id of queued) {
+    await db.prepare("UPDATE missing_media SET status='generating' WHERE id=? AND status='pending'").run(id)
+  }
+
   res.json({ queued: queued.length })
 
-  for (const id of queued) {
-    try { await generateOne(id, db) } catch { /* errors stored in DB */ }
-  }
+  runInBackground(async () => {
+    const db2 = getDb()
+    for (const id of queued) {
+      try { await generateOne(id, db2) } catch { /* errors stored in DB */ }
+    }
+  })
 })
 
 // ── PATCH /api/missing-media/:id ─────────────────────────────────────────────
@@ -126,11 +136,23 @@ router.post('/:id/generate', async (req, res) => {
   const db = getDb()
   const entry = await db.prepare('SELECT * FROM missing_media WHERE id = ?').get(req.params.id)
   if (!entry) return res.status(404).json({ error: 'Not found' })
+  if (entry.status === 'resolved') return res.json({ ok: true, status: 'resolved' })
   if (entry.status === 'generating') return res.status(409).json({ error: 'Already generating' })
+  if (!(await isPromptConfigured(entry, db))) {
+    return res.status(422).json({ error: 'ai_prompt_template absent sur l\'élément image dans le layout' })
+  }
 
+  const config = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
+  if (!resolveApiKey(config)) {
+    return res.status(400).json({ error: 'Clé API non configurée — Config > IA, ou variable OPENAI_API_KEY' })
+  }
+
+  await db.prepare("UPDATE missing_media SET status='generating' WHERE id=?").run(entry.id)
   res.json({ ok: true, status: 'generating' })
 
-  try { await generateOne(entry.id, db) } catch { /* errors stored in DB */ }
+  runInBackground(async () => {
+    try { await generateOne(entry.id, getDb()) } catch { /* errors stored in DB */ }
+  })
 })
 
 export default router

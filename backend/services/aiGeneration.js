@@ -1,27 +1,30 @@
 /**
  * TSD-012 — AI Generation Service
- * Handles prompt construction, OpenAI call, image download/save, DB resolution.
+ * Prompt construction, OpenAI Images API (gpt-image-1 / DALL-E 3), save + resolve.
  */
 import { createHash, randomUUID } from 'crypto'
 import { parseJsonColumn } from '../db/sqlDialect.js'
 import { insertMediaRecord } from './mediaStorage.js'
 
-// ── Prompt construction ──────────────────────────────────────────────────────
+const DALLE3_SIZES = new Set(['1024x1024', '1024x1792', '1792x1024'])
+const GPT_IMAGE_SIZES = new Set(['1024x1024', '1536x1024', '1024x1536'])
 
-/**
- * Interpolate {{path}} tokens against flat card data.
- */
-function interpolateTemplate(template, data) {
-  return template.replace(/\{\{([^}]+)\}\}/g, (match, path) => {
+export function interpolateTemplate(template, data) {
+  if (!template) return ''
+  return String(template).replace(/\{\{([^}]+)\}\}/g, (match, path) => {
     const t = path.trim()
-    return t in data ? data[t] : match
+    return data && t in data ? data[t] : match
   })
 }
 
-/**
- * Find an image atom element in the layout definition by nameInLayout.
- */
-function findImageElement(layers, nameInLayout) {
+export function imageNameFromBindingPath(bindingPath) {
+  const parts = String(bindingPath || '').split('.').filter(Boolean)
+  if (parts[parts.length - 1] === 'mediaId') parts.pop()
+  return parts[parts.length - 1] || ''
+}
+
+export function findImageElement(layers, nameInLayout) {
+  if (!nameInLayout) return null
   for (const item of layers || []) {
     if (item.kind === 'group') {
       const found = findImageElement(item.children || [], nameInLayout)
@@ -33,10 +36,53 @@ function findImageElement(layers, nameInLayout) {
   return null
 }
 
-/**
- * Build the final prompt for a missing_media entry.
- * Returns { prompt, template, globalPrompt } or throws.
- */
+export function resolveOpenAIModel(providerOrModel) {
+  const id = String(providerOrModel || 'openai').trim()
+  if (id === 'dalle3' || id === 'dall-e-3' || id === 'openai-dalle3') return 'dall-e-3'
+  if (id === 'gpt-image-1.5' || id === 'gpt-image-2' || id === 'gpt-image-1' || id === 'dall-e-3') return id
+  return 'gpt-image-1'
+}
+
+export function mapSizeForModel(model, resolution) {
+  const size = String(resolution || '1024x1024')
+  if (model === 'dall-e-3') {
+    if (DALLE3_SIZES.has(size)) return size
+    if (size === '1024x512' || size.startsWith('1792')) return '1792x1024'
+    if (size.startsWith('1024x') && size !== '1024x1024') return '1024x1792'
+    return '1024x1024'
+  }
+  if (GPT_IMAGE_SIZES.has(size)) return size
+  if (size === '1024x1792' || size === '1024x512') return '1024x1536'
+  if (size === '1792x1024') return '1536x1024'
+  return '1024x1024'
+}
+
+export function buildOpenAIImageBody({ model, prompt, size, stylePreset }) {
+  const body = {
+    model,
+    prompt,
+    n: 1,
+    size,
+  }
+  if (model === 'dall-e-3') {
+    body.style = stylePreset === 'natural' ? 'natural' : 'vivid'
+    body.response_format = 'b64_json'
+  }
+  return body
+}
+
+export async function bufferFromOpenAIImage(payload, fetchImpl = fetch) {
+  const item = payload?.data?.[0]
+  if (!item) throw new Error('Réponse OpenAI sans image')
+  if (item.b64_json) return Buffer.from(item.b64_json, 'base64')
+  if (item.url) {
+    const imgRes = await fetchImpl(item.url)
+    if (!imgRes.ok) throw new Error('Téléchargement de l\'image OpenAI échoué')
+    return Buffer.from(await imgRes.arrayBuffer())
+  }
+  throw new Error('Réponse OpenAI sans url ni b64_json')
+}
+
 export async function buildPrompt(entry, db) {
   const instance = await db.prepare('SELECT * FROM card_instances WHERE id = ?').get(entry.card_instance_id)
   if (!instance) throw new Error('Card instance not found')
@@ -46,7 +92,7 @@ export async function buildPrompt(entry, db) {
   if (!layout) throw new Error('Layout not found')
   const def = parseJsonColumn(layout.definition || '{}')
 
-  const nameInLayout = entry.binding_path.split('.')[0]
+  const nameInLayout = imageNameFromBindingPath(entry.binding_path)
   const element = findImageElement(def.layers || [], nameInLayout)
   const template = element?.params?.ai_prompt_template || ''
 
@@ -54,56 +100,64 @@ export async function buildPrompt(entry, db) {
   const globalPrompt = config?.global_prompt || ''
 
   const interpolated = template ? interpolateTemplate(template, data) : ''
-  const parts = [globalPrompt, interpolated].filter((s) => s.trim())
+  const parts = [globalPrompt, interpolated].filter((s) => String(s).trim())
 
   return {
     prompt: parts.join('\n\n'),
     template,
     globalPrompt,
     hasTemplate: !!template,
+    mediaType: element?.params?.ai_media_type || entry.media_type || 'illustration',
   }
 }
 
-// ── OpenAI DALL-E 3 call ─────────────────────────────────────────────────────
+export function resolveApiKey(config) {
+  const fromDb = String(config?.api_key || '').trim()
+  if (fromDb) return fromDb
+  return String(process.env.OPENAI_API_KEY || '').trim()
+}
 
-export async function callOpenAI(apiKey, prompt, resolution, stylePreset) {
-  const validSizes = ['256x256', '512x512', '1024x1024', '1024x1792', '1792x1024']
-  const size = validSizes.includes(resolution) ? resolution : '1024x1024'
+/**
+ * Call OpenAI Images API. Default model: gpt-image-1 (b64).
+ * DALL-E 3 still supported (b64_json + style).
+ */
+export async function callProvider(provider, apiKey, prompt, resolution, stylePreset, options = {}) {
+  const id = String(provider || 'openai')
+  if (id === 'stability' || id === 'fal') {
+    throw new Error(`Provider '${id}' not yet implemented — choisissez OpenAI`)
+  }
+  return callOpenAI(apiKey, prompt, resolution, stylePreset, {
+    ...options,
+    model: options.model || resolveOpenAIModel(id),
+  })
+}
 
-  const res = await fetch('https://api.openai.com/v1/images/generations', {
+export async function callOpenAI(apiKey, prompt, resolution, stylePreset, options = {}) {
+  const fetchImpl = options.fetchImpl || fetch
+  const model = resolveOpenAIModel(options.model || 'gpt-image-1')
+  const size = mapSizeForModel(model, resolution)
+  const body = buildOpenAIImageBody({ model, prompt, size, stylePreset })
+
+  const res = await fetchImpl('https://api.openai.com/v1/images/generations', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
-    body: JSON.stringify({
-      model: 'dall-e-3',
-      prompt,
-      size,
-      style: stylePreset || 'vivid',
-      n: 1,
-    }),
+    body: JSON.stringify(body),
   })
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}))
-    throw new Error(err.error?.message || `OpenAI error ${res.status}`)
+    const msg = err.error?.message || `OpenAI error ${res.status}`
+    if (res.status === 429) throw new Error(`Quota / rate-limit OpenAI : ${msg}`)
+    throw new Error(msg)
   }
 
   const data = await res.json()
-  const imageUrl = data.data[0].url
-
-  const imgRes = await fetch(imageUrl)
-  if (!imgRes.ok) throw new Error('Failed to download generated image from OpenAI')
-  return Buffer.from(await imgRes.arrayBuffer())
+  return bufferFromOpenAIImage(data, fetchImpl)
 }
 
-// ── Image save → media record ────────────────────────────────────────────────
-
-/**
- * Save buffer to DB (+ cache disque), create media record.
- * Returns the media id (= filename, sha1-based, compatible with params.mediaId).
- */
 export async function saveGeneratedImage(buffer, label, db) {
   const sha1 = createHash('sha1').update(buffer).digest('hex')
   const filename = `${sha1}.png`
@@ -120,24 +174,19 @@ export async function saveGeneratedImage(buffer, label, db) {
     })
   }
 
-  return filename // = media.id
+  return filename
 }
 
-// ── Full generation pipeline ─────────────────────────────────────────────────
-
-/**
- * Run generation for one missing_media entry (async, resolves/rejects).
- * Updates DB status throughout.
- */
-export async function generateOne(entryId, db) {
+export async function generateOne(entryId, db, options = {}) {
   const entry = await db.prepare('SELECT * FROM missing_media WHERE id = ?').get(entryId)
   if (!entry) throw new Error('Entry not found')
-  if (entry.status === 'resolved') return // already done
+  if (entry.status === 'resolved') return
 
   const config = await db.prepare("SELECT * FROM ai_generation_config WHERE id = 'singleton'").get()
-  if (!config?.api_key) {
+  const apiKey = resolveApiKey(config)
+  if (!apiKey) {
     await db.prepare("UPDATE missing_media SET status='error', error_message=? WHERE id=?")
-      .run('Clé API non configurée — rendez-vous dans Config > IA Provider', entryId)
+      .run('Clé API non configurée — Config > IA, ou variable OPENAI_API_KEY', entryId)
     throw new Error('API key not configured')
   }
 
@@ -155,25 +204,25 @@ export async function generateOne(entryId, db) {
     throw new Error('Empty prompt')
   }
 
-  const presetsRaw = config.media_type_presets
+  const presetsRaw = config?.media_type_presets
   const presets = Array.isArray(presetsRaw)
     ? presetsRaw
-    : parseJsonColumn(config.media_type_presets || '[]')
-  const preset = presets.find((p) => p.type === entry.media_type) || presets[0] || {}
-  const provider = preset.provider || config.provider || 'openai'
+    : parseJsonColumn(config?.media_type_presets || '[]')
+  const mediaType = promptData.mediaType || entry.media_type
+  const preset = presets.find((p) => p.type === mediaType) || presets[0] || {}
+  const provider = preset.provider || config?.provider || 'openai'
   const resolution = preset.resolution || '1024x1024'
   const stylePreset = preset.style_preset || 'vivid'
+  const model = preset.model || resolveOpenAIModel(provider)
 
   await db.prepare("UPDATE missing_media SET status='generating', generation_prompt=? WHERE id=?")
     .run(promptData.prompt, entryId)
 
   try {
-    let buffer
-    if (provider === 'openai') {
-      buffer = await callOpenAI(config.api_key, promptData.prompt, resolution, stylePreset)
-    } else {
-      throw new Error(`Provider '${provider}' not yet implemented`)
-    }
+    const buffer = await callProvider(provider, apiKey, promptData.prompt, resolution, stylePreset, {
+      model,
+      fetchImpl: options.fetchImpl,
+    })
 
     const instance = await db.prepare('SELECT name FROM card_instances WHERE id = ?').get(entry.card_instance_id)
     const label = instance?.name || 'generated'

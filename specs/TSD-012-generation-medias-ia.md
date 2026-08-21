@@ -5,7 +5,7 @@
 | Status      | Draft                              |
 | Author      | @merlinperrot                      |
 | Created     | 2026-03-12                         |
-| Last update | 2026-03-12                         |
+| Last update | 2026-08-20                         |
 | Depends on  | TSD-004 (médias), TSD-007 (instances cartes) |
 
 ---
@@ -30,7 +30,7 @@ Le game designer peut ainsi définir un style artistique global et des instructi
 - Interface "Médias manquants" : liste, statut, déclenchement de génération individuelle ou en batch.
 - Pipeline de génération : construction du prompt final → appel API IA → stockage → résolution.
 - Stockage du fichier généré dans le dossier média existant, création d'un enregistrement `media`.
-- Support initial : OpenAI DALL-E 3 (provider par défaut, configurable).
+- Support initial : OpenAI Images API (`gpt-image-1` par défaut, DALL-E 3 optionnel).
 
 ### Out of scope
 - Recadrage / retouche des images générées (→ TSD-011 pour la suppression de fond).
@@ -499,15 +499,17 @@ try { db.exec(`INSERT OR IGNORE INTO ai_generation_config (id) VALUES ('singleto
 - [x] Q1 — Clé API dans la DB ? **Oui** — l'outil tourne en local, configurable depuis la page Config IA. Jamais exposée en clair dans les réponses GET.
 - [x] Q2 — Polling 3s vs SSE ? **Polling 3s** — suffisant pour un batch de 50 cartes, complexité réduite.
 - [x] Q3 — Mode dry-run "Aperçu prompt" ? **Oui** — accessible même sans provider configuré. Modale avec `<pre>` + bouton Copier (permet de coller dans une IA en mode navigateur). Voir §3.4.
-- [ ] Q4 — Support Stability AI et fal.ai en v1 ? Architecture prévue pour multi-provider (`callProvider` abstrait), mais seul DALL-E 3 implémenté en v1. Les autres providers ajoutés à la demande.
+- [x] Q4 — Support Stability AI et fal.ai en v1 ? Architecture prévue pour multi-provider (`callProvider` abstrait). **v1 = OpenAI Images** (`gpt-image-1` / `gpt-image-1.5` / `dall-e-3`). Stability et fal.ai restent « bientôt ».
 
 ---
 
 ## 11. Notes & références
 
-- DALL-E 3 API : `POST https://api.openai.com/v1/images/generations`, paramètres `model`, `prompt`, `size`, `style`, `n: 1`.
-- Stability AI : `POST https://api.stability.ai/v1/generation/{engine}/text-to-image`.
-- fal.ai : `POST https://fal.run/fal-ai/flux/dev` (ou variante flux-pro).
-- Dépendances npm à ajouter : `node-fetch` (ou `undici`) côté backend pour télécharger les URLs DALL-E. `openai` SDK officiel recommandé.
+- OpenAI Images API : `POST https://api.openai.com/v1/images/generations`.
+  - **gpt-image-1 / gpt-image-1.5** (défaut) : réponse `data[0].b64_json`. Tailles `1024x1024`, `1536x1024`, `1024x1536`. Pas de `style` ni `response_format`.
+  - **DALL-E 3** : tailles `1024x1024`, `1024x1792`, `1792x1024` uniquement (pas 256/512). `style` vivid/natural + `response_format: b64_json`. Fallback `data[0].url` téléchargé si pas de b64.
+- Clé : `ai_generation_config.api_key` ou variable d'environnement `OPENAI_API_KEY`.
+- Les tailles 256×256 / 512×512 des anciens presets sont mappées vers 1024×1024 à l'appel.
+- Stability AI / fal.ai : non implémentés (`callProvider` lève une erreur explicite).
 - Voir TSD-007 §11.3 pour `detectMissingMedia()` qui alimente cette table.
 - Voir TSD-004 pour le modèle `media` dans lequel les images générées sont intégrées.

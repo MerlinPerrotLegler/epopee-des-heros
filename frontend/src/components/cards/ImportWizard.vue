@@ -11,10 +11,23 @@
         <button class="btn-icon" @click="$emit('close')">×</button>
       </div>
 
-      <!-- Step 1: Source URL -->
+      <!-- Step 1: Source URL or local CSV file -->
       <div v-if="step === 0" class="wizard-body">
         <div class="step-label">① Source de données</div>
+
         <div class="field-group">
+          <label>Type de source</label>
+          <div class="radio-group">
+            <label class="radio-opt" :class="{ active: sourceKind === 'url' }">
+              <input type="radio" v-model="sourceKind" value="url" /> URL Google Sheets
+            </label>
+            <label class="radio-opt" :class="{ active: sourceKind === 'file' }">
+              <input type="radio" v-model="sourceKind" value="file" /> Fichier CSV local
+            </label>
+          </div>
+        </div>
+
+        <div v-if="sourceKind === 'url'" class="field-group">
           <label>URL CSV ou Google Sheets</label>
           <div class="url-row">
             <input v-model="sourceUrl" placeholder="https://docs.google.com/spreadsheets/d/…"
@@ -28,7 +41,22 @@
           </div>
         </div>
 
-        <div class="gs-help">
+        <div v-else class="field-group">
+          <label>Fichier CSV</label>
+          <div class="url-row">
+            <input
+              ref="fileInput"
+              type="file"
+              accept=".csv,text/csv,text/plain"
+              class="file-input"
+              @change="onCsvFile"
+            />
+          </div>
+          <div class="hint" v-if="csvFileName">{{ csvFileName }}{{ totalRows ? ` · ${totalRows} lignes` : '' }}</div>
+          <div class="hint" v-else>Encodage UTF-8, première ligne = en-têtes de colonnes.</div>
+        </div>
+
+        <div v-if="sourceKind === 'url'" class="gs-help">
           <button class="gs-help-toggle" @click="showGsHelp = !showGsHelp">
             {{ showGsHelp ? '▾' : '▸' }} Comment obtenir cette URL ?
           </button>
@@ -45,6 +73,7 @@
         </div>
 
         <div v-if="previewError" class="error-msg">{{ previewError }}</div>
+        <div v-else-if="loadingPreview" class="loading-msg">Lecture du CSV…</div>
 
         <div v-if="preview.length" class="preview-section">
           <div class="preview-meta">{{ totalRows }} lignes · {{ headers.length }} colonnes</div>
@@ -158,7 +187,15 @@
             <input type="checkbox" v-model="overwrite" />
             Mettre à jour les cartes existantes (match sur identifiant)
           </label>
-          <div class="hint">Si une carte avec le même identifiant existe déjà, ses données seront remplacées.</div>
+          <div class="hint">Si une carte avec le même identifiant existe déjà pour cet import, ses données seront remplacées.</div>
+        </div>
+
+        <div class="option-row">
+          <label class="checkbox-opt">
+            <input type="checkbox" v-model="pruneMissing" />
+            Supprimer les cartes de cet import absentes du CSV
+          </label>
+          <div class="hint">Ne touche pas aux cartes créées à la main. Désactivé par défaut.</div>
         </div>
 
         <div class="summary-box">
@@ -192,6 +229,9 @@
             <div><span class="stat-val green">{{ importResult.created }}</span> créées</div>
             <div><span class="stat-val blue">{{ importResult.updated }}</span> mises à jour</div>
             <div><span class="stat-val muted">{{ importResult.skipped }}</span> ignorées</div>
+            <div v-if="importResult.deleted">
+              <span class="stat-val red">{{ importResult.deleted }}</span> supprimées
+            </div>
             <div v-if="importResult.errors?.length">
               <span class="stat-val red">{{ importResult.errors.length }}</span> erreurs
             </div>
@@ -236,7 +276,12 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { api } from '@/utils/api.js'
-import { getBindablePaths } from '@/utils/binding.js'
+import { extractBindingPaths, autoMapColumns } from '@/utils/binding.js'
+
+const sourceKind = ref('url')
+const csvText = ref('')
+const csvFileName = ref('')
+const fileInput = ref(null)
 
 const props = defineProps({
   layouts: { type: Array, default: () => [] }
@@ -268,6 +313,7 @@ const loadingPaths = ref(false)
 
 const showGsHelp = ref(false)
 const overwrite = ref(true)
+const pruneMissing = ref(false)
 const importing = ref(false)
 const importResult = ref(null)
 const importError = ref('')
@@ -280,6 +326,7 @@ const layoutName = computed(() => {
 })
 
 const shortUrl = computed(() => {
+  if (sourceKind.value === 'file') return csvFileName.value || 'fichier.csv'
   try { return new URL(sourceUrl.value).hostname + '…' } catch { return sourceUrl.value.slice(0, 40) }
 })
 
@@ -291,7 +338,8 @@ const step1Valid = computed(() => {
 })
 
 const mappedCount = computed(() => {
-  const m = mode.value === 'single' ? (mappings.value[layoutId.value] || {}) : {}
+  const key = mode.value === 'single' ? layoutId.value : '*'
+  const m = mappings.value[key] || {}
   return Object.values(m).filter(v => v).length
 })
 
@@ -302,11 +350,40 @@ watch(layoutId, async (id) => {
 })
 
 watch(step, async (s) => {
-  if (s === 2 && mode.value === 'single' && layoutId.value) {
-    await loadBindingPaths(layoutId.value)
-    autoFillMappings()
+  if (s === 2) {
+    if (mode.value === 'single' && layoutId.value) {
+      await loadBindingPaths(layoutId.value)
+      autoFillMappings()
+    } else if (mode.value === 'multi' && layoutColumn.value) {
+      await loadMultiBindingPaths()
+      autoFillMappings()
+    }
   }
 })
+
+watch(sourceKind, () => {
+  resetPreview()
+})
+
+function resetPreview() {
+  previewError.value = ''
+  headers.value = []
+  preview.value = []
+  totalRows.value = 0
+  csvText.value = ''
+  csvFileName.value = ''
+  if (fileInput.value) fileInput.value.value = ''
+}
+
+function applyPreview(data) {
+  headers.value = data.headers || []
+  preview.value = data.preview || []
+  totalRows.value = data.totalRows || 0
+  if (!idColumn.value) {
+    const preferred = headers.value.find((h) => /^(id|name|nom)$/i.test(h))
+    if (preferred) idColumn.value = preferred
+  }
+}
 
 // Methods
 async function loadPreview() {
@@ -314,13 +391,45 @@ async function loadPreview() {
   loadingPreview.value = true
   try {
     const data = await api.previewCsvUrl(sourceUrl.value.trim())
-    headers.value = data.headers
-    preview.value = data.preview
-    totalRows.value = data.totalRows
+    applyPreview(data)
   } catch (e) {
     previewError.value = e.message
   } finally {
     loadingPreview.value = false
+  }
+}
+
+async function onCsvFile(e) {
+  const file = e.target.files?.[0]
+  if (!file) return
+  previewError.value = ''
+  loadingPreview.value = true
+  csvFileName.value = file.name
+  try {
+    csvText.value = await file.text()
+    const data = await api.previewCsv(csvText.value)
+    applyPreview(data)
+  } catch (err) {
+    previewError.value = err.message
+    headers.value = []
+    preview.value = []
+    totalRows.value = 0
+  } finally {
+    loadingPreview.value = false
+  }
+}
+
+async function loadComponentRegistry() {
+  try {
+    const list = await api.getComponents()
+    const registry = {}
+    for (const c of list || []) {
+      const def = typeof c.definition === 'string' ? JSON.parse(c.definition) : c.definition
+      registry[c.id] = { ...c, definition: def }
+    }
+    return registry
+  } catch {
+    return {}
   }
 }
 
@@ -331,7 +440,30 @@ async function loadBindingPaths(id) {
     const def = typeof layout.definition === 'string'
       ? JSON.parse(layout.definition)
       : layout.definition
-    currentBindingPaths.value = getBindablePaths(def)
+    const registry = await loadComponentRegistry()
+    currentBindingPaths.value = extractBindingPaths(def, registry)
+  } catch { currentBindingPaths.value = [] }
+  finally { loadingPaths.value = false }
+}
+
+async function loadMultiBindingPaths() {
+  loadingPaths.value = true
+  try {
+    const registry = await loadComponentRegistry()
+    const names = [...new Set(
+      preview.value.map((r) => r[layoutColumn.value]).filter(Boolean),
+    )]
+    const byPath = new Map()
+    for (const name of names) {
+      const meta = rectoLayouts.value.find((l) => l.name.toLowerCase() === String(name).toLowerCase())
+      if (!meta) continue
+      const layout = await api.getLayout(meta.id)
+      const def = typeof layout.definition === 'string' ? JSON.parse(layout.definition) : layout.definition
+      for (const p of extractBindingPaths(def, registry)) {
+        if (!byPath.has(p.path)) byPath.set(p.path, p)
+      }
+    }
+    currentBindingPaths.value = [...byPath.values()]
   } catch { currentBindingPaths.value = [] }
   finally { loadingPaths.value = false }
 }
@@ -356,20 +488,14 @@ function setMapping(col, value) {
 
 function autoFillMappings() {
   const layoutKey = mode.value === 'single' ? layoutId.value : '*'
-  if (!mappings.value[layoutKey]) mappings.value[layoutKey] = {}
+  const current = mappings.value[layoutKey] || {}
+  const next = autoMapColumns(headers.value, currentBindingPaths.value, current)
+  mappings.value[layoutKey] = next
   if (!confidences.value[layoutKey]) confidences.value[layoutKey] = {}
-
   for (const col of headers.value) {
-    // Already manually set → skip
     if (confidences.value[layoutKey][col] === 'manual') continue
-
-    // Try exact match: col name === last segment of binding path
-    const match = currentBindingPaths.value.find(p =>
-      p.paramName === col || p.path === col ||
-      p.path.endsWith(`.${col}`) || p.nameInLayout === col
-    )
-    if (match) {
-      mappings.value[layoutKey][col] = match.path
+    if (next[col] && !current[col]) confidences.value[layoutKey][col] = 'auto'
+    else if (next[col] && current[col] === next[col] && !confidences.value[layoutKey][col]) {
       confidences.value[layoutKey][col] = 'auto'
     }
   }
@@ -397,16 +523,28 @@ async function runImport() {
     )
   }
 
+  const payload = {
+    mode: mode.value,
+    layoutId: mode.value === 'single' ? layoutId.value : undefined,
+    layoutColumn: mode.value === 'multi' ? layoutColumn.value : undefined,
+    idColumn: idColumn.value,
+    mappings: finalMappings,
+    label: importLabel.value || undefined,
+    overwrite: overwrite.value,
+    pruneMissing: pruneMissing.value,
+  }
+
   try {
-    const result = await api.importCardsFromUrl({
-      sourceUrl: sourceUrl.value.trim(),
-      mode: mode.value,
-      layoutId: mode.value === 'single' ? layoutId.value : undefined,
-      layoutColumn: mode.value === 'multi' ? layoutColumn.value : undefined,
-      idColumn: idColumn.value,
-      mappings: finalMappings,
-      label: importLabel.value || undefined,
-    })
+    const result = sourceKind.value === 'file'
+      ? await api.importCards({
+          ...payload,
+          csvText: csvText.value,
+          filename: csvFileName.value || 'import.csv',
+        })
+      : await api.importCardsFromUrl({
+          ...payload,
+          sourceUrl: sourceUrl.value.trim(),
+        })
     importResult.value = result
   } catch (e) {
     importError.value = e.message
@@ -512,6 +650,7 @@ function finish() {
 
 .url-row { display: flex; gap: 8px; }
 .url-input { flex: 1; }
+.file-input { font-size: 12px; color: var(--text-secondary); }
 
 .hint {
   font-size: 10px;

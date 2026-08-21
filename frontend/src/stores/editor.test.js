@@ -1,7 +1,11 @@
 import assert from 'node:assert/strict'
+import { dirname, join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { after, before, beforeEach, describe, it } from 'node:test'
 import { createPinia, setActivePinia } from 'pinia'
 import { createServer } from 'vite'
+
+const frontendRoot = join(dirname(fileURLToPath(import.meta.url)), '../..')
 
 globalThis.window = globalThis
 globalThis.localStorage = {
@@ -13,7 +17,12 @@ let server
 let useEditorStore
 
 before(async () => {
-  server = await createServer({ server: { middlewareMode: true }, appType: 'custom' })
+  server = await createServer({
+    root: frontendRoot,
+    configFile: join(frontendRoot, 'vite.config.js'),
+    server: { middlewareMode: true },
+    appType: 'custom',
+  })
   ;({ useEditorStore } = await server.ssrLoadModule('/src/stores/editor.js'))
 })
 

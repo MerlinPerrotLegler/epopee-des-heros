@@ -109,6 +109,7 @@ export const api = {
   updateCard: (id, data) => request(`/cards/${id}`, { method: 'PUT', body: data }),
   deleteCard: (id) => request(`/cards/${id}`, { method: 'DELETE' }),
   importCards: (data) => request('/cards/import', { method: 'POST', body: data }),
+  previewCsv: (csvText) => request('/cards/preview', { method: 'POST', body: { csvText } }),
   previewCsvUrl: (url) => request('/cards/preview-url', { method: 'POST', body: { url } }),
   importCardsFromUrl: (data) => request('/cards/import-url', { method: 'POST', body: data }),
   exportCardsUrl: (layoutId) => `${BASE}/cards/export?layout_id=${layoutId}`,

@@ -131,6 +131,7 @@ Pas de table dédiée. Les params sont stockés dans `definition.layers[].elemen
   "threshold": "",
   "textColor": "#ffffff",
   "fontSize": 3,
+  "textAlign": "left",
   "svgMediaId": "",
   "svgPosition": "front"
 }
@@ -138,7 +139,7 @@ Pas de table dédiée. Les params sont stockés dans `definition.layers[].elemen
 
 ### `STAT_TYPES` (enum frontend, non stocké)
 ```js
-{ FOR: '#ef4444', DEX: '#22c55e', INI: '#14b8a6', CHA: '#ec4899', MAG: '#a855f7', DEV: '...', VIE: '...' }
+{ FOR: '#ef4444', DEX: '#22c55e', INI: '#14b8a6', CHA: '#ec4899', MAG: '#a855f7', DEF: '...', VIE: '...' }
 ```
 
 ---

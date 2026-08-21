@@ -1,117 +1,95 @@
 import { Router } from 'express';
+import multer from 'multer';
 import { getDb, getSqliteSync } from '../db/database.js';
-import { insertOrIgnoreInto, useMysql } from '../db/sqlDialect.js';
+import { insertOrIgnoreInto, useMysql, parseJsonColumn } from '../db/sqlDialect.js';
+import { unresolvedMediaBindings, mediaTypeForBinding } from '../utils/missingMediaDetect.js';
 import { randomUUID } from 'crypto';
+import {
+  parseCsvText,
+  previewCsvText,
+  normalizeGoogleSheetsUrl,
+  isSyncableImportSource,
+} from '../utils/parseCsv.js';
+import {
+  parseBool,
+  mapRowToBindingData,
+  decideImportAction,
+  importRowKey,
+  cardsMissingFromCsv,
+  serializeCsv,
+} from '../utils/importHelpers.js';
+
+export { parseCsvText, normalizeGoogleSheetsUrl, previewCsvText };
 
 const router = Router();
-
-// ============================================================
-// Shared utilities (exported for importJobs.js reuse)
-// ============================================================
-
-/**
- * Normalize Google Sheets URL to published CSV format.
- */
-export function normalizeGoogleSheetsUrl(url) {
-  if (url.includes('docs.google.com/spreadsheets')) {
-    // Extract gid param if present
-    const gidMatch = url.match(/[?&]gid=(\d+)/)
-    const gid = gidMatch ? `&gid=${gidMatch[1]}` : ''
-    const base = url.replace(/\/edit.*$/, '').replace(/\/pub.*$/, '')
-    return `${base}/pub?output=csv${gid}`
-  }
-  return url
-}
-
-/**
- * RFC 4180-compliant CSV parser (handles quoted fields, embedded commas, CRLF).
- * Returns array of objects using first row as headers.
- */
-export function parseCsvText(text) {
-  text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trim()
-  if (!text) return []
-
-  const parseRow = (line) => {
-    const fields = []
-    let i = 0
-    while (i <= line.length) {
-      if (i === line.length) { fields.push(''); break }
-      if (line[i] === '"') {
-        i++ // skip opening quote
-        let field = ''
-        while (i < line.length) {
-          if (line[i] === '"' && line[i + 1] === '"') { field += '"'; i += 2 }
-          else if (line[i] === '"') { i++; break }
-          else { field += line[i++] }
-        }
-        fields.push(field)
-        if (line[i] === ',') i++
-        else break
-      } else {
-        const end = line.indexOf(',', i)
-        if (end === -1) { fields.push(line.slice(i).trim()); break }
-        fields.push(line.slice(i, end).trim())
-        i = end + 1
-      }
-    }
-    return fields
-  }
-
-  const lines = text.split('\n').filter(l => l.trim())
-  if (lines.length < 2) return []
-
-  const headers = parseRow(lines[0])
-  return lines.slice(1).map(line => {
-    const values = parseRow(line)
-    const obj = {}
-    headers.forEach((h, i) => { obj[h] = values[i] ?? '' })
-    return obj
-  })
-}
+const csvUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 },
+});
 
 /**
  * Detect mediaId bindings that reference non-existent media, and record in missing_media.
  * Non-blocking: errors are swallowed.
  */
-function detectMissingMedia(instanceId, data, db) {
+function layersForLayout(db, layoutId, cache) {
+  if (!layoutId) return []
+  if (!cache[layoutId]) {
+    try {
+      const layout = db.prepare('SELECT definition FROM layouts WHERE id = ?').get(layoutId)
+      cache[layoutId] = parseJsonColumn(layout?.definition || '{}')?.layers || []
+    } catch {
+      cache[layoutId] = []
+    }
+  }
+  return cache[layoutId]
+}
+
+function detectMissingMedia(instanceId, data, db, layoutId, layoutCache = {}) {
   try {
-    for (const [path, value] of Object.entries(data)) {
-      if (!path.endsWith('.mediaId') || !value) continue
-      const exists = db.prepare('SELECT id FROM media WHERE id = ?').get(value)
+    for (const { binding_path, media_id_ref } of unresolvedMediaBindings(data)) {
+      const exists = db.prepare('SELECT id FROM media WHERE id = ?').get(media_id_ref)
       if (!exists) {
+        const mediaType = mediaTypeForBinding(layersForLayout(db, layoutId, layoutCache), binding_path)
         db.prepare(`INSERT OR IGNORE INTO missing_media
-          (id, card_instance_id, binding_path, media_id_ref, status)
-          VALUES (?, ?, ?, ?, 'pending')`)
-          .run(randomUUID(), instanceId, path, value)
+          (id, card_instance_id, binding_path, media_id_ref, media_type, status)
+          VALUES (?, ?, ?, ?, ?, 'pending')`)
+          .run(randomUUID(), instanceId, binding_path, media_id_ref, mediaType)
       }
     }
   } catch { /* non-blocking */ }
 }
 
-async function detectMissingMediaAsync(instanceId, data, db) {
+async function detectMissingMediaAsync(instanceId, data, db, layoutId, layoutCache = {}) {
   try {
     const insertSql = `${insertOrIgnoreInto()} missing_media
-      (id, card_instance_id, binding_path, media_id_ref, status)
-      VALUES (?, ?, ?, ?, 'pending')`
-    for (const [path, value] of Object.entries(data)) {
-      if (!path.endsWith('.mediaId') || !value) continue
-      const exists = await db.prepare('SELECT id FROM media WHERE id = ?').get(value)
+      (id, card_instance_id, binding_path, media_id_ref, media_type, status)
+      VALUES (?, ?, ?, ?, ?, 'pending')`
+    for (const { binding_path, media_id_ref } of unresolvedMediaBindings(data)) {
+      const exists = await db.prepare('SELECT id FROM media WHERE id = ?').get(media_id_ref)
       if (!exists) {
-        await db.prepare(insertSql).run(randomUUID(), instanceId, path, value)
+        if (layoutId && !layoutCache[layoutId]) {
+          const layout = await db.prepare('SELECT definition FROM layouts WHERE id = ?').get(layoutId)
+          layoutCache[layoutId] = parseJsonColumn(layout?.definition || '{}')?.layers || []
+        }
+        const mediaType = mediaTypeForBinding(layoutCache[layoutId] || [], binding_path)
+        await db.prepare(insertSql).run(randomUUID(), instanceId, binding_path, media_id_ref, mediaType)
       }
     }
   } catch { /* non-blocking */ }
 }
 
 /**
- * Core upsert pipeline. Returns { created, updated, skipped, errors[] }.
- * Can be called from cards.js (new import) or importJobs.js (sync).
+ * Core upsert pipeline. Returns { created, updated, skipped, deleted, errors[] }.
  */
-export function runImportPipeline(db, { rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId }) {
-  let created = 0, updated = 0, skipped = 0
+export function runImportPipeline(db, {
+  rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId,
+  overwrite = true, pruneMissing = false,
+}) {
+  let created = 0, updated = 0, skipped = 0, deleted = 0
   const errors = []
+  const seen = new Set()
+  const layoutCache = {}
 
-  // Resolve layout name → id map for multi mode
   const layoutsByName = {}
   if (mode === 'multi') {
     const layouts = db.prepare('SELECT id, name FROM layouts').all()
@@ -122,7 +100,6 @@ export function runImportPipeline(db, { rows, mode, layoutId, layoutColumn, idCo
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i]
 
-      // Resolve layout
       let resolvedLayoutId = layoutId
       if (mode === 'multi') {
         const layoutName = row[layoutColumn]
@@ -131,52 +108,65 @@ export function runImportPipeline(db, { rows, mode, layoutId, layoutColumn, idCo
         if (!resolvedLayoutId) { errors.push(`Ligne ${i + 2}: layout "${layoutName}" introuvable`); skipped++; continue }
       }
 
-      // Check idColumn value
       const idValue = row[idColumn]
       if (!idValue) { errors.push(`Ligne ${i + 2}: identifiant "${idColumn}" vide`); skipped++; continue }
 
-      // Apply mapping: { csvCol: bindingPath }
+      seen.add(importRowKey(resolvedLayoutId, idValue))
       const layoutMapping = mappings[resolvedLayoutId] || mappings['*'] || {}
-      const data = {}
-      for (const [csvCol, bindPath] of Object.entries(layoutMapping)) {
-        if (bindPath && row[csvCol] !== undefined && row[csvCol] !== '') {
-          data[bindPath] = row[csvCol]
-        }
-      }
+      const data = mapRowToBindingData(row, layoutMapping)
 
-      // Upsert: match by name + layout_id + import_job_id
       const existing = db.prepare(
         'SELECT id FROM card_instances WHERE name = ? AND layout_id = ? AND import_job_id = ?'
       ).get(idValue, resolvedLayoutId, jobId)
 
-      if (existing) {
+      const action = decideImportAction(existing, overwrite)
+      if (action === 'skip') {
+        errors.push(`Ligne ${i + 2}: « ${idValue} » existe déjà (non écrasée)`)
+        skipped++
+        continue
+      }
+      if (action === 'update') {
         db.prepare(`UPDATE card_instances SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
           .run(JSON.stringify(data), existing.id)
-        detectMissingMedia(existing.id, data, db)
+        detectMissingMedia(existing.id, data, db, resolvedLayoutId, layoutCache)
         updated++
       } else {
         const newId = randomUUID()
         const maxOrder = db.prepare('SELECT MAX(sort_order) as m FROM card_instances WHERE layout_id = ?').get(resolvedLayoutId)
         db.prepare('INSERT INTO card_instances (id, layout_id, name, data, import_job_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
           .run(newId, resolvedLayoutId, idValue, JSON.stringify(data), jobId, (maxOrder?.m || 0) + 1)
-        detectMissingMedia(newId, data, db)
+        detectMissingMedia(newId, data, db, resolvedLayoutId, layoutCache)
         created++
+      }
+    }
+
+    if (pruneMissing) {
+      const existingCards = db.prepare('SELECT id, layout_id, name FROM card_instances WHERE import_job_id = ?').all(jobId)
+      for (const card of cardsMissingFromCsv(existingCards, seen)) {
+        db.prepare('DELETE FROM card_instances WHERE id = ?').run(card.id)
+        deleted++
       }
     }
   })
 
   upsert()
-  return { created, updated, skipped, errors }
+  return { created, updated, skipped, deleted, errors }
 }
 
 /**
  * Même logique que runImportPipeline mais async (pool MySQL / adaptateur).
  */
-export async function runImportPipelineAsync(db, { rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId }) {
+export async function runImportPipelineAsync(db, {
+  rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId,
+  overwrite = true, pruneMissing = false,
+}) {
   let created = 0
   let updated = 0
   let skipped = 0
+  let deleted = 0
   const errors = []
+  const seen = new Set()
+  const layoutCache = {}
 
   const layoutsByName = {}
   if (mode === 'multi') {
@@ -199,22 +189,24 @@ export async function runImportPipelineAsync(db, { rows, mode, layoutId, layoutC
       const idValue = row[idColumn]
       if (!idValue) { errors.push(`Ligne ${i + 2}: identifiant "${idColumn}" vide`); skipped++; continue }
 
+      seen.add(importRowKey(resolvedLayoutId, idValue))
       const layoutMapping = mappings[resolvedLayoutId] || mappings['*'] || {}
-      const data = {}
-      for (const [csvCol, bindPath] of Object.entries(layoutMapping)) {
-        if (bindPath && row[csvCol] !== undefined && row[csvCol] !== '') {
-          data[bindPath] = row[csvCol]
-        }
-      }
+      const data = mapRowToBindingData(row, layoutMapping)
 
       const existing = await tx.prepare(
         'SELECT id FROM card_instances WHERE name = ? AND layout_id = ? AND import_job_id = ?',
       ).get(idValue, resolvedLayoutId, jobId)
 
-      if (existing) {
+      const action = decideImportAction(existing, overwrite)
+      if (action === 'skip') {
+        errors.push(`Ligne ${i + 2}: « ${idValue} » existe déjà (non écrasée)`)
+        skipped++
+        continue
+      }
+      if (action === 'update') {
         await tx.prepare(`UPDATE card_instances SET data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`)
           .run(JSON.stringify(data), existing.id)
-        await detectMissingMediaAsync(existing.id, data, tx)
+        await detectMissingMediaAsync(existing.id, data, tx, resolvedLayoutId, layoutCache)
         updated++
       } else {
         const newId = randomUUID()
@@ -222,13 +214,102 @@ export async function runImportPipelineAsync(db, { rows, mode, layoutId, layoutC
         const m = maxOrder?.m ?? maxOrder?.['MAX(sort_order)']
         await tx.prepare('INSERT INTO card_instances (id, layout_id, name, data, import_job_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)')
           .run(newId, resolvedLayoutId, idValue, JSON.stringify(data), jobId, (Number(m) || 0) + 1)
-        await detectMissingMediaAsync(newId, data, tx)
+        await detectMissingMediaAsync(newId, data, tx, resolvedLayoutId, layoutCache)
         created++
+      }
+    }
+
+    if (pruneMissing) {
+      const existingCards = await tx.prepare('SELECT id, layout_id, name FROM card_instances WHERE import_job_id = ?').all(jobId)
+      for (const card of cardsMissingFromCsv(existingCards, seen)) {
+        await tx.prepare('DELETE FROM card_instances WHERE id = ?').run(card.id)
+        deleted++
       }
     }
   })()
 
-  return { created, updated, skipped, errors }
+  return { created, updated, skipped, deleted, errors }
+}
+
+function parseJsonField(value, fallback) {
+  if (value == null || value === '') return fallback
+  if (typeof value === 'object') return value
+  try {
+    return JSON.parse(value)
+  } catch {
+    return fallback
+  }
+}
+
+async function persistCsvImport({
+  rows, sourceUrl, mode = 'single', layoutId, layoutColumn, idColumn, mappings = {}, label,
+  overwrite = true, pruneMissing = false,
+}) {
+  if (!idColumn) {
+    const err = new Error('idColumn required')
+    err.status = 400
+    throw err
+  }
+  if (mode === 'single' && !layoutId) {
+    const err = new Error('layoutId required for single mode')
+    err.status = 400
+    throw err
+  }
+  if (mode === 'multi' && !layoutColumn) {
+    const err = new Error('layoutColumn required for multi mode')
+    err.status = 400
+    throw err
+  }
+  if (!rows?.length) {
+    const err = new Error('CSV vide ou sans données')
+    err.status = 422
+    throw err
+  }
+  const headers = Object.keys(rows[0])
+  if (!headers.includes(idColumn)) {
+    const err = new Error(`Colonne identifiant "${idColumn}" absente du CSV`)
+    err.status = 422
+    throw err
+  }
+
+  const db = getDb()
+  const jobId = randomUUID()
+  await db.prepare(`INSERT INTO import_jobs (id, label, source_url, mode, layout_id, layout_column, id_column, mappings)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+    .run(
+      jobId,
+      label || `Import ${new Date().toLocaleDateString('fr-FR')}`,
+      sourceUrl,
+      mode,
+      layoutId || null,
+      layoutColumn || null,
+      idColumn,
+      JSON.stringify(mappings || {}),
+    )
+
+  const stats = useMysql()
+    ? await runImportPipelineAsync(db, {
+      rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId, overwrite, pruneMissing,
+    })
+    : runImportPipeline(getSqliteSync(), {
+      rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId, overwrite, pruneMissing,
+    })
+
+  await db.prepare(`UPDATE import_jobs SET last_synced_at = CURRENT_TIMESTAMP, last_sync_stats = ? WHERE id = ?`)
+    .run(JSON.stringify(stats), jobId)
+
+  if (mode === 'single' && layoutId && isSyncableImportSource(sourceUrl)) {
+    try {
+      await db.prepare('UPDATE layouts SET sheets_url = ? WHERE id = ?').run(sourceUrl, layoutId)
+    } catch { /* colonne optionnelle */ }
+  }
+
+  return { ok: true, jobId, ...stats }
+}
+
+function sendImportError(res, err) {
+  const status = err.status || (err.message?.includes('required') ? 400 : 500)
+  res.status(status).json({ error: err.message })
 }
 
 // ============================================================
@@ -244,24 +325,30 @@ router.post('/preview-url', async (req, res) => {
     const response = await fetch(normalized)
     if (!response.ok) throw new Error(`HTTP ${response.status} lors de la récupération de l'URL`)
     const csvText = await response.text()
-    const rows = parseCsvText(csvText)
-    if (!rows.length) return res.status(422).json({ error: 'CSV vide ou sans données' })
-    const headers = Object.keys(rows[0])
-    res.json({ headers, preview: rows.slice(0, 5), totalRows: rows.length })
+    res.json(previewCsvText(csvText))
   } catch (err) {
-    res.status(422).json({ error: err.message })
+    res.status(err.status || 422).json({ error: err.message })
+  }
+})
+
+// Preview CSV from pasted text or uploaded file
+router.post('/preview', csvUpload.single('file'), async (req, res) => {
+  try {
+    const csvText = req.file
+      ? req.file.buffer.toString('utf8')
+      : (req.body?.csvText || '')
+    if (!String(csvText).trim()) return res.status(400).json({ error: 'csvText or file required' })
+    res.json(previewCsvText(csvText))
+  } catch (err) {
+    res.status(err.status || 422).json({ error: err.message })
   }
 })
 
 // Full import from URL (creates ImportJob + upserts instances)
 router.post('/import-url', async (req, res) => {
-  const db = getDb()
   const { sourceUrl, mode = 'single', layoutId, layoutColumn, idColumn, mappings = {}, label } = req.body
 
   if (!sourceUrl) return res.status(400).json({ error: 'sourceUrl required' })
-  if (!idColumn) return res.status(400).json({ error: 'idColumn required' })
-  if (mode === 'single' && !layoutId) return res.status(400).json({ error: 'layoutId required for single mode' })
-  if (mode === 'multi' && !layoutColumn) return res.status(400).json({ error: 'layoutColumn required for multi mode' })
 
   try {
     const url = normalizeGoogleSheetsUrl(sourceUrl.trim())
@@ -269,30 +356,14 @@ router.post('/import-url', async (req, res) => {
     if (!response.ok) throw new Error(`HTTP ${response.status} lors de la récupération de l'URL`)
     const csvText = await response.text()
     const rows = parseCsvText(csvText)
-    if (!rows.length) return res.status(422).json({ error: 'CSV vide ou sans données' })
-
-    const headers = Object.keys(rows[0])
-    if (!headers.includes(idColumn)) {
-      return res.status(422).json({ error: `Colonne identifiant "${idColumn}" absente du CSV` })
-    }
-
-    // Create ImportJob
-    const jobId = randomUUID()
-    await db.prepare(`INSERT INTO import_jobs (id, label, source_url, mode, layout_id, layout_column, id_column, mappings)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(jobId, label || `Import ${new Date().toLocaleDateString('fr-FR')}`, sourceUrl, mode,
-        layoutId || null, layoutColumn || null, idColumn, JSON.stringify(mappings))
-
-    const stats = useMysql()
-      ? await runImportPipelineAsync(db, { rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId })
-      : runImportPipeline(getSqliteSync(), { rows, mode, layoutId, layoutColumn, idColumn, mappings, jobId })
-
-    await db.prepare(`UPDATE import_jobs SET last_synced_at = CURRENT_TIMESTAMP, last_sync_stats = ? WHERE id = ?`)
-      .run(JSON.stringify(stats), jobId)
-
-    res.status(201).json({ ok: true, jobId, ...stats })
+    const result = await persistCsvImport({
+      rows, sourceUrl, mode, layoutId, layoutColumn, idColumn, mappings, label,
+      overwrite: parseBool(req.body.overwrite, true),
+      pruneMissing: parseBool(req.body.pruneMissing, false),
+    })
+    res.status(201).json(result)
   } catch (err) {
-    res.status(500).json({ error: err.message })
+    sendImportError(res, err)
   }
 })
 
@@ -313,53 +384,76 @@ router.get('/export', async (req, res) => {
   })
   const headers = [...allKeys]
 
-  const csvLines = [headers.join(',')]
-  for (const card of cards) {
+  const csvRows = cards.map((card) => {
     const data = typeof card.data === 'string' ? JSON.parse(card.data) : card.data
-    const row = headers.map(h => {
-      const val = h === 'name' ? card.name : (data[h] ?? '')
-      return val.toString().includes(',') ? `"${val.toString().replace(/"/g, '""')}"` : val
+    const row = { name: card.name }
+    headers.forEach((h) => {
+      if (h === 'name') return
+      row[h] = data[h] ?? ''
     })
-    csvLines.push(row.join(','))
-  }
+    return row
+  })
+  const csv = serializeCsv(headers, csvRows)
 
   const layout = await db.prepare('SELECT name FROM layouts WHERE id = ?').get(layout_id)
   const filename = `cartes-${layout?.name || layout_id}.csv`
   res.setHeader('Content-Type', 'text/csv; charset=utf-8')
   res.setHeader('Content-Disposition', `attachment; filename="${filename}"`)
-  res.send(csvLines.join('\n'))
+  res.send(csv)
 })
 
-// Bulk import from pre-parsed JSON array (legacy, kept for compatibility)
-router.post('/import', async (req, res) => {
-  const db = getDb()
-  const { layout_id, rows: csvRows, mapping } = req.body
-  if (!layout_id || !csvRows || !mapping) {
-    return res.status(400).json({ error: 'layout_id, rows, and mapping required' })
+// Import CSV file (multipart) or csvText/rows JSON — same pipeline as import-url
+router.post('/import', csvUpload.single('file'), async (req, res) => {
+  try {
+    const body = req.body || {}
+    const mappings = parseJsonField(body.mappings, {})
+    const mapping = parseJsonField(body.mapping, null)
+    let rows = parseJsonField(body.rows, null)
+
+    const csvText = req.file
+      ? req.file.buffer.toString('utf8')
+      : (body.csvText || '')
+    if (!rows && csvText) rows = parseCsvText(csvText)
+
+    // Legacy JSON: { layout_id, rows, mapping }
+    if (body.layout_id && rows && mapping) {
+      const layoutId = body.layout_id
+      const idColumn = body.idColumn || Object.keys(mapping)[0] || 'name'
+      const result = await persistCsvImport({
+        rows,
+        sourceUrl: `file:${body.filename || req.file?.originalname || 'manuel.csv'}`,
+        mode: 'single',
+        layoutId,
+        idColumn,
+        mappings: { [layoutId]: mapping },
+        label: body.label || `Import manuel ${new Date().toLocaleDateString('fr-FR')}`,
+      })
+      return res.status(201).json({ imported: result.created, ...result })
+    }
+
+    const mode = body.mode || 'single'
+    const layoutId = body.layoutId || null
+    const layoutColumn = body.layoutColumn || null
+    const idColumn = body.idColumn
+    const filename = body.filename || req.file?.originalname || 'import.csv'
+    const sourceUrl = body.sourceUrl || `file:${filename}`
+
+    const result = await persistCsvImport({
+      rows,
+      sourceUrl,
+      mode,
+      layoutId,
+      layoutColumn,
+      idColumn,
+      mappings,
+      label: body.label,
+      overwrite: parseBool(body.overwrite, true),
+      pruneMissing: parseBool(body.pruneMissing, false),
+    })
+    res.status(201).json(result)
+  } catch (err) {
+    sendImportError(res, err)
   }
-
-  const jobId = randomUUID()
-  await db.prepare(`INSERT INTO import_jobs (id, label, source_url, mode, layout_id, id_column, mappings)
-    VALUES (?, ?, ?, ?, ?, ?, ?)`)
-    .run(jobId, `Import manuel ${new Date().toLocaleDateString('fr-FR')}`, 'manual', 'single',
-      layout_id, Object.keys(mapping)[0] || 'name', JSON.stringify({ [layout_id]: mapping }))
-
-  const stats = useMysql()
-    ? await runImportPipelineAsync(db, {
-      rows: csvRows, mode: 'single', layoutId: layout_id,
-      idColumn: Object.keys(mapping)[0] || 'name',
-      mappings: { [layout_id]: mapping }, jobId,
-    })
-    : runImportPipeline(getSqliteSync(), {
-      rows: csvRows, mode: 'single', layoutId: layout_id,
-      idColumn: Object.keys(mapping)[0] || 'name',
-      mappings: { [layout_id]: mapping }, jobId,
-    })
-
-  await db.prepare(`UPDATE import_jobs SET last_synced_at = CURRENT_TIMESTAMP, last_sync_stats = ? WHERE id = ?`)
-    .run(JSON.stringify(stats), jobId)
-
-  res.status(201).json({ imported: stats.created, ...stats })
 })
 
 // Save import mapping template

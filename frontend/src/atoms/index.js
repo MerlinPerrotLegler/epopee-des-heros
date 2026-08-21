@@ -553,7 +553,7 @@ export const ATOM_TYPES = {
     label: 'Caractéristique',
     icon: '△',
     defaultParams: {
-      stat: 'FOR',          // FOR | DEX | INI | CHA | MAG | DEV | VIE
+      stat: 'FOR',          // FOR | DEX | INI | CHA | MAG | DEF | VIE
       modifier: '',         // optional prefix: '+2' | '-1' | ''
       threshold: '',        // optional number after '>' : '5' | ''
       svgMediaId: null,     // media ID of SVG overlay (null = none)
@@ -562,6 +562,7 @@ export const ATOM_TYPES = {
       fontSize: 3,
       fontFamily: FONT_FAMILY,
       fontWeight: 700,
+      textAlign: 'left',    // left | center | right
     },
     // Même hauteur par défaut que l’atome « Texte » (bloc une ligne)
     defaultSize: { width_mm: 12, height_mm: 10 }
@@ -575,7 +576,7 @@ export const STAT_TYPES = {
   INI: { label: 'Initiative', color: '#14b8a6' },
   CHA: { label: 'Charisme',  color: '#ec4899' },
   MAG: { label: 'Magie',     color: '#a855f7' },
-  DEV: { label: 'Déviation', color: '#f97316' },
+  DEF: { label: 'Déviation', color: '#f97316' },
   VIE: { label: 'Vie',       color: '#dc2626' },
   DEF: { label: 'Défense',   color: '#64748b' },
 }

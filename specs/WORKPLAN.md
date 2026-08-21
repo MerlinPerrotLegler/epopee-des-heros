@@ -43,7 +43,7 @@ Le projet est divisé en 5 grandes phases :
 - [x] LayoutsView grille v2 : tuile recto+verso liée (toggle aperçu, miniature face active, open = face active) ; éditeur bascule save-then-navigate
 - [x] Atome `image` : upload, recadrage, aperçu dans le canvas
 - [x] Atome `image` : fondu bords (mm) — `fadeTop/Bottom/Left/Right_mm`, masque CSS via `buildImageEdgeFadeMaskStyle`
-- [ ] Atome `hexTile` : finaliser le rendu SVG hexagonal
+- [x] Atome `hexTile` : finaliser le rendu SVG hexagonal
 - [x] Mode dessin à la plume (TSD-019) : atome `drawing`, 5 plumes configurables, algo calligraphique
 - [x] Atome `richText` (TSD-020) : texte enrichi, dés D8/D12 inline, markdown, formules FML → KaTeX, ressources `/R{or,3}`, stats `/FOR{+1}`, SVG `/SVG{name}`
 - [x] Layout hexagonal (TSD-013) : shape = 'hexagon', clip canvas + overlay SVG evenodd
@@ -68,6 +68,8 @@ Le projet est divisé en 5 grandes phases :
 - [x] Atome `plan` — store : création groupe+marqueur lié, suppression en cascade, réordonnancement entre tuiles image et branchement palette
 - [x] Atome `plan` — panneau droit contextuel : filtres Track, hauteur mm, largeur automatique et payload DnD
 - [x] Atome `plan` — drop canvas : coordonnées carte et snap, création d’une tuile `image` dans le groupe lié
+- [x] TSD-027 rédigé — Ingrédients de fabrication (atomes `cadreChanfrein` / `losange` + composant seed 6 cases)
+- [ ] TSD-027 implémenté : atomes, binding interne composants, masquage cases vides, seed composant
 
 ### Phase 2 — Médias & assets
 
@@ -97,6 +99,9 @@ Le projet est divisé en 5 grandes phases :
 - [x] Backend CRUD `/api/cards` + `/api/import-jobs`
 - [x] Backend `POST /api/cards/import-url` (pipeline upsert complet avec ImportJob)
 - [x] Backend `POST /api/cards/preview-url` (dry-run aperçu CSV)
+- [x] Backend `POST /api/cards/import` + `POST /api/cards/preview` (fichier CSV local / csvText, même pipeline)
+- [x] Frontend ImportWizard : source URL **ou fichier CSV local** (TSD-007 §7.1)
+- [x] Import : overwrite / pruneMissing, mapping composants imbriqués, export CSV RFC 4180
 - [x] Backend `POST /api/import-jobs/:id/sync` (re-sync source)
 - [x] Backend `GET /api/cards/export` (export CSV)
 - [x] Frontend `binding.js` : papaparse, `normalizeGoogleSheetsUrl`, `extractBindingPaths`, `prefixOverride`
@@ -106,14 +111,14 @@ Le projet est divisé en 5 grandes phases :
 - [x] Aperçu live d'une instance rendu dans le canvas (lecture seule)
 - [x] Duplication d'une instance
 - [x] TSD rédigé (TSD-012) ✓ — Génération médias manquants par IA
-- [x] TSD-012 implémenté : config IA, 4 types built-in, file de génération, pipeline OpenAI DALL-E 3
+- [x] TSD-012 implémenté : config IA, 4 types built-in, file de génération, OpenAI Images (`gpt-image-1` / DALL-E 3, b64, generate-all non bloquant)
 
 ### Phase 4 — Export & impression
 
 - [ ] TSD rédigé (TSD-009) ✓
 - [x] Impression navigateur : carte seule à scale 1, multi-cartes `break-inside: avoid` (TSD-025)
-- [ ] Export PDF d'un layout (qualité impression) — même DOM mm comme source (techno plus tard)
-- [ ] Export PNG d'une instance unique
+- [x] Export PNG d'une instance unique (aperçu Cartes, html2canvas ~288 dpi)
+- [ ] Export PDF d'un layout (qualité impression) — jsPDF client (voir QUESTIONS-2026-08-20 Q5)
 - [ ] Export batch : toutes les instances d'un layout en un PDF
 - [ ] Gabarit de coupe (marge, fond perdu)
 
@@ -143,13 +148,13 @@ Le projet est divisé en 5 grandes phases :
 ## d) Progression globale
 
 ```
-Phase 1 — Éditeur          ████████████████████  99%
+Phase 1 — Éditeur          ████████████████████  100%
 Phase 2 — Médias           ████████████████████  100%
-Phase 3 — Instances cartes ████████████████░░░░  80%
-Phase 4 — Export           ████░░░░░░░░░░░░░░░░  20%
+Phase 3 — Instances cartes ███████████████████░  92%
+Phase 4 — Export           ██████░░░░░░░░░░░░░░  30%
 Phase 5 — Règles / valid.  ░░░░░░░░░░░░░░░░░░░░   0%
 
-GLOBAL                     █████████████░░░░░░░  ~53%
+GLOBAL                     ████████████████░░░░  ~83%
 ```
 
 > Le pourcentage global pondère : Phase 1 = 40 %, Phase 2 = 15 %, Phase 3 = 25 %, Phase 4 = 15 %, Phase 5 = 5 %.
@@ -160,10 +165,11 @@ GLOBAL                     █████████████░░░░�
 
 > Classées par priorité décroissante. À réviser à chaque session.
 
-1. **[Phase 4]** Export PDF (même DOM mm comme source) — techno html→PDF à choisir
-2. **[Phase 1]** Atome `hexTile` : finaliser le rendu SVG hexagonal
-3. **[Phase 4]** Export PNG d'une instance unique
-4. **[Phase 1]** Auth backend : auditer les routes sans session
+1. **[Phase 1]** TSD-027 — implémenter Ingrédients de fabrication (atomes + composant + binding interne)
+2. **[Phase 4]** Export PDF batch (jsPDF client, TSD-009 / QUESTIONS Q5)
+3. **[Phase 4]** Gabarit de coupe (marge, fond perdu)
+4. **[Phase 3]** Persister les mappings hors ImportJob (table `import_mappings`, QUESTIONS Q4)
+5. **[Phase 1]** Auth : `/uploads` public volontaire (images canvas) — documenté Q6
 
 ---
 
@@ -173,6 +179,12 @@ GLOBAL                     █████████████░░░░�
 
 | Date | Résumé |
 |------|--------|
+| 2026-08-21 (3) | TSD-027 (Review) : atomes `cadreChanfrein` + `losange` ; composant seed **Ingrédients de fabrication** (56×28 mm, 6 cases, masquage instance/print, binding `craft.ingredientN.ref` / `ingredientNq.text`). Implémentation en attente de relecture spec. |
+| 2026-08-21 (2) | Config atomes (`/atoms-config`) : liste triée par nom (locale fr) + barre de recherche (accents ignorés, filtre label/type) pour retrouver Caractéristique / `textAlign`. |
+| 2026-08-21 | Atome `caracteristique` : paramètre `textAlign` (left / center / right) — rendu flex + select dans le panneau propriétés / config atomes. |
+| 2026-08-20 (4) | Batterie de tests TSD-012 : `generateOne` (clé, prompt vide, b64, 429), `buildPrompt`, détection `*.mediaId`, `npm test` → **163/163** verts. |
+| 2026-08-20 (3) | TSD-012 appels IA images manquantes : `gpt-image-1` (b64_json) + DALL-E 3, mapping des tailles invalides (256/512), `callProvider`, generate/generate-all fire-and-forget, `media_type` à l'import, Config IA (modèle + tailles), `OPENAI_API_KEY`. Tests `aiGeneration.test.js` verts. |
+| 2026-08-20 (2) | Suite import + export : overwrite/pruneMissing branchés, mapping via `extractBindingPaths` (composants imbriqués), export CSV RFC 4180, badge job, hexTile viewBox mm, PNG depuis l’aperçu. Questions/propositions : `specs/QUESTIONS-2026-08-20.md`. Tests helpers 19+ verts, build Vite OK. |
 | 2026-08-07 (2) | **Page /status** : HTML public clair + `/api/health` JSON ; boot dégradé si DB KO (plus de process.exit) pour diagnostiquer MySQL Hostinger sans 503 opaque. |
 | 2026-08-07 | **Fix Hostinger better-sqlite3** : `better-sqlite3` passé en `optionalDependencies` + lazy-load (mode SQLite seulement) ; retrait `puppeteer` inutilisé ; `.env.example` précise MySQL obligatoire sur Hostinger (glibc trop ancienne pour le natif). |
 | 2026-07-20 (2) | **Atome Cadre** : refonte `frameStrokes.js` — double trait d'épaisseur uniforme (rects SVG, param `strokeWidth` mm), ornements aux coins et milieux de côté (style cadre décoratif), tiers `fin`=trait simple / `basic+`=double+ornements ; `preserveAspectRatio meet` pour redimensionnement proportionnel. Tests `frameStrokes.test.js` 7/7 OK. |
