@@ -1329,6 +1329,7 @@ const ENUM_MAPS = {
   roundMode:       ['round', 'floor', 'ceil'],
   textOrientation: ['parallel', 'perpendicular'],
   cornerTextMode:  ['bisect', 'parallel', 'perpendicular', 'custom'],
+  cellTextAlign:   ['center', 'east', 'west', 'north', 'south'],
   textAlign:       ['left', 'center', 'right', 'justify'],
   align:           ['left', 'center', 'right', 'justify'],
   titleAlign:      ['left', 'center', 'right'],

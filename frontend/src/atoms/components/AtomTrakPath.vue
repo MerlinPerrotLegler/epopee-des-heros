@@ -29,10 +29,10 @@
     />
     <g v-for="cell in cells" :key="`fg-${cell.idx}`">
       <text
-        :x="sv(cell.cx)"
-        :y="sv(cell.cy)"
-        text-anchor="middle"
-        dominant-baseline="central"
+        :x="sv(textPos(cell).x)"
+        :y="sv(textPos(cell).y)"
+        :text-anchor="textPos(cell).textAnchor"
+        :dominant-baseline="textPos(cell).dominantBaseline"
         :fill="params.textColor || '#ffffff'"
         :font-size="fontSize"
         :font-family="params.fontFamily || 'Outfit'"
@@ -58,6 +58,7 @@ import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { buildTrakPathCells } from '@/utils/trakPathLayout.js'
+import { cellTextLayout } from '@/utils/trackCellText.js'
 
 const props = defineProps({
   params: { type: Object, default: () => ({}) },
@@ -92,5 +93,11 @@ function sv(mm) {
 
 function textureOpacity(cell) {
   return cell.textureSource === 'system' && !props.printMode ? 0.35 : 1
+}
+
+function textPos(cell) {
+  return cellTextLayout(cell, props.params.cellTextAlign, {
+    insetMm: (props.params.fontSize || 2.5) * 0.2,
+  })
 }
 </script>

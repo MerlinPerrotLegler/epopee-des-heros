@@ -36,9 +36,9 @@
     />
     <g v-for="cell in cellLayouts" :key="`fg-${cell.n}-${cell.idx}`">
       <text
-        :x="sv(cell.cx)" :y="sv(cell.cy)"
-        text-anchor="middle"
-        dominant-baseline="central"
+        :x="sv(textPos(cell).x)" :y="sv(textPos(cell).y)"
+        :text-anchor="textPos(cell).textAnchor"
+        :dominant-baseline="textPos(cell).dominantBaseline"
         :fill="params.textColor || '#ffffff'"
         :font-size="fontSizePx"
         :font-family="params.fontFamily || 'Outfit'"
@@ -62,6 +62,7 @@ import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { buildTrakCells } from '@/utils/trakLayout.js'
+import { cellTextLayout } from '@/utils/trackCellText.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -98,6 +99,12 @@ const svgH = computed(() => sv(props.height_mm))
 
 function textureOpacity(cell) {
   return cell.textureSource === 'system' && !props.printMode ? 0.35 : 1
+}
+
+function textPos(cell) {
+  return cellTextLayout(cell, p.value.cellTextAlign, {
+    insetMm: (p.value.fontSize || 2.5) * 0.2,
+  })
 }
 
 function capPoints(side, cell) {

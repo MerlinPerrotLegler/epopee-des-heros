@@ -27,14 +27,14 @@
     />
 
     <text
-      :x="svgW / 2" :y="svgH / 2"
-      text-anchor="middle"
-      dominant-baseline="central"
+      :x="textPos.x" :y="textPos.y"
+      :text-anchor="textPos.textAnchor"
+      :dominant-baseline="textPos.dominantBaseline"
       :fill="params.textColor || '#ffffff'"
       :font-size="fontSz"
       font-family="Outfit"
       font-weight="600"
-      :transform="`rotate(${params.textRotation ?? 45},${svgW / 2},${svgH / 2})`"
+      :transform="`rotate(${params.textRotation ?? 45},${textPos.x},${textPos.y})`"
     >{{ cellText }}</text>
     <rect
       v-if="selected && activeCellIdx === 0"
@@ -52,7 +52,7 @@ import { computed } from 'vue'
 import { useEditorStore } from '@/stores/editor.js'
 import { useTrackTextures } from '@/composables/useTrackTextures.js'
 import { textureDrawRect } from '@/utils/trackFootprint.js'
-import { resolveTrackCellText } from '@/utils/trackCellText.js'
+import { cellTextLayout, resolveTrackCellText } from '@/utils/trackCellText.js'
 
 const props = defineProps({
   params:    { type: Object, default: () => ({}) },
@@ -84,6 +84,21 @@ const img = computed(() => {
   }
 })
 const fontSz = computed(() => (p.value.fontSize || 2.5) * SCALE)
+const textPos = computed(() => {
+  const layout = cellTextLayout({
+    x: 0,
+    y: 0,
+    w: logicalW.value,
+    h: logicalH.value,
+  }, p.value.cellTextAlign, {
+    insetMm: (p.value.fontSize || 2.5) * 0.2,
+  })
+  return {
+    ...layout,
+    x: layout.x * SCALE,
+    y: layout.y * SCALE,
+  }
+})
 const coin = computed(() => Number(override.value.coin) || 0)
 const cellText = computed(() => resolveTrackCellText(override.value, p.value.n ?? 0))
 const textureOpacity = computed(() =>

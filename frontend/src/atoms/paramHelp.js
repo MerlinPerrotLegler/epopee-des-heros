@@ -202,6 +202,7 @@ export const PARAM_HELP = {
   cornerTextMode:  'Angle du texte dans les cases de coin : bisectrice à 45°, parallèle, perpendiculaire, ou personnalisé',
   cornerTextAngle: 'Angle personnalisé pour le texte des coins (en degrés)',
   cellOverrides:   'Surcharges par case : texte affiché, textureId, coin (0/90/180/270), textureSource (user/system/null)',
+  cellTextAlign:   'Position du texte dans chaque case : centre (défaut), est, ouest, nord ou sud',
   thicknessH_mm:   'Épaisseur des pistes haut et bas (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
   thicknessV_mm:   'Épaisseur des pistes gauche et droite (en mm depuis le bord vers le centre). Vide = calculé automatiquement.',
 

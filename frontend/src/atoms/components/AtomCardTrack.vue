@@ -54,12 +54,13 @@
     />
     <g v-for="cell in cells" :key="`fg-${cell.idx}`">
       <text
-        :x="sv(cell.cx)" :y="sv(cell.cy)"
-        text-anchor="middle" dominant-baseline="central"
+        :x="sv(textPos(cell).x)" :y="sv(textPos(cell).y)"
+        :text-anchor="textPos(cell).textAnchor"
+        :dominant-baseline="textPos(cell).dominantBaseline"
         :fill="p.textColor || '#ffffff'"
         :font-size="fontSz"
         :font-family="p.fontFamily || 'Outfit'" font-weight="600"
-        :transform="`rotate(${cell.textRot},${sv(cell.cx)},${sv(cell.cy)})`"
+        :transform="`rotate(${cell.textRot},${sv(textPos(cell).x)},${sv(textPos(cell).y)})`"
       >{{ cell.text }}</text>
       <rect
         v-if="selected && cell.idx === activeCellIdx"
@@ -87,6 +88,7 @@ import {
   buildCardTrackCells,
 } from '@/utils/cardTrackLayout.js'
 import { textureDrawRect } from '@/utils/trackFootprint.js'
+import { cellTextLayout } from '@/utils/trackCellText.js'
 
 const props = defineProps({
   params:    { type: Object,  default: () => ({}) },
@@ -149,6 +151,12 @@ function legacyMediaId(cell) {
 
 function cellBg(cell) {
   return cellOverride(cell)?.bgColor || p.value.bgColor || '#2a3050'
+}
+
+function textPos(cell) {
+  return cellTextLayout(cell, p.value.cellTextAlign, {
+    insetMm: (p.value.fontSize || 2.5) * 0.2,
+  })
 }
 
 // ── Styles globaux ────────────────────────────────────────────────────────────
